@@ -135,6 +135,54 @@ public sealed class PackageRemovalServiceTests : IDisposable
         Assert.Equal(content, await File.ReadAllBytesAsync(target));
     }
 
+
+    [Fact]
+    public async Task RemovePackage_ClearsOwnershipForAlreadyMissingFiles_AndRollbackDoesNotRecreateThem()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("package payload");
+        var imported = await ImportPackageAsync(content);
+        var installation = CreateInstallation();
+        var deployer = new TransactionalDeploymentService(dataRoot: _transactionsRoot);
+        var coordinator = new PackageDeploymentCoordinator(deployer, _stagingRoot);
+        var remover = new TransactionalRemovalService(new GameProcessMonitor(), _transactionsRoot);
+        await coordinator.ApplyAsync(installation, new[] { imported });
+
+        var target = Path.Combine(_gameRoot, "mods", "sample.dat");
+        File.Delete(target);
+
+        var removal = await remover.RemovePackagesAsync(installation, new[] { imported });
+        Assert.Equal(1, removal.FilesApplied);
+        Assert.False(File.Exists(target));
+        Assert.DoesNotContain("test-package\u001f1.0.0", await remover.GetActivePackageIdentitiesAsync());
+
+        await deployer.RollbackLatestAsync(removal.TransactionId);
+
+        Assert.False(File.Exists(target));
+        Assert.Contains("test-package\u001f1.0.0", await remover.GetActivePackageIdentitiesAsync());
+    }
+
+    [Fact]
+    public async Task RollbackOwnershipOnlyRemoval_ProtectsFileCreatedAfterRemoval()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("package payload");
+        var imported = await ImportPackageAsync(content);
+        var installation = CreateInstallation();
+        var deployer = new TransactionalDeploymentService(dataRoot: _transactionsRoot);
+        var coordinator = new PackageDeploymentCoordinator(deployer, _stagingRoot);
+        var remover = new TransactionalRemovalService(new GameProcessMonitor(), _transactionsRoot);
+        await coordinator.ApplyAsync(installation, new[] { imported });
+
+        var target = Path.Combine(_gameRoot, "mods", "sample.dat");
+        File.Delete(target);
+        var removal = await remover.RemovePackagesAsync(installation, new[] { imported });
+        await File.WriteAllTextAsync(target, "user-created file");
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            deployer.RollbackLatestAsync(removal.TransactionId));
+
+        Assert.Equal("user-created file", await File.ReadAllTextAsync(target));
+    }
+
     private async Task<ImportedPackage> ImportPackageAsync(byte[] content)
     {
         var hash = Convert.ToHexString(SHA256.HashData(content));
