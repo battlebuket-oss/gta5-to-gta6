@@ -73,6 +73,12 @@
                     Unchecked="TrustAcknowledgement_Changed"
                     Content="I reviewed the source and licence, and accept that third-party mod files may execute inside GTA V."/>
 
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <TextBlock Text="PACKAGE ACQUISITION" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource SecondaryText}" Margin="0,0,0,5"/>
+            <TextBox x:Name="PackageDownloadUrlText" AutomationProperties.Name="Direct HTTPS package download URL" ToolTip="Paste a direct HTTPS ZIP or OIV download URL" Padding="8" Margin="0,0,0,6"/>
+            <Button x:Name="DownloadPackageButton" Content="Download package from direct HTTPS URL" Padding="10,7" HorizontalAlignment="Left" Click="DownloadPackageButton_Click"/>
+            <TextBlock Text="Direct HTTPS ZIP/OIV files only. Redirects are revalidated, downloads are size-limited, and HTML pages are not scraped." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0"/>
+          </StackPanel>
           <TextBlock DockPanel.Dock="Top" Text="Select one or more imported packages:" Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,0,0,8"/>
           <Expander x:Name="ResearchCatalogueExpander"
                     DockPanel.Dock="Bottom"
@@ -146,6 +152,13 @@
             <TextBox x:Name="ProfileNameText" AutomationProperties.Name="New profile name" ToolTip="Enter a name for the current package selection" Margin="0,0,0,8" Padding="8"/>
             <Button x:Name="SaveProfileButton" Content="Save current selection as profile" Padding="12,9" Click="SaveProfileButton_Click"/>
             <TextBlock x:Name="ProfileWarningText" Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="ECOLOGICAL FIDELITY" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Preserve the original GTA V animal, plant and vegetation species, their model identities and species spawn tables. Visual improvements such as higher-resolution textures, lighting, shadows and animation are allowed only when species identities remain unchanged. Ecology-sensitive packages without an approved preservation review are blocked." TextWrapping="Wrap" Margin="0,8,0,0"/>
           </StackPanel>
         </Border>
 

@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private readonly TransactionalRemovalService _removalService = new();
     private readonly GameInstallationService _gameInstallationService;
     private readonly PackageArchiveService _archiveService = new();
+    private readonly OivPackageImportService _oivImportService = new();
+    private readonly PackageAcquisitionService _acquisitionService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -242,7 +244,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Title = "Import a mod package archive",
-            Filter = "GTA Hub package (*.zip)|*.zip",
+            Filter = "Supported mod packages (*.zip;*.oiv)|*.zip;*.oiv",
             CheckFileExists = true,
             Multiselect = false
         };
@@ -255,7 +257,9 @@ public partial class MainWindow : Window
         try
         {
             StatusText.Text = "Inspecting archive and verifying manifest-declared files...";
-            var imported = await _archiveService.ImportAsync(dialog.FileName);
+            var imported = Path.GetExtension(dialog.FileName).Equals(".oiv", StringComparison.OrdinalIgnoreCase)
+                ? await _oivImportService.ImportAsync(dialog.FileName)
+                : await _archiveService.ImportAsync(dialog.FileName);
             var duplicate = _packages.FirstOrDefault(item =>
                 item.Manifest.Id.Equals(imported.Manifest.Id, StringComparison.OrdinalIgnoreCase) &&
                 item.Manifest.Version.Equals(imported.Manifest.Version, StringComparison.OrdinalIgnoreCase) &&
@@ -281,6 +285,59 @@ public partial class MainWindow : Window
         finally
         {
             _operationInProgress = false;
+        }
+
+        RefreshSessionState();
+    }
+
+    private async void DownloadPackageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        if (!Uri.TryCreate(PackageDownloadUrlText.Text?.Trim(), UriKind.Absolute, out var sourceUri) ||
+            sourceUri.Scheme != Uri.UriSchemeHttps)
+        {
+            StatusText.Text = "Enter a direct HTTPS URL for a ZIP or OIV package.";
+            return;
+        }
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        DownloadPackageButton.IsEnabled = false;
+        try
+        {
+            StatusText.Text = "Downloading package from the supplied HTTPS source...";
+            var acquired = await _acquisitionService.DownloadAsync(sourceUri);
+            var imported = Path.GetExtension(acquired.FilePath).Equals(".oiv", StringComparison.OrdinalIgnoreCase)
+                ? await _oivImportService.ImportAsync(acquired.FilePath)
+                : await _archiveService.ImportAsync(acquired.FilePath);
+
+            var duplicate = _packages.FirstOrDefault(item =>
+                item.Manifest.Id.Equals(imported.Manifest.Id, StringComparison.OrdinalIgnoreCase) &&
+                item.Manifest.Version.Equals(imported.Manifest.Version, StringComparison.OrdinalIgnoreCase) &&
+                item.PackageRoot.Equals(imported.PackageRoot, StringComparison.OrdinalIgnoreCase));
+            if (duplicate is null)
+                _packages.Add(imported);
+
+            PackageList.SelectedItems.Clear();
+            PackageList.SelectedItem = duplicate ?? imported;
+            TrustPackagesCheckBox.IsChecked = false;
+            PackageDownloadUrlText.Clear();
+            StatusText.Text = "Downloaded and imported " + imported.Manifest.Name +
+                ". SHA-256: " + acquired.Sha256 +
+                ". Publisher identity and compatibility still require independent verification.";
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Package download/import failed.";
+            MessageBox.Show(exception.Message, "Package acquisition failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            DownloadPackageButton.IsEnabled = true;
         }
 
         RefreshSessionState();

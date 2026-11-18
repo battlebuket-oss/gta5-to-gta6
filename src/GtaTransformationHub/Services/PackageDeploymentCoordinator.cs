@@ -55,6 +55,11 @@ public sealed class PackageDeploymentCoordinator
             }
 
             var manifest = imported.Manifest;
+            foreach (var ecologyError in EcologyCompatibilityService.Validate(manifest))
+                errors.Add(ecologyError);
+            if (string.Equals(manifest.PackageFormat, "OIV-2.2", StringComparison.OrdinalIgnoreCase) &&
+                !manifest.CompatibilityVerified)
+                errors.Add(manifest.Name + " is an imported OIV package whose GTA V build compatibility has not been independently verified. It cannot be deployed yet.");
             var signature = await _signatureService.VerifyAsync(manifest, cancellationToken);
             switch (signature.Status)
             {
@@ -150,6 +155,7 @@ public sealed class PackageDeploymentCoordinator
                 {
                     relativeSource = PackageArchiveService.ValidateArchivePath(file.SourcePath, isDirectory: false);
                     relativeDestination = PackageArchiveService.ValidateArchivePath(file.DestinationPath, isDirectory: false);
+                    ProtectedGamePathPolicy.ValidateDestination(relativeDestination);
                 }
                 catch (InvalidDataException exception)
                 {
@@ -160,9 +166,6 @@ public sealed class PackageDeploymentCoordinator
                 if (!destinations.Add(relativeDestination))
                     errors.Add("Multiple selected packages write to the same destination: " + relativeDestination);
 
-                if (Path.GetFileName(relativeDestination).Equals("GTA5.exe", StringComparison.OrdinalIgnoreCase) ||
-                    Path.GetExtension(relativeDestination).Equals(".exe", StringComparison.OrdinalIgnoreCase))
-                    errors.Add(manifest.Name + " attempts to replace an executable. Executable replacement is blocked.");
 
                 if (file.SizeBytes < 0 || file.SizeBytes > 512L * 1024 * 1024 ||
                     string.IsNullOrWhiteSpace(file.Sha256) ||

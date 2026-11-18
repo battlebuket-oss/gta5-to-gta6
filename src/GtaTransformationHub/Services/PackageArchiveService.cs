@@ -288,6 +288,7 @@ public sealed class PackageArchiveService
 
             _ = ValidateArchivePath(file.SourcePath, isDirectory: false);
             _ = ValidateArchivePath(file.DestinationPath, isDirectory: false);
+            ProtectedGamePathPolicy.ValidateDestination(file.DestinationPath);
 
             if (file.SizeBytes < 0 || file.SizeBytes > MaximumFileBytes)
                 throw new InvalidDataException("A manifest file size is outside the supported limit.");

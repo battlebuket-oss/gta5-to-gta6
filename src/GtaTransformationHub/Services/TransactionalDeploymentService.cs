@@ -15,7 +15,7 @@ namespace GtaTransformationHub.Services;
 /// </summary>
 public sealed class TransactionalDeploymentService
 {
-    private static readonly SemaphoreSlim DeploymentLock = new(1, 1);
+    private static readonly SemaphoreSlim RecoveryLock = new(1, 1);
     private readonly GameProcessMonitor _processMonitor;
     private readonly string _dataRoot;
 
@@ -33,7 +33,7 @@ public sealed class TransactionalDeploymentService
         IReadOnlyCollection<DeploymentFile> files,
         CancellationToken cancellationToken = default)
     {
-        await DeploymentLock.WaitAsync(cancellationToken);
+        await GameMutationGate.Gate.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -127,7 +127,7 @@ public sealed class TransactionalDeploymentService
         }
         finally
         {
-            DeploymentLock.Release();
+            GameMutationGate.Gate.Release();
         }
     }
 
@@ -238,6 +238,7 @@ public sealed class TransactionalDeploymentService
 
             var source = ResolveContainedPath(packageRoot, file.SourcePath);
             var destination = ValidateRelativePath(file.DestinationRelativePath);
+            ProtectedGamePathPolicy.ValidateDestination(destination);
             if (!destinations.Add(destination))
                 throw new InvalidDataException("The deployment plan contains duplicate destination paths.");
             EnsureNoReparsePoints(packageRoot, source);

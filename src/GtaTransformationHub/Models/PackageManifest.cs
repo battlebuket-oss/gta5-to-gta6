@@ -20,7 +20,25 @@ public sealed record PackageManifest(
     IReadOnlyList<PackageManifestFile> Files,
     string? ExclusiveGroup = null,
     string? SigningKeyId = null,
-    string? Signature = null);
+    string? Signature = null,
+    IReadOnlyList<string>? ImpactAreas = null,
+    bool CompatibilityVerified = false,
+    string? PackageFormat = "HubZip",
+    EcologyPreservationContract? Ecology = null);
+
+public sealed record EcologyPreservationContract(
+    string ReviewStatus,
+    string ImpactType,
+    bool PreservesVanillaAnimalSpecies,
+    bool PreservesVanillaPlantSpecies,
+    bool PreservesVanillaVegetationSpecies,
+    bool PreservesVanillaModelIdentifiers,
+    bool AllowsNewSpecies,
+    bool AllowsSpeciesReplacement,
+    bool AllowsSpeciesRemoval,
+    bool ChangesSpeciesSpawnTables,
+    string VanillaIdentityInventorySha256,
+    string EvidenceUri);
 
 public sealed record PackageManifestFile(
     string SourcePath,

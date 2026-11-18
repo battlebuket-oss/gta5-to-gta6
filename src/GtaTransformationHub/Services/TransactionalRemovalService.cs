@@ -19,7 +19,6 @@ public sealed class TransactionalRemovalService
         bool ExistsAtRemoval,
         IReadOnlyList<string> OwnerTransactionIds);
 
-    private static readonly SemaphoreSlim RemovalLock = new(1, 1);
     private readonly string _transactionsRoot;
     private readonly GameProcessMonitor _processMonitor;
     private readonly TransactionalDeploymentService _recoveryService;
@@ -40,7 +39,7 @@ public sealed class TransactionalRemovalService
         IReadOnlyCollection<ImportedPackage> packages,
         CancellationToken cancellationToken = default)
     {
-        await RemovalLock.WaitAsync(cancellationToken);
+        await GameMutationGate.Gate.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -66,9 +65,7 @@ public sealed class TransactionalRemovalService
                     var relativePath = PackageArchiveService.ValidateArchivePath(
                         file.DestinationPath, isDirectory: false);
 
-                    if (Path.GetFileName(relativePath).Equals("GTA5.exe", StringComparison.OrdinalIgnoreCase) ||
-                        Path.GetExtension(relativePath).Equals(".exe", StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidDataException("Executable removal is blocked.");
+                    ProtectedGamePathPolicy.ValidateDestination(relativePath);
 
                     if (!destinations.Add(relativePath))
                         throw new InvalidDataException("The selected packages contain duplicate destination paths.");
@@ -213,7 +210,7 @@ public sealed class TransactionalRemovalService
         }
         finally
         {
-            RemovalLock.Release();
+            GameMutationGate.Gate.Release();
         }
     }
 
