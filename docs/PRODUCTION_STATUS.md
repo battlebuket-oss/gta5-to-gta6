@@ -33,7 +33,7 @@ This document distinguishes implemented development-branch functions from releas
 
 | Area | Remaining work |
 |---|---|
-| Trusted publisher management | Dedicated key-revocation/management UI and a signed curated catalogue/update channel |
+| Trusted publisher management | Add and revoke trusted RSA keys in the UI; signed central catalogue and update channel remain outstanding |
 | Automatic package downloads | Not implemented; users download archives from author pages and import local ZIPs |
 | Mod-host-specific installers | No OpenIV OIV/XML/GFX, RPF mutation, or other host-specific installation adapters |
 | Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation |
