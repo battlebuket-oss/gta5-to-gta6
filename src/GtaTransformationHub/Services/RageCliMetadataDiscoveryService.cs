@@ -107,10 +107,15 @@ public sealed class RageCliMetadataDiscoveryService
             gameExecutable, cancellationToken);
         var buildDirectory = RageCliToolchainService.BuildDirectoryNameFromExecutableHash(
             gameExecutableSha256);
-        var reportDirectory = Path.Combine(_dataRoot, "catalogue", buildDirectory);
-        Directory.CreateDirectory(reportDirectory);
+        Directory.CreateDirectory(_dataRoot);
         EnsureDirectoryIsNotReparsePoint(_dataRoot);
-        EnsureDirectoryIsNotReparsePoint(Path.Combine(_dataRoot, "catalogue"));
+
+        var catalogueRoot = Path.Combine(_dataRoot, "catalogue");
+        Directory.CreateDirectory(catalogueRoot);
+        EnsureDirectoryIsNotReparsePoint(catalogueRoot);
+
+        var reportDirectory = Path.Combine(catalogueRoot, buildDirectory);
+        Directory.CreateDirectory(reportDirectory);
         EnsureDirectoryIsNotReparsePoint(reportDirectory);
 
         var errors = new List<string>();
@@ -331,8 +336,19 @@ public sealed class RageCliMetadataDiscoveryService
             !File.Exists(fullPath))
             throw new InvalidDataException("A metadata search result references an RPF outside the selected game folder.");
 
-        if ((File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0)
-            throw new InvalidDataException("A metadata search result references a reparse-point archive.");
+        var current = gameRoot;
+        if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("The selected game folder is a reparse point.");
+
+        var relative = Path.GetRelativePath(gameRoot, fullPath);
+        foreach (var segment in relative.Split(
+                     Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+            if ((File.Exists(current) || Directory.Exists(current)) &&
+                (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("A metadata source archive path traverses a reparse point.");
+        }
 
         return fullPath;
     }
