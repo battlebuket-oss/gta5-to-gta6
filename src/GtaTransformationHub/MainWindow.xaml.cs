@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly ProfileStoreService _profileStore = new();
     private readonly TrustedPublisherStore _trustedPublisherStore = new();
     private readonly ObservableCollection<ImportedPackage> _packages = new();
+    private readonly ObservableCollection<ModPackage> _cataloguePackages = new();
     private readonly ObservableCollection<ModProfile> _profiles = new();
     private readonly DispatcherTimer _processTimer;
 
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
             _deploymentCoordinator, _removalService, _deploymentService);
 
         PackageList.ItemsSource = _packages;
+        ResearchCatalogueList.ItemsSource = _cataloguePackages;
         ProfileSelector.ItemsSource = _profiles;
 
         _processTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -108,6 +110,9 @@ public partial class MainWindow : Window
             return;
 
         var catalogue = new CatalogueService().Load(cataloguePath);
+        foreach (var package in catalogue.Packages)
+            _cataloguePackages.Add(package);
+
         foreach (var template in catalogue.Profiles)
         {
             if (_profiles.Any(profile => profile.Id.Equals(template.Id, StringComparison.OrdinalIgnoreCase)))
@@ -279,6 +284,28 @@ public partial class MainWindow : Window
         }
 
         RefreshSessionState();
+    }
+
+    private void OpenCatalogueSourceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        if (sender is not Button button || button.Tag is not Uri sourceUri ||
+            sourceUri.Scheme != Uri.UriSchemeHttps)
+        {
+            StatusText.Text = "The catalogue source is not a valid HTTPS URL.";
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(sourceUri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Could not open the catalogue source page: " + exception.Message;
+        }
     }
 
     private void OpenPackageSourceButton_Click(object sender, RoutedEventArgs e)
@@ -722,6 +749,8 @@ public partial class MainWindow : Window
         ImportPackageButton.IsEnabled = canConfigure;
         TrustPublisherButton.IsEnabled = canConfigure;
         PackageList.IsEnabled = canConfigure;
+        ResearchCatalogueList.IsEnabled = canConfigure;
+        ResearchCatalogueExpander.IsEnabled = canConfigure;
         ProfileSelector.IsEnabled = canConfigure;
         ProfileNameText.IsEnabled = canConfigure;
         SaveProfileButton.IsEnabled = canConfigure;
