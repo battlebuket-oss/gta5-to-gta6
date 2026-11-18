@@ -131,6 +131,62 @@ public sealed class TransactionalDeploymentService
         }
     }
 
+    /// <summary>
+    /// Recovers transactions interrupted while applying files. Only journals explicitly
+    /// marked Applying are rolled back; completed transactions remain installed.
+    /// A malformed or unsafe journal fails closed and is left untouched for inspection.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> RecoverInterruptedTransactionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await DeploymentLock.WaitAsync(cancellationToken);
+        try
+        {
+            _processMonitor.EnsureConfigurationUnlocked();
+            if (!Directory.Exists(_dataRoot))
+                return Array.Empty<string>();
+
+            var recovered = new List<string>();
+            foreach (var transactionRoot in Directory.EnumerateDirectories(_dataRoot)
+                         .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var transactionId = Path.GetFileName(transactionRoot);
+                if (string.IsNullOrWhiteSpace(transactionId) ||
+                    transactionId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                    transactionId.Contains("..", StringComparison.Ordinal))
+                    throw new InvalidDataException("An unsafe transaction directory was found.");
+
+                var journalPath = Path.Combine(transactionRoot, "journal.json");
+                if (!File.Exists(journalPath))
+                    continue;
+
+                var journal = JsonSerializer.Deserialize<DeploymentJournal>(
+                    await File.ReadAllTextAsync(journalPath, cancellationToken))
+                    ?? throw new InvalidDataException("An interrupted deployment journal is invalid.");
+
+                if (!string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
+                    throw new InvalidDataException("A transaction journal ID does not match its directory.");
+
+                if (string.Equals(journal.State, "Applying", StringComparison.Ordinal))
+                {
+                    await RollbackJournalAsync(
+                        journal,
+                        Path.Combine(transactionRoot, "backup"),
+                        journalPath,
+                        cancellationToken);
+                    recovered.Add(transactionId);
+                }
+            }
+
+            return recovered;
+        }
+        finally
+        {
+            DeploymentLock.Release();
+        }
+    }
+
     public async Task RollbackLatestAsync(
         string transactionId,
         CancellationToken cancellationToken = default)
