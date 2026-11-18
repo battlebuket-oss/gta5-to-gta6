@@ -74,6 +74,37 @@
                     Content="I reviewed the source and licence, and accept that third-party mod files may execute inside GTA V."/>
 
           <TextBlock DockPanel.Dock="Top" Text="Select one or more imported packages:" Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,0,0,8"/>
+          <Expander x:Name="ResearchCatalogueExpander"
+                    DockPanel.Dock="Bottom"
+                    Header="RESEARCH CATALOGUE — UNAPPROVED MODS"
+                    IsExpanded="False"
+                    Margin="0,12,0,0">
+            <ListBox x:Name="ResearchCatalogueList"
+                     AutomationProperties.Name="Research-only mod catalogue"
+                     Height="190"
+                     Background="#121419"
+                     BorderBrush="#343841"
+                     Foreground="{StaticResource PrimaryText}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="5,5">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Author}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                    <TextBlock Text="{Binding Version}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                    <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryText}" FontSize="10" MaxHeight="42"/>
+                    <TextBlock Text="{Binding Status, StringFormat='Catalogue status: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                    <Button Content="Open mod author/source page"
+                            Tag="{Binding SourceUri}"
+                            HorizontalAlignment="Left"
+                            Padding="8,4"
+                            Margin="0,4,0,0"
+                            Click="OpenCatalogueSourceButton_Click"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Expander>
+
           <ListBox x:Name="PackageList"
                    AutomationProperties.Name="Imported mod packages"
                    SelectionMode="Extended"
