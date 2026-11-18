@@ -1,41 +1,159 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.1.0-research",
+  "catalogueVersion": "0.2.0-research",
   "categories": [
-    { "id": "graphics", "name": "Graphics, lighting and weather" },
-    { "id": "world", "name": "Map, roads, buildings and interiors" },
-    { "id": "vehicles", "name": "Vehicles, handling and damage" },
-    { "id": "pedestrians", "name": "Pedestrians, traffic and NPC behaviour" },
-    { "id": "police", "name": "Police, dispatch and pursuits" },
-    { "id": "gameplay", "name": "Movement, animation and interactions" },
-    { "id": "story", "name": "Story expansions and missions" },
-    { "id": "experimental-ai", "name": "Experimental AI-assisted features" }
+    {
+      "id": "graphics",
+      "name": "Graphics, lighting and weather"
+    },
+    {
+      "id": "world",
+      "name": "Map, roads, buildings and interiors"
+    },
+    {
+      "id": "vehicles",
+      "name": "Vehicles, handling and damage"
+    },
+    {
+      "id": "pedestrians",
+      "name": "Pedestrians, traffic and NPC behaviour"
+    },
+    {
+      "id": "police",
+      "name": "Police, dispatch and pursuits"
+    },
+    {
+      "id": "gameplay",
+      "name": "Movement, animation and interactions"
+    },
+    {
+      "id": "story",
+      "name": "Story expansions and missions"
+    },
+    {
+      "id": "experimental-ai",
+      "name": "Experimental AI-assisted features"
+    }
   ],
-  "packages": [],
+  "packages": [
+    {
+      "id": "naturalvision-evolved-legacy",
+      "name": "NaturalVision Evolved (Legacy)",
+      "category": "graphics",
+      "author": "Razed",
+      "sourceUri": "https://content.razedmods.com/readme/sp",
+      "licence": "Author terms not yet reviewed for redistribution",
+      "version": "2026-11 creator update; exact package version pending",
+      "minimumGameBuild": "Latest GTA V Legacy build stated by author; exact build pending",
+      "maximumGameBuild": "Latest GTA V Legacy build stated by author; exact build pending",
+      "sha256": null,
+      "dependencies": [
+        "OpenIV",
+        "Script Hook V"
+      ],
+      "conflicts": [
+        "visual-overhaul-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV package adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup after manifest extraction",
+      "performanceTier": "High; optional performance add-on and experimental RT require testing",
+      "notes": "Creator's November 2026 update mentions latest-build support. No binaries bundled; package archive, licence, exact build, manifest, hash and 1080p/6GB VRAM performance must be verified before approval."
+    },
+    {
+      "id": "better-euphoria",
+      "name": "Better Euphoria",
+      "category": "gameplay",
+      "author": "Aztecz8798",
+      "sourceUri": "https://www.gta5-mods.com/misc/realistic-euphoria-physics-mod-based-on-next-gen-euphoria-by-iammrmikeman",
+      "licence": "Author permission and redistribution terms require review",
+      "version": "1.3",
+      "minimumGameBuild": "Not specified; compatibility test required",
+      "maximumGameBuild": "Not specified; compatibility test required",
+      "sha256": null,
+      "dependencies": [
+        "OpenIV"
+      ],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup after manifest extraction",
+      "performanceTier": "Medium; runtime impact not measured",
+      "notes": "Release page lists version 1.3 dated 2026-03-29 and an OIV package. Verify base assets, exact supported game build, full file list and clean rollback."
+    },
+    {
+      "id": "betterchaseremade-legacy",
+      "name": "BetterChaseRemade (Legacy)",
+      "category": "police",
+      "author": "BetterChaseRemade authors",
+      "sourceUri": "https://www.gta5-mods.com/uk/scripts/betterchaseremade",
+      "licence": "Author terms not yet reviewed for redistribution",
+      "version": "3.3.3-B",
+      "minimumGameBuild": "1.0.3788.0",
+      "maximumGameBuild": "1.0.3788.0",
+      "sha256": null,
+      "dependencies": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3 Nightly",
+        "LemonUI SHVDN3"
+      ],
+      "conflicts": [
+        "dispatch-overhaul-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "ASI and managed script adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup after manifest extraction",
+      "performanceTier": "Medium; runtime impact not measured",
+      "notes": "The author's page explicitly lists Legacy build 1.0.3788.0 and the dependencies above. Do not enable unless the user's exact game build matches and the full stack passes testing."
+    },
+    {
+      "id": "world-of-variety-plus-2026",
+      "name": "World Of Variety Plus 2026",
+      "category": "pedestrians",
+      "author": "iammrmikeman",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1171",
+      "licence": "Nexus permissions prohibit re-uploading the author's assets",
+      "version": "1.5",
+      "minimumGameBuild": "Not specified; compatibility test required",
+      "maximumGameBuild": "Not specified; compatibility test required",
+      "sha256": null,
+      "dependencies": [
+        "World Of Variety 10.1"
+      ],
+      "conflicts": [
+        "population-overhaul-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV package adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup after manifest extraction",
+      "performanceTier": "Medium; population density and runtime impact require testing",
+      "notes": "Nexus page describes restored content and expanded world events. External-source-only until all dependency and build compatibility checks pass; do not bundle binaries."
+    }
+  ],
   "profiles": [
     {
       "id": "balanced-1080p",
       "name": "Balanced 1080p",
-      "description": "Conservative starting profile for 6 GB VRAM systems. No packages are enabled until individually verified and installed.",
+      "description": "Target for 1920×1080 and 6 GB VRAM systems. Research candidates remain disabled until individually verified, tested and installed.",
       "enabledPackageIds": []
     },
     {
       "id": "visual-priority",
       "name": "Visual Priority",
-      "description": "For later use after graphics packages have been compatibility-tested.",
+      "description": "A future visual-first profile. Never combine competing full graphics overhauls without a tested compatibility matrix.",
       "enabledPackageIds": []
     },
     {
       "id": "performance-priority",
       "name": "Performance Priority",
-      "description": "For later use after lightweight packages have been compatibility-tested.",
+      "description": "A future low-overhead profile. Enable only packages with measured performance impact.",
       "enabledPackageIds": []
     },
     {
       "id": "story-expansion",
       "name": "Story Expansion",
-      "description": "For later use after mission packs have been reviewed and tested.",
+      "description": "A future gameplay/story profile. Enable only tested single-player packages with pinned dependencies.",
       "enabledPackageIds": []
     }
   ],
