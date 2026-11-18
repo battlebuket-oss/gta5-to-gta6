@@ -88,7 +88,7 @@ public sealed class TransactionalRemovalService
                             "The game file no longer matches the selected package and was not removed: " + relativePath);
 
                     var owners = await GetActiveDeploymentOwnersAsync(
-                        package.Manifest.Id, relativePath, file.Sha256, cancellationToken);
+                        package.Manifest.Id, package.Manifest.Version, relativePath, file.Sha256, cancellationToken);
                     if (owners.Count == 0)
                         throw new InvalidOperationException(
                             "The Hub has no active deployment record for " + relativePath +
@@ -336,6 +336,7 @@ public sealed class TransactionalRemovalService
 
     private async Task<IReadOnlyList<string>> GetActiveDeploymentOwnersAsync(
         string packageId,
+        string packageVersion,
         string relativePath,
         string expectedHash,
         CancellationToken cancellationToken)
@@ -374,12 +375,13 @@ public sealed class TransactionalRemovalService
             {
                 if (entry.PackageId.StartsWith("removed:", StringComparison.OrdinalIgnoreCase))
                 {
-                    var marker = entry.PackageId.Split(':', 3);
-                    if (marker.Length != 3 ||
-                        !marker[1].Equals(packageId, StringComparison.OrdinalIgnoreCase))
+                    var marker = entry.PackageId.Split(':', 4);
+                    if (marker.Length != 4 ||
+                        !marker[1].Equals(packageId, StringComparison.OrdinalIgnoreCase) ||
+                        !marker[2].Equals(packageVersion, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    var owners = marker[2].Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    var owners = marker[3].Split(',', StringSplitOptions.RemoveEmptyEntries);
                     if (journal.State.Equals("Applied", StringComparison.Ordinal))
                     {
                         foreach (var owner in owners)
