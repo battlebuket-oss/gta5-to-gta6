@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.3.0-research",
+  "catalogueVersion": "0.4.0-research",
   "categories": [
     {
       "id": "graphics",
@@ -164,6 +164,105 @@
         "World Of Variety 10.1"
       ],
       "exclusiveGroup": "population-overhaul"
+    },
+    {
+      "id": "gta-v-new-game-plus",
+      "name": "GTA V New Game+ — Story Mode Expansion",
+      "category": "story",
+      "author": "Canon Labz",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/2610",
+      "licence": "Nexus asset permissions restrict reuse; redistribution and derivative permissions require author review",
+      "version": "1.0 (source listing)",
+      "minimumGameBuild": "Not specified",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ScriptHookVDotNet managed-script adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup; preserve separate mod data and save data",
+      "performanceTier": "Medium; measure on target hardware",
+      "notes": "Five-system single-player expansion: stamina, banking/store inventory, pickups and vehicle ownership modules. Source states GTA V Legacy PC Story Mode only, not Enhanced, and explicitly warns about conflicts with inventory, weapon pickups, garages, fuel and stamina mods. Freshwater fishing is experimental/WIP. No assets bundled; verify archive, exact build, save persistence and licence before approval.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3",
+        "Microsoft .NET Framework 4.8+",
+        "Microsoft Visual C++ x64 Redistributable"
+      ],
+      "exclusiveGroup": "story-gameplay-framework"
+    },
+    {
+      "id": "subtitles-enhanced-legacy",
+      "name": "Subtitles Enhanced (Different Sizes and Colors) — Legacy",
+      "category": "accessibility",
+      "author": "LandrumX",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/2239",
+      "licence": "Author prohibits uploading to other sites and requires permission for modifications",
+      "version": "1.0",
+      "minimumGameBuild": "Not specified",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "OpenIV XML/GFX manifest adapter (not implemented)",
+      "restoreStrategy": "Transactional backup of frontend.xml and hud.gfx",
+      "performanceTier": "Low; author describes XML/GFX-only changes",
+      "notes": "Provides medium, large and very large subtitle presets, custom colours, adjusted wrapping and positioning. Legacy page lists OpenIV/ASI Manager setup and says no Script Hook V or script runtime is required. External-source-only; archive hash and exact build compatibility still need verification.",
+      "externalRequirements": [
+        "OpenIV",
+        "ASI Loader",
+        "OpenIV.ASI"
+      ]
+    },
+    {
+      "id": "gta-access-screen-reader",
+      "name": "GTA Access — Screen Reader and Navigation",
+      "category": "accessibility",
+      "author": "MadnessInnsmouth",
+      "sourceUri": "https://madnessinnsmouth.com/gta-access/",
+      "licence": "Installer and distribution terms require review; setup is unsigned according to the author guide",
+      "version": "1.0.128 tester build",
+      "minimumGameBuild": "1.0.3889.0",
+      "maximumGameBuild": "Not specified; later builds require confirmation",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "Manual opt-in external accessibility tool; no automated installer adapter",
+      "restoreStrategy": "Documented manual removal and verified file manifest required before any managed deployment",
+      "performanceTier": "Unknown; test separately",
+      "notes": "Legacy-only screen reader integrating NVDA. Reads menus, phone, shops, subtitles and mission instructions; provides spoken navigation, object scanning, driving cues and mission assistance. Author identifies build 1.0.128 as a tester build. Must remain optional, clearly consented and never auto-run by the Hub.",
+      "externalRequirements": [
+        "NVDA",
+        "Windows 10/11",
+        "Microsoft .NET Framework 4.8",
+        "Windows OCR for the selected game language",
+        "Script Hook V"
+      ]
+    },
+    {
+      "id": "lowriders-dlc-single-player",
+      "name": "Lowriders DLC in Single Player",
+      "category": "story",
+      "author": "M8T",
+      "sourceUri": "https://www.gta5-mods.com/scripts/lowriders-dlc-in-single-player",
+      "licence": "Author terms require review; do not redistribute binaries before permission is confirmed",
+      "version": "1",
+      "minimumGameBuild": "Not specified",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ScriptHookVDotNet script adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup with script data and save checks",
+      "performanceTier": "Low to medium; not benchmarked",
+      "notes": "Adds Lowriders DLC missions and cutscenes to single-player with map icons. Author recommends Legacy for best modding experience and lists Script Hook V plus ScriptHookVDotNet Nightly for Legacy. Source says newest game version; exact build and mission completion/save behaviour must be tested.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet Nightly"
+      ]
     }
   ],
   "profiles": [
