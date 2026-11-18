@@ -3,12 +3,14 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using GtaTransformationHub.Services;
 
 namespace GtaTransformationHub;
 
 public partial class MainWindow : Window
 {
     private string? _gameExecutable;
+    private bool _recoveryCompleted;
     private readonly DispatcherTimer _processTimer;
 
     public MainWindow()
@@ -20,6 +22,27 @@ public partial class MainWindow : Window
         RefreshSessionState();
     }
 
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        LocateButton.IsEnabled = false;
+        RefreshButton.IsEnabled = false;
+        StatusText.Text = "Checking for interrupted deployment transactions...";
+        try
+        {
+            var recovered = await new TransactionalDeploymentService().RecoverInterruptedTransactionsAsync();
+            _recoveryCompleted = true;
+            StatusText.Text = recovered.Count == 0
+                ? "Recovery check passed. No interrupted deployments were found."
+                : $"Recovered {recovered.Count} interrupted deployment transaction(s).";
+        }
+        catch (Exception)
+        {
+            _recoveryCompleted = false;
+            DetectionText.Text = "Recovery could not be verified. Configuration remains locked; restart the Hub after reviewing the transaction journal.";
+            StatusText.Text = "Safety recovery failed. No installation or launch actions are available.";
+        }
+        RefreshSessionState();
+    }
     private void LocateButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning()) return;
@@ -94,8 +117,8 @@ public partial class MainWindow : Window
     private void RefreshSessionState()
     {
         var running = IsGameRunning();
-        LocateButton.IsEnabled = !running;
-        RefreshButton.IsEnabled = !running;
+        LocateButton.IsEnabled = !running && _recoveryCompleted;
+        RefreshButton.IsEnabled = !running && _recoveryCompleted;
         // Never launch from the dashboard until profile validation and transactional
         // deployment are wired into this exact path.
         LaunchButton.IsEnabled = false;
