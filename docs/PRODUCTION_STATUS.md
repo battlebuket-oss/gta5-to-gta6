@@ -16,6 +16,7 @@ This document distinguishes implemented development-branch functions from releas
 | Direct HTTPS package acquisition | Implemented for user-supplied direct URLs; bounded streaming, redirect validation and DNS validation at socket connection |
 | OIV 2.2 import | Implemented for direct loose-file add operations only; RPF/patch/script operations rejected and compatibility-unverified packages blocked |
 | Ecology preservation and semantic comparison | Fail-closed terrestrial/aquatic classifier and parser-independent inventory comparison engine implemented; ALL ecology-sensitive packages remain blocked until trusted exact-build asset extractors, provenance and package-bound evidence are integrated |
+| External asset inspection toolchain | Optional user-selected rage-cli v0.28.1 Windows x64 integration added; verifies pinned SHA-256/version, runs shell-free strict catalogue scan and hashes local outputs. It indexes supported model/texture asset classes only; it is not a complete ecology extractor |
 | Shared mutation lock and protected destinations | Implemented for deployment, removal, rollback and recovery, including a lock-already-held recovery path; executable, RPF and save/profile paths blocked |
 | Story Mode save backup | Implemented as read-only ZIP archive backup of a user-selected Profiles folder; verification handles are closed before final archive rename |
 | Hardware/performance guidance | Implemented as conservative recommendation only; no game settings are modified |
@@ -43,6 +44,7 @@ This document distinguishes implemented development-branch functions from releas
 | Automatic package downloads | Direct user-supplied HTTPS URL downloads implemented; no HTML scraping, host API crawling or signed catalogue feed |
 | Mod-host-specific installers | Restricted OIV 2.2 loose-file add import implemented; no RPF mutation, XML/GFX, ASI-specific or other host-specific deployment adapters |
 | Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation. All ecology-sensitive packages are blocked; exact-build extraction, inventory provenance and package-preflight integration remain outstanding |
+| Exact ecological extraction | Integrate trusted RPF/model/metadata extraction for population tables, terrestrial/aquatic species, habitats, behaviour references and water definitions; generate package-bound inventory snapshots and run the semantic comparator from preflight |
 | Build compatibility | Numeric executable version detection exists, but supported builds have not been exhaustively tested against real mod releases |
 | Game launch integration | Direct GTA5.exe launch can require Steam or Rockstar Games Launcher and needs real-world verification |
 | Performance and stability | No repeatable in-game benchmark matrix or extended gameplay soak tests |
@@ -65,4 +67,4 @@ This document distinguishes implemented development-branch functions from releas
 9. Complete accessibility review for the Windows app and validate any game-side accessibility package separately.
 10. Sign the Windows executable/installer and publish release notes, hashes, supported builds and rollback instructions.
 
-A successful CI run is necessary but does not prove the platform is production-ready. Real game compatibility, licence review, publisher-key governance, signing and release testing are still mandatory.
+A successful CI run is necessary but does not prove the platform is production-ready. The optional rage-cli integration is an asset-catalogue first step only; it does not establish a complete ecological baseline and does not enable ecology-sensitive packages. Real game compatibility, licence review, publisher-key governance, signing and release testing are still mandatory.
