@@ -40,7 +40,7 @@ Deliver a GTA V Legacy Story Mode transformation that feels richer and more conv
 ## Suggested implementation order
 
 1. Build and freeze the exact-build vanilla inventory before touching ecology assets.
-2. Implement archive extraction and semantic parsers for supported GTA V asset formats.
+2. Implement and validate archive extraction/provenance adapters for supported GTA V asset formats; the parser-independent semantic snapshot comparator is now implemented.
 3. Build water and ecology regression tooling and capture the unmodified baseline.
 4. Evaluate water-only visual improvements first, because they can be tested separately from species changes.
 5. Evaluate underwater vegetation and aquatic fauna as separate packages, then test their combinations.
@@ -50,4 +50,4 @@ Deliver a GTA V Legacy Story Mode transformation that feels richer and more conv
 
 ## Current status
 
-This is a requirements and QA specification. It does not claim that additional species, water shaders or in-game transformations have already been installed. The current Hub blocks ecology-sensitive packages until the baseline inventory and semantic verifier exist. The Windows app currently manages packages; it does not itself implement GTA V's in-game water shader, animal AI, vegetation renderer, title screen, pause menu, map or HUD.
+This is a requirements and QA specification. It does not claim that additional species, water shaders or in-game transformations have already been installed. A parser-independent semantic inventory comparator and tests now exist, but the current Hub continues to block ecology-sensitive packages until trusted exact-build extraction, water baselines and package-preflight evidence integration are complete. The Windows app currently manages packages; it does not itself implement GTA V's in-game water shader, animal AI, vegetation renderer, title screen, pause menu, map or HUD.
