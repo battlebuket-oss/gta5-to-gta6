@@ -179,6 +179,118 @@ public sealed class TransactionalRemovalService
         }
     }
 
+    public async Task<IReadOnlySet<string>> GetActivePackageIdentitiesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(_transactionsRoot))
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var ownersByFile = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var packageIdentityByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var transactionRoot in Directory.EnumerateDirectories(_transactionsRoot)
+                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var transactionId = Path.GetFileName(transactionRoot);
+            var journalPath = Path.Combine(transactionRoot, "journal.json");
+            if (!File.Exists(journalPath))
+                continue;
+
+            DeploymentJournal? journal;
+            try
+            {
+                journal = JsonSerializer.Deserialize<DeploymentJournal>(
+                    await File.ReadAllTextAsync(journalPath, cancellationToken));
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (journal is null ||
+                !string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal) ||
+                journal.Entries is null)
+                continue;
+
+            foreach (var entry in journal.Entries)
+            {
+                if (entry is null ||
+                    string.IsNullOrWhiteSpace(entry.PackageId) ||
+                    string.IsNullOrWhiteSpace(entry.DestinationRelativePath) ||
+                    string.IsNullOrWhiteSpace(entry.DeployedSha256))
+                    continue;
+
+                var isRemoval = entry.PackageId.StartsWith("removed:", StringComparison.OrdinalIgnoreCase);
+                string packageId;
+                string packageVersion;
+                string[] removedOwners;
+
+                if (isRemoval)
+                {
+                    var marker = entry.PackageId.Split(':', 4);
+                    if (marker.Length != 4)
+                        continue;
+
+                    packageId = marker[1];
+                    packageVersion = marker[2];
+                    removedOwners = marker[3].Split(',', StringSplitOptions.RemoveEmptyEntries);
+                }
+                else
+                {
+                    packageId = entry.PackageId;
+                    packageVersion = entry.PackageVersion ?? string.Empty;
+                    removedOwners = Array.Empty<string>();
+                }
+
+                var fileKey = string.Join(
+                    '\u001f',
+                    packageId,
+                    packageVersion,
+                    entry.DestinationRelativePath,
+                    entry.DeployedSha256);
+                var identityKey = packageId + "\u001f" + packageVersion;
+
+                if (!ownersByFile.TryGetValue(fileKey, out var activeOwners))
+                {
+                    activeOwners = new HashSet<string>(StringComparer.Ordinal);
+                    ownersByFile[fileKey] = activeOwners;
+                    packageIdentityByFile[fileKey] = identityKey;
+                }
+
+                if (string.Equals(journal.State, "Applied", StringComparison.Ordinal))
+                {
+                    if (isRemoval)
+                    {
+                        foreach (var owner in removedOwners)
+                            activeOwners.Remove(owner);
+                    }
+                    else
+                    {
+                        activeOwners.Add(journal.TransactionId);
+                    }
+                }
+                else if (string.Equals(journal.State, "RolledBack", StringComparison.Ordinal))
+                {
+                    if (isRemoval)
+                    {
+                        foreach (var owner in removedOwners)
+                            activeOwners.Add(owner);
+                    }
+                    else
+                    {
+                        activeOwners.Remove(journal.TransactionId);
+                    }
+                }
+            }
+        }
+
+        return packageIdentityByFile
+            .Where(pair => ownersByFile.TryGetValue(pair.Key, out var owners) && owners.Count > 0)
+            .Select(pair => pair.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
     private async Task<IReadOnlyList<string>> GetActiveDeploymentOwnersAsync(
         string packageId,
         string relativePath,
