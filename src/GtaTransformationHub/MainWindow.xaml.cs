@@ -27,9 +27,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _processTimer;
 
     private GameInstallation? _installation;
-    private bool _recoveryCompleted;
-    private bool _deploymentReady;
-    private bool _loading;
+    private bool _recoveryCompleted;    private bool _loading;
     private bool _operationInProgress;
     private readonly List<string> _rollbackTransactionIds = new();
 
@@ -141,7 +139,6 @@ public partial class MainWindow : Window
         try
         {
             _installation = _gameInstallationService.ValidateExecutable(dialog.FileName);
-            _deploymentReady = false;
             _rollbackTransactionIds.Clear();
             GamePathText.Text = _installation.RootPath;
             DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " detected.";
@@ -150,7 +147,6 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             _installation = null;
-            _deploymentReady = false;
             GamePathText.Text = "No validated installation selected";
             DetectionText.Text = exception.Message;
             StatusText.Text = "Game installation validation failed.";
@@ -179,7 +175,6 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             _installation = null;
-            _deploymentReady = false;
             DetectionText.Text = exception.Message;
             StatusText.Text = "Game installation validation failed.";
         }
@@ -253,8 +248,6 @@ public partial class MainWindow : Window
 
             if (duplicate is null)
                 _packages.Add(imported);
-
-            _deploymentReady = false;
             TrustPackagesCheckBox.IsChecked = false;
             PackageList.SelectedItems.Clear();
             PackageList.SelectedItem = duplicate ?? imported;
@@ -420,8 +413,6 @@ public partial class MainWindow : Window
 
             foreach (var transactionId in result.TransactionIds)
                 _rollbackTransactionIds.Add(transactionId);
-
-            _deploymentReady = true;
             if (result.TransactionIds.Count == 0)
             {
                 StatusText.Text = "The selected profile is already active. No game files needed changing.";
@@ -436,7 +427,6 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            _deploymentReady = false;
             StatusText.Text = "Profile activation failed. The previous package state was preserved where rollback was possible.";
             MessageBox.Show(
                 exception.Message,
@@ -475,7 +465,6 @@ public partial class MainWindow : Window
         try
         {
             var result = await _removalService.RemovePackagesAsync(_installation, selected);
-            _deploymentReady = false;
             TrustPackagesCheckBox.IsChecked = false;
 
             if (result.FilesApplied == 0)
@@ -528,7 +517,6 @@ public partial class MainWindow : Window
         {
             await _deploymentService.RollbackLatestAsync(transactionId);
             _rollbackTransactionIds.RemoveAt(_rollbackTransactionIds.Count - 1);
-            _deploymentReady = false;
             StatusText.Text = "The latest transaction was rolled back. Roll back again to reverse the preceding step of a profile change.";
         }
         catch (Exception exception)
@@ -613,7 +601,6 @@ public partial class MainWindow : Window
             return;
 
         ApplySelectedProfile();
-        _deploymentReady = false;
         TrustPackagesCheckBox.IsChecked = false;
         RefreshSessionState();
     }
@@ -665,8 +652,6 @@ public partial class MainWindow : Window
     {
         if (_loading || _operationInProgress)
             return;
-
-        _deploymentReady = false;
         TrustPackagesCheckBox.IsChecked = false;
         RefreshSessionState();
     }
