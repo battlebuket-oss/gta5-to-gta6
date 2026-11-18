@@ -86,3 +86,15 @@ Hub-side priorities:
 ## Explicit limitations
 
 GTA V cannot be turned into GTA VI by installing mods. The hub cannot manufacture Rockstar's proprietary engine, assets, motion capture, writing, voice performances, mission scripting or undocumented systems. Some domains will remain partial or unavailable. The product must expose a transparent coverage status rather than claim "every GTA VI feature" is implemented.
+
+
+## Initial concrete Story Mode and accessibility candidates (18 November 2026)
+
+These entries are research leads, not approved one-click installs:
+
+- **GTA V New Game+ — Story Mode Expansion:** a Legacy/PC Story Mode package with five modules covering stamina, banking, store inventory, pickups and vehicle ownership. Its source notes unfinished fishing and possible conflicts with other inventory, weapon, garage, fuel and stamina mods. It is an expansion of the existing campaign experience, not a complete replacement campaign or conventional completed-save New Game+ import. [Creator listing](https://www.nexusmods.com/gta5/mods/2610) · [GTA5-Mods mirror/listing](https://www.gta5-mods.com/scripts/gta-v-new-game-the-ultimate-story-mode-expansion)
+- **Lowriders DLC in Single Player:** ports the Lowriders DLC missions and cutscenes into Story Mode and restores map icons. The author lists Script Hook V and ScriptHookVDotNet Nightly for Legacy and recommends Legacy for the best modding experience. [Author listing](https://www.gta5-mods.com/scripts/lowriders-dlc-in-single-player)
+- **Subtitles Enhanced — Legacy:** provides medium/large/very-large subtitle variants, colour options, improved wrapping and positioning. The author prohibits re-uploading the package and requires permission for modifications, so the Hub must link to the author's page rather than bundle it unless permissions change. [Author listing](https://www.nexusmods.com/gta5/mods/2239)
+- **GTA Access:** an NVDA-integrated screen-reader project for GTA V Legacy with spoken menus, phone, shops, subtitles, mission instructions, object scanning and navigation assistance. The author's page labels version 1.0.128 a tester build and specifies Legacy 1.0.3889 or later, NVDA, Windows OCR and Script Hook V. It must remain an explicitly opted-in accessibility tool; its installer must never be silently run by the Hub. [Author documentation](https://madnessinnsmouth.com/gta-access/)
+
+These candidates demonstrate that the project can target more than graphics: playable side content, persistent gameplay systems, subtitle readability and screen-reader accessibility are all part of the catalogue strategy. Their presence does not mean they have passed the Hub's own install, save, compatibility or rollback tests.
