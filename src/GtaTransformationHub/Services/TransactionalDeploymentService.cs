@@ -166,7 +166,7 @@ public sealed class TransactionalDeploymentService
         foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!Models.PackageIdValidator.IsValid(file.PackageId))
+            if (!PackageIdValidator.IsValid(file.PackageId))
                 throw new InvalidDataException("A deployment entry contains an invalid package ID.");
 
             var source = ResolveContainedPath(packageRoot, file.SourcePath);
@@ -179,8 +179,7 @@ public sealed class TransactionalDeploymentService
                 !file.ExpectedSha256.All(Uri.IsHexDigit))
                 throw new InvalidDataException("Every deployment file must have a valid SHA-256 digest.");
 
-            var actualHash = Convert.ToHexString(await SHA256.HashDataAsync(
-                File.OpenRead(source), cancellationToken));
+            var actualHash = await ComputeSha256Async(source, cancellationToken);
             if (!actualHash.Equals(file.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("A package file failed SHA-256 verification: " + file.SourcePath);
 
@@ -197,8 +196,7 @@ public sealed class TransactionalDeploymentService
         await using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             await input.CopyToAsync(output, cancellationToken);
 
-        var actualHash = Convert.ToHexString(await SHA256.HashDataAsync(
-            File.OpenRead(destination), cancellationToken));
+        var actualHash = await ComputeSha256Async(destination, cancellationToken);
         if (!actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
         {
             File.Delete(destination);
@@ -299,6 +297,12 @@ public sealed class TransactionalDeploymentService
         if (File.Exists(destination) &&
             (File.GetAttributes(destination) & FileAttributes.ReparsePoint) != 0)
             throw new IOException("Replacing a reparse-point file is blocked.");
+    }
+
+    private static async Task<string> ComputeSha256Async(string path, CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
     }
 
     private static async Task SaveJournalAsync(
