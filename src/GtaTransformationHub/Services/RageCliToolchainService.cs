@@ -77,6 +77,8 @@ public sealed class RageCliToolchainService
     {
         if (!File.Exists(_settingsPath))
             return null;
+        if ((File.GetAttributes(_settingsPath) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("The saved rage-cli settings file is a reparse point.");
 
         try
         {
@@ -101,6 +103,9 @@ public sealed class RageCliToolchainService
         var fullPath = Path.GetFullPath(executablePath);
         Directory.CreateDirectory(_dataRoot);
         EnsureDirectoryIsNotReparsePoint(_dataRoot);
+        if (File.Exists(_settingsPath) &&
+            (File.GetAttributes(_settingsPath) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("The saved rage-cli settings file cannot be a reparse point.");
 
         var temporaryPath = _settingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -184,6 +189,10 @@ public sealed class RageCliToolchainService
         EnsureDirectoryIsNotReparsePoint(databaseDirectory);
 
         var databasePath = Path.Combine(databaseDirectory, "catalog.sqlite");
+        if (File.Exists(databasePath) &&
+            (File.GetAttributes(databasePath) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("The rage-cli database path cannot be a reparse point.");
+
         var reportPath = Path.Combine(
             databaseDirectory,
             "catalog-report-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" +
@@ -215,6 +224,8 @@ public sealed class RageCliToolchainService
 
         var databaseInfo = new FileInfo(databasePath);
         var reportInfo = new FileInfo(reportPath);
+        if (databaseInfo.Length == 0 || reportInfo.Length == 0)
+            throw new InvalidDataException("rage-cli created an empty asset catalogue or report.");
         if (reportInfo.Length > MaximumReportBytes)
             throw new InvalidDataException("The rage-cli report exceeded the 256 MB safety limit.");
 
@@ -353,6 +364,8 @@ public sealed class RageCliProcessRunner : IRageCliProcessRunner
         foreach (var argument in arguments)
             startInfo.ArgumentList.Add(argument);
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
         if (!process.Start())
@@ -373,6 +386,7 @@ public sealed class RageCliProcessRunner : IRageCliProcessRunner
         {
             TryKill(process);
             await process.WaitForExitAsync(CancellationToken.None);
+            await Task.WhenAll(stdoutTask, stderrTask);
             if (cancellationToken.IsCancellationRequested)
                 throw;
             throw new TimeoutException(
