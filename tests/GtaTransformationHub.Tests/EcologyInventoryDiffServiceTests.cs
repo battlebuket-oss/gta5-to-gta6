@@ -18,21 +18,21 @@ public sealed class EcologyInventoryDiffServiceTests
             {
                 new EcologySpeciesIdentity(
                     "reef-fish", "AquaticAnimal", new[] { "a_coral_fish_01" },
-                    new[] { "pacific-ocean" }, "fish-schooling-v1"),
+                    new[] { "pacific-ocean" }, "fish-schooling-v1", HashB),
                 new EcologySpeciesIdentity(
                     "marsh-lily", "AquaticPlant", new[] { "prop_marsh_lily_01" },
-                    new[] { "coastal-wetland" }, "plant-static-v1"),
+                    new[] { "coastal-wetland" }, "plant-static-v1", HashB),
                 new EcologySpeciesIdentity(
                     "wild-orchid", "TerrestrialPlant", new[] { "prop_wild_orchid_01" },
-                    new[] { "marsh-edge" }, "plant-static-v1"),
+                    new[] { "marsh-edge" }, "plant-static-v1", HashB),
                 new EcologySpeciesIdentity(
                     "scrub-fox", "TerrestrialAnimal", new[] { "a_scrub_fox_01" },
-                    new[] { "marsh-edge" }, "fox-walk-v1")
+                    new[] { "marsh-edge" }, "fox-walk-v1", HashB)
             }).ToArray(),
             Habitats = baseline.Habitats.Concat(new[]
             {
-                new EcologyHabitatIdentity("coastal-wetland", "Wetland", "pacific-ocean"),
-                new EcologyHabitatIdentity("marsh-edge", "Terrestrial", "")
+                new EcologyHabitatIdentity("coastal-wetland", "Wetland", "pacific-ocean", HashB),
+                new EcologyHabitatIdentity("marsh-edge", "Terrestrial", "", HashB)
             }).ToArray(),
             PopulationEntries = baseline.PopulationEntries.Concat(new[]
             {
@@ -69,7 +69,7 @@ public sealed class EcologyInventoryDiffServiceTests
                 .Where(item => item.Id != "vanilla-deer")
                 .Append(new EcologySpeciesIdentity(
                     "vanilla-eagle", "TerrestrialAnimal", new[] { "a_eagle" },
-                    new[] { "sandy-hills" }, "bird-fly-v1"))
+                    new[] { "sandy-hills" }, "bird-fly-v1", HashB))
                 .ToArray(),
             PopulationEntries = baseline.PopulationEntries.Select(entry =>
                 entry.Id == "deer-range"
@@ -82,6 +82,42 @@ public sealed class EcologyInventoryDiffServiceTests
         Assert.False(result.VanillaPreserved);
         Assert.Contains(result.Errors, error => error.Contains("Vanilla species 'vanilla-deer' was removed"));
         Assert.Contains(result.Errors, error => error.Contains("Vanilla population entry 'deer-range' was changed"));
+    }
+
+    [Fact]
+    public void Compare_RejectsVanillaBehaviourChangedUnderTheSameProfileName()
+    {
+        var baseline = CreateBaseline();
+        var candidate = baseline with
+        {
+            Species = baseline.Species.Select(species =>
+                species.Id == "vanilla-deer"
+                    ? species with { BehaviourDefinitionSha256 = HashB }
+                    : species).ToArray()
+        };
+
+        var result = EcologyInventoryDiffService.Compare(baseline, candidate);
+
+        Assert.False(result.VanillaPreserved);
+        Assert.Contains(result.Errors, error => error.Contains("changed its model, domain or behaviour identity"));
+    }
+
+    [Fact]
+    public void Compare_RejectsHabitatDefinitionChangedUnderTheSameIdentifier()
+    {
+        var baseline = CreateBaseline();
+        var candidate = baseline with
+        {
+            Habitats = baseline.Habitats.Select(habitat =>
+                habitat.Id == "sandy-hills"
+                    ? habitat with { DefinitionSha256 = HashB }
+                    : habitat).ToArray()
+        };
+
+        var result = EcologyInventoryDiffService.Compare(baseline, candidate);
+
+        Assert.False(result.VanillaPreserved);
+        Assert.Contains(result.Errors, error => error.Contains("Vanilla habitat 'sandy-hills' was changed"));
     }
 
     [Fact]
@@ -124,7 +160,7 @@ public sealed class EcologyInventoryDiffServiceTests
         {
             Species = baseline.Species.Append(new EcologySpeciesIdentity(
                 "new-fish", "AquaticAnimal", new[] { "a_deer" },
-                new[] { "pacific-ocean" }, "fish-schooling-v1")).ToArray(),
+                new[] { "pacific-ocean" }, "fish-schooling-v1", HashB)).ToArray(),
             PopulationEntries = baseline.PopulationEntries.Append(new EcologyPopulationEntry(
                 "new-fish-pop", "new-fish", "pacific-ocean", HashB)).ToArray()
         };
@@ -159,15 +195,15 @@ public sealed class EcologyInventoryDiffServiceTests
             {
                 new EcologySpeciesIdentity(
                     "vanilla-deer", "TerrestrialAnimal", new[] { "a_deer" },
-                    new[] { "sandy-hills" }, "deer-walk-v1"),
+                    new[] { "sandy-hills" }, "deer-walk-v1", HashA),
                 new EcologySpeciesIdentity(
                     "vanilla-seagrass", "AquaticPlant", new[] { "prop_seagrass_01" },
-                    new[] { "pacific-ocean" }, "plant-static-v1")
+                    new[] { "pacific-ocean" }, "plant-static-v1", HashA)
             },
             new[]
             {
-                new EcologyHabitatIdentity("sandy-hills", "Terrestrial", ""),
-                new EcologyHabitatIdentity("pacific-ocean", "Ocean", "pacific-ocean")
+                new EcologyHabitatIdentity("sandy-hills", "Terrestrial", "", HashA),
+                new EcologyHabitatIdentity("pacific-ocean", "Ocean", "pacific-ocean", HashA)
             },
             new[]
             {
