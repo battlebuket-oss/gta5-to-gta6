@@ -13,6 +13,11 @@ public sealed class EcologyAssetClassificationTests
     [InlineData("update/x64/dlcpacks/custom/vegetation.ytyp")]
     [InlineData("mods/visuals/foliage.ydr")]
     [InlineData("update/update.rpf/meta/popgroups.ymt")]
+    [InlineData("mods/aquatic/underwater/seagrass.ytd")]
+    [InlineData("mods/marine/fish/shark.yft")]
+    [InlineData("mods/water/ocean/water_material.ytd")]
+    [InlineData("mods/coastal/reef/coral_reef.ymap")]
+    [InlineData("mods/river/aquatic_plants/reeds.ydr")]
     public void GameAssetWithoutEcologyContract_IsBlocked(string destination)
     {
         var manifest = new PackageManifest(
