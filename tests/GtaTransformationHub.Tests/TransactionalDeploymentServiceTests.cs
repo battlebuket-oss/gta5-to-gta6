@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using GtaTransformationHub.Services;
 using Xunit;
 
@@ -54,6 +55,48 @@ public sealed class TransactionalDeploymentServiceTests : IDisposable
         Assert.True(File.Exists(destination));
         await service.RollbackLatestAsync(result.TransactionId);
         Assert.False(File.Exists(destination));
+    }
+
+    [Fact]
+    public async Task RecoverInterruptedTransactions_RollsBackPartiallyAppliedJournal()
+    {
+        const string transactionId = "interrupted-transaction";
+        var transactionDirectory = Path.Combine(_transactionRoot, transactionId);
+        var backupDirectory = Path.Combine(transactionDirectory, "backup");
+        Directory.CreateDirectory(backupDirectory);
+
+        var destination = Path.Combine(_gameRoot, "update.rpf");
+        await File.WriteAllTextAsync(destination, "replacement already copied");
+        var backupPath = Path.Combine(backupDirectory, "000000.bak");
+        await File.WriteAllTextAsync(backupPath, "original");
+
+        var deployedHash = Convert.ToHexString(SHA256.HashData(
+            await File.ReadAllBytesAsync(destination)));
+        var originalHash = Convert.ToHexString(SHA256.HashData(
+            await File.ReadAllBytesAsync(backupPath)));
+        var journal = new DeploymentJournal(
+            transactionId,
+            _gameRoot,
+            "Applying",
+            new[]
+            {
+                new DeploymentJournalEntry(
+                    "test.package",
+                    "update.rpf",
+                    true,
+                    "000000.bak",
+                    deployedHash,
+                    originalHash)
+            });
+        await File.WriteAllTextAsync(
+            Path.Combine(transactionDirectory, "journal.json"),
+            JsonSerializer.Serialize(journal));
+
+        var service = new TransactionalDeploymentService(dataRoot: _transactionRoot);
+        var recovered = await service.RecoverInterruptedTransactionsAsync();
+
+        Assert.Contains(transactionId, recovered);
+        Assert.Equal("original", await File.ReadAllTextAsync(destination));
     }
 
     [Fact]
