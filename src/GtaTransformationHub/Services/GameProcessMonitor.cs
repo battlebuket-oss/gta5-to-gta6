@@ -29,8 +29,9 @@ public sealed class GameProcessMonitor
             // If process inspection is denied, callers must fail closed.
             return true;
         }
-        catch (InvalidOperationException)
+        catch
         {
+            // Any uncertainty in process inspection must block writes to the game folder.
             return true;
         }
 
