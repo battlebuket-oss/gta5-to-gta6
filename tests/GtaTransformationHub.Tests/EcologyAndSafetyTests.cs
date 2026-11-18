@@ -34,14 +34,14 @@ public sealed class EcologyAndSafetyTests : IDisposable
     }
 
     [Fact]
-    public void EcologyVisualOnlyPackageThatPreservesAllIdentities_IsAccepted()
+    public void EcologyManifestClaimsAlone_CannotApproveWithoutSemanticVerifier()
     {
         var manifest = CreateManifest(
             new[] { new PackageManifestFile("payload/a.dat", "update/x64/dlcpacks/vegetation/trees.dat", new string('A', 64), 1) },
             impactAreas: new[] { "vegetation" },
             ecology: new EcologyPreservationContract("Approved", "VisualOnly", true, true, true, true,
                 false, false, false, false, new string('A', 64), "https://example.com/ecology-review"));
-        Assert.Empty(EcologyCompatibilityService.Validate(manifest));
+        Assert.Contains(EcologyCompatibilityService.Validate(manifest), error => error.Contains("semantic verification"));
     }
 
     [Theory]

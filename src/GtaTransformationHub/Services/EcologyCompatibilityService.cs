@@ -55,6 +55,11 @@ public static class EcologyCompatibilityService
             errors.Add(manifest.Name + " has no valid SHA-256 fingerprint for its vanilla identity comparison inventory.");
         if (!Uri.TryCreate(contract.EvidenceUri, UriKind.Absolute, out var evidence) || evidence.Scheme != Uri.UriSchemeHttps)
             errors.Add(manifest.Name + " has no HTTPS ecological review evidence.");
+
+        // Deliberately fail closed: this build does not yet parse every supported
+        // GTA V asset format or perform a semantic species/model inventory diff.
+        // A manifest declaration and a URL are not proof that the species are unchanged.
+        errors.Add(manifest.Name + " is blocked because exact-build semantic verification of animal, plant, vegetation and model identities is not implemented yet. The package cannot be approved by manifest claims alone.");
         return errors;
     }
 

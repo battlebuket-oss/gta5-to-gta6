@@ -57,6 +57,6 @@ A SHA-256 digest establishes inventory integrity, not the truth of the review. T
 
 ## Current implementation boundary
 
-The Hub now has a manifest contract and preflight enforcement for ecology-sensitive packages. It does not yet contain a complete extractor for every proprietary RPF archive, a complete species inventory for every GTA V Legacy build, or an automated binary model/metadata semantic diff. Therefore, no package should be marked ecology-approved until those missing verification capabilities have been completed and run on the exact target build.
+The Hub has a manifest contract and a fail-closed preflight gate for ecology-sensitive packages. It does not yet contain a complete extractor for every proprietary RPF archive, a complete species inventory for every GTA V Legacy build, or an automated binary model/metadata semantic diff. All ecology-sensitive packages are currently blocked, regardless of manifest claims. Do not mark any package approved until those missing verification capabilities have been completed and run on the exact target build.
 
 When in doubt, the package is blocked rather than assumed safe.

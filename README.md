@@ -48,7 +48,7 @@ Direct executable launch may require Steam or Rockstar Games Launcher. The launc
 - The Hub downloads only when the user supplies a direct HTTPS ZIP/OIV URL. It does not scrape HTML pages, bypass host-controlled download flows or crawl mod-host APIs.
 - The Hub does not sandbox DLL, ASI or script files when the game loads them. Only install files from sources you trust.
 - The Hub does not execute third-party installers, modify a running game, inject into a process, bypass DRM/anti-cheat or support GTA Online.
-- Current catalogue entries are research-only. No third-party mod is approved for one-click installation. Ecology-sensitive packages require an approved preservation contract; a complete species inventory and automated semantic asset diff are still outstanding.
+- Current catalogue entries are research-only. No third-party mod is approved for one-click installation. All ecology-sensitive packages are currently blocked. The manifest contract is not proof: exact-build species inventories and automated semantic asset diffing are still outstanding.
 - OIV support is intentionally limited to direct loose-file add operations. RPF editing, XML/GFX, ASI-specific and other host-specific adapters are not implemented. OIV packages remain blocked until exact-build compatibility is independently verified.
 
 Do not use the development build on your only game installation. Test against a disposable copy and back up your game files and saves first.
@@ -61,7 +61,7 @@ Outstanding work includes a signed central catalogue/update channel, full OIV/RP
 
 ## Ecological fidelity requirement
 
-Preserve the same GTA V animal, plant and vegetation species and model identities. Improve rendering, textures, lighting, geometry and animation without replacing species, removing the original roster or changing species spawn tables. Ecology-sensitive assets are blocked unless their package includes an approved preservation contract backed by exact-build review evidence. See [Ecology preservation policy](docs/ECOLOGY_PRESERVATION_POLICY.md).
+Preserve the same GTA V animal, plant and vegetation species and model identities. Improve rendering, textures, lighting, geometry and animation without replacing species, removing the original roster or changing species spawn tables. All ecology-sensitive assets are blocked until exact-build semantic species/model verification exists; a package manifest cannot self-approve this requirement. See [Ecology preservation policy](docs/ECOLOGY_PRESERVATION_POLICY.md).
 
 ## Product experience priorities
 
