@@ -45,6 +45,12 @@ public sealed class ProfileActivationServiceTests : IDisposable
         Assert.Equal(2, result.TransactionIds.Count);
         Assert.False(File.Exists(Path.Combine(_gameRoot, "mods", "a.dat")));
         Assert.Equal("bravo", await File.ReadAllTextAsync(Path.Combine(_gameRoot, "mods", "b.dat")));
+
+        var (_, deployer) = CreateServices();
+        await deployer.RollbackLatestAsync(result.TransactionIds[1]);
+        await deployer.RollbackLatestAsync(result.TransactionIds[0]);
+        Assert.Equal("alpha", await File.ReadAllTextAsync(Path.Combine(_gameRoot, "mods", "a.dat")));
+        Assert.False(File.Exists(Path.Combine(_gameRoot, "mods", "b.dat")));
     }
 
     [Fact]
