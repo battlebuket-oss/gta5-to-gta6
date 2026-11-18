@@ -27,3 +27,6 @@ jobs:
 
       - name: Build
         run: dotnet build src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj --configuration Release
