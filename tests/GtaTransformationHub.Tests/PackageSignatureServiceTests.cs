@@ -1,0 +1,134 @@
+using System.Security.Cryptography;
+using GtaTransformationHub.Models;
+using GtaTransformationHub.Services;
+using Xunit;
+
+namespace GtaTransformationHub.Tests;
+
+public sealed class PackageSignatureServiceTests : IDisposable
+{
+    private readonly string _root = Path.Combine(
+        Path.GetTempPath(), "GtaHubSignatureTests", Guid.NewGuid().ToString("N"));
+    private readonly string _trustPath;
+
+    public PackageSignatureServiceTests()
+    {
+        Directory.CreateDirectory(_root);
+        _trustPath = Path.Combine(_root, "trusted-publishers.json");
+    }
+
+    [Fact]
+    public async Task VerifyAsync_AcceptsValidSignatureFromTrustedPublisher()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+
+        var manifest = Sign(CreateManifest(), rsa, fingerprint);
+        var result = await service.VerifyAsync(manifest);
+
+        Assert.Equal(PackageSignatureStatus.TrustedPublisher, result.Status);
+        Assert.Equal("Test Publisher", result.PublisherName);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_RejectsManifestModifiedAfterSigning()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+
+        var signed = Sign(CreateManifest(), rsa, fingerprint);
+        var tampered = signed with { Licence = "A different licence" };
+        var result = await service.VerifyAsync(tampered);
+
+        Assert.Equal(PackageSignatureStatus.Invalid, result.Status);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_ReportsUnknownPublisherWithoutTrustingIt()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var manifest = Sign(CreateManifest(), rsa, fingerprint);
+        var service = new PackageSignatureService(new TrustedPublisherStore(_trustPath));
+
+        var result = await service.VerifyAsync(manifest);
+
+        Assert.Equal(PackageSignatureStatus.UnknownPublisher, result.Status);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_ReportsUnsignedManifest()
+    {
+        var service = new PackageSignatureService(new TrustedPublisherStore(_trustPath));
+
+        var result = await service.VerifyAsync(CreateManifest());
+
+        Assert.Equal(PackageSignatureStatus.Unsigned, result.Status);
+    }
+
+    [Fact]
+    public async Task TrustedPublisherStore_RequiresMatchingIndependentFingerprint()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var correct = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var wrong = new string('0', 64);
+        var store = new TrustedPublisherStore(_trustPath);
+
+        await Assert.ThrowsAsync<CryptographicException>(() =>
+            store.AddAsync("Publisher", pem, wrong));
+
+        await store.AddAsync("Publisher", pem, correct);
+        var publisher = Assert.Single(await store.ListAsync());
+        Assert.Equal(correct, publisher.Fingerprint);
+    }
+
+    private static PackageManifest Sign(PackageManifest manifest, RSA privateKey, string fingerprint)
+    {
+        var toSign = manifest with { SigningKeyId = fingerprint, Signature = null };
+        var signature = privateKey.SignData(
+            PackageSignatureService.CreateSigningPayload(toSign),
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        return toSign with { Signature = Convert.ToBase64String(signature) };
+    }
+
+    private static PackageManifest CreateManifest() =>
+        new(
+            1,
+            "sample-package",
+            "Sample Package",
+            "Test Author",
+            "https://example.com/sample",
+            "Test licence",
+            "1.0.0",
+            "GTA V Legacy",
+            "1.0.1000.0",
+            "1.0.9999.0",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            new[]
+            {
+                new PackageManifestFile(
+                    "payload/sample.dat",
+                    "mods/sample.dat",
+                    new string('A', 64),
+                    12)
+            });
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root))
+            Directory.Delete(_root, recursive: true);
+    }
+}
