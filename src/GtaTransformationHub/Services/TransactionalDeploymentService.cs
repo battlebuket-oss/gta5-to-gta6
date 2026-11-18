@@ -4,8 +4,8 @@ using System.Text.Json;
 namespace GtaTransformationHub.Services;
 
 /// <summary>
-/// Conservative, copy-only deployment transaction. It never executes package code,
-/// deletes game files, or modifies a running game process.
+/// Conservative, copy-only deployment transaction. It never executes package code
+/// or modifies a running game process. Rollback removes only files created by its own journal.
 /// </summary>
 public sealed class TransactionalDeploymentService
 {
@@ -147,6 +147,8 @@ public sealed class TransactionalDeploymentService
                 await File.ReadAllTextAsync(journalPath, cancellationToken))
                 ?? throw new InvalidDataException("The deployment journal is invalid.");
 
+            if (!string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
+                throw new InvalidDataException("The transaction journal ID does not match its directory.");
             if (!string.Equals(journal.State, "Applied", StringComparison.Ordinal))
                 throw new InvalidOperationException("Only a fully applied transaction can be rolled back.");
 
@@ -218,32 +220,57 @@ public sealed class TransactionalDeploymentService
     {
         _processMonitor.EnsureConfigurationUnlocked();
         var root = ValidateGameRoot(journal.GameRoot);
+
+        // Preflight every entry before changing anything, so a user-edited file or
+        // missing/corrupt backup cannot leave a half-restored installation.
+        foreach (var entry in journal.Entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var destination = ResolveContainedPath(root, entry.DestinationRelativePath);
+            EnsureNoReparsePoints(root, destination);
+            if (entry.ExistedBefore)
+            {
+                if (string.IsNullOrWhiteSpace(entry.OriginalSha256) || entry.OriginalSha256.Length != 64)
+                    throw new InvalidDataException("The journal is missing an original file hash.");
+                var backupRelative = ValidateRelativePath(entry.BackupFile);
+                var backup = ResolveContainedPath(backupRoot, backupRelative);
+                if (!File.Exists(backup))
+                    throw new FileNotFoundException("A required rollback backup is missing.", backup);
+                var backupHash = await ComputeSha256Async(backup, cancellationToken);
+                if (!backupHash.Equals(entry.OriginalSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("A rollback backup failed integrity verification.");
+
+                if (File.Exists(destination))
+                {
+                    var currentHash = await ComputeSha256Async(destination, cancellationToken);
+                    if (!currentHash.Equals(entry.DeployedSha256, StringComparison.OrdinalIgnoreCase) &&
+                        !currentHash.Equals(entry.OriginalSha256, StringComparison.OrdinalIgnoreCase))
+                        throw new IOException("A deployed file changed after installation; rollback stopped to protect user changes: " + entry.DestinationRelativePath);
+                }
+            }
+            else if (File.Exists(destination))
+            {
+                var currentHash = await ComputeSha256Async(destination, cancellationToken);
+                if (!currentHash.Equals(entry.DeployedSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new IOException("A file created by the deployment was changed; rollback stopped to protect user changes: " + entry.DestinationRelativePath);
+            }
+        }
+
         foreach (var entry in journal.Entries.Reverse())
         {
             cancellationToken.ThrowIfCancellationRequested();
             _processMonitor.EnsureConfigurationUnlocked();
             var destination = ResolveContainedPath(root, entry.DestinationRelativePath);
-            EnsureNoReparsePoints(root, destination);
-
-            if (File.Exists(destination))
-            {
-                var currentHash = await ComputeSha256Async(destination, cancellationToken);
-                if (!currentHash.Equals(entry.DeployedSha256, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (entry.ExistedBefore &&
-                        entry.OriginalSha256 is not null &&
-                        currentHash.Equals(entry.OriginalSha256, StringComparison.OrdinalIgnoreCase))
-                        continue; // The transaction journal was written, but replacement never occurred.
-
-                    throw new IOException("A deployed file changed after installation; rollback stopped to protect user changes: " + entry.DestinationRelativePath);
-                }
-            }
-
             if (entry.ExistedBefore)
             {
-                var backup = Path.Combine(backupRoot, entry.BackupFile);
-                if (!File.Exists(backup))
-                    throw new FileNotFoundException("A required rollback backup is missing.", backup);
+                if (File.Exists(destination))
+                {
+                    var currentHash = await ComputeSha256Async(destination, cancellationToken);
+                    if (currentHash.Equals(entry.OriginalSha256, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+
+                var backup = ResolveContainedPath(backupRoot, ValidateRelativePath(entry.BackupFile));
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 var restoreTemp = destination + ".gta-hub-restore-" + Guid.NewGuid().ToString("N") + ".tmp";
                 try
@@ -301,11 +328,15 @@ public sealed class TransactionalDeploymentService
 
     private static void EnsureNoReparsePoints(string root, string destination)
     {
+        var rootInfo = new DirectoryInfo(root);
+        for (var ancestor = rootInfo; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            if ((ancestor.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("Deployment through a reparse-point directory is blocked.");
+        }
+
         var relative = Path.GetRelativePath(root, Path.GetDirectoryName(destination)!);
         var current = root;
-        if ((File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0)
-            throw new IOException("The GTA V root cannot be a symbolic link or reparse point.");
-
         foreach (var segment in relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, segment);
