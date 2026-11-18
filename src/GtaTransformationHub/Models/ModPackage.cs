@@ -27,4 +27,6 @@ public sealed record ModPackage(
     string InstallAdapter,
     string RestoreStrategy,
     string PerformanceTier,
-    string Notes);
+    string Notes,
+    IReadOnlyList<string>? ExternalRequirements = null,
+    string? ExclusiveGroup = null);
