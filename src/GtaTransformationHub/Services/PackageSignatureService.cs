@@ -61,6 +61,15 @@ public sealed class PackageSignatureService
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
+        if (manifest.Files is null || manifest.Dependencies is null || manifest.Conflicts is null ||
+            manifest.Files.Any(file => file is null ||
+                string.IsNullOrWhiteSpace(file.SourcePath) ||
+                string.IsNullOrWhiteSpace(file.DestinationPath) ||
+                string.IsNullOrWhiteSpace(file.Sha256)))
+            return new PackageSignatureVerification(
+                PackageSignatureStatus.Invalid, null, manifest.SigningKeyId,
+                "The package manifest is incomplete and cannot be signature-verified.");
+
         var hasKeyId = !string.IsNullOrWhiteSpace(manifest.SigningKeyId);
         var hasSignature = !string.IsNullOrWhiteSpace(manifest.Signature);
         if (!hasKeyId && !hasSignature)
@@ -152,8 +161,12 @@ public sealed class PackageSignatureService
             throw new InvalidDataException("A signing key fingerprint is required.");
 
         var fingerprint = NormalizeFingerprint(manifest.SigningKeyId);
-        if (manifest.Files is null || manifest.Dependencies is null || manifest.Conflicts is null)
-            throw new InvalidDataException("A package manifest must declare file, dependency and conflict arrays.");
+        if (manifest.Files is null || manifest.Dependencies is null || manifest.Conflicts is null ||
+            manifest.Files.Any(file => file is null ||
+                string.IsNullOrWhiteSpace(file.SourcePath) ||
+                string.IsNullOrWhiteSpace(file.DestinationPath) ||
+                string.IsNullOrWhiteSpace(file.Sha256)))
+            throw new InvalidDataException("A package manifest must contain complete file, dependency and conflict declarations.");
 
         var canonical = new CanonicalManifest(
             manifest.SchemaVersion,
