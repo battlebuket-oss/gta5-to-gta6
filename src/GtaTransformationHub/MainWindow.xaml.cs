@@ -543,6 +543,7 @@ public partial class MainWindow : Window
                 "Report: " + result.ReportPath + Environment.NewLine +
                 "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
                 "Database SHA-256: " + result.DatabaseSha256 + Environment.NewLine +
+                "GTA5.exe SHA-256: " + result.GameExecutableSha256 + Environment.NewLine +
                 "Duration: " + result.Duration.ToString(@"hh\:mm\:ss") + Environment.NewLine +
                 result.Summary + Environment.NewLine +
                 "This is a model/texture catalogue, not a complete flora/fauna/population/water baseline.";
