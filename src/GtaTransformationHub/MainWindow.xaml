@@ -1,0 +1,83 @@
+<Window x:Class="GtaTransformationHub.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GTA VI Transformation Hub"
+        Width="1180" Height="760" MinWidth="980" MinHeight="640"
+        Background="{StaticResource WindowBackground}"
+        Foreground="{StaticResource PrimaryText}"
+        WindowStartupLocation="CenterScreen">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <DockPanel Grid.Row="0" Margin="0,0,0,22">
+      <StackPanel>
+        <TextBlock Text="TRANSFORMATION HUB" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
+        <TextBlock Text="GTA V  /  MOD CONTROL" FontSize="27" FontWeight="SemiBold" Margin="0,4,0,0"/>
+      </StackPanel>
+      <Border DockPanel.Dock="Right" Background="#252830" CornerRadius="8" Padding="14,9" VerticalAlignment="Center">
+        <TextBlock x:Name="SessionStateText" Text="CONFIGURATION UNLOCKED" FontSize="11" FontWeight="Bold"/>
+      </Border>
+    </DockPanel>
+
+    <Border Grid.Row="1" Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="16" Margin="0,0,0,18">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="GAME INSTALLATION" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold"/>
+          <TextBlock x:Name="GamePathText" Text="GTA V Legacy not located" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
+          <TextBlock x:Name="DetectionText" Text="Locate your GTA5.exe installation to begin." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,4,0,0"/>
+        </StackPanel>
+        <Button x:Name="LocateButton" Grid.Column="1" Content="Locate game" Padding="18,10" Margin="12,0" Click="LocateButton_Click"/>
+        <Button x:Name="RefreshButton" Grid.Column="2" Content="Recheck" Padding="18,10" Click="RefreshButton_Click"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*"/>
+        <ColumnDefinition Width="1.1*"/>
+      </Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="0,0,10,0">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <TextBlock Text="MOD LOADOUT" FontSize="17" FontWeight="SemiBold"/>
+            <TextBlock Text="Select the mods to prepare before launching. This list is a UI foundation; no third-party mods are bundled." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
+          </StackPanel>
+          <StackPanel x:Name="ModList">
+            <TextBlock Text="No verified mod packages installed yet." Foreground="{StaticResource SecondaryText}" Margin="0,12,0,0"/>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <StackPanel Grid.Column="1">
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="ACTIVE PROFILE" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold"/>
+            <TextBlock Text="GTA VI-inspired / Balanced" FontSize="16" FontWeight="SemiBold" Margin="0,7,0,4"/>
+            <TextBlock Text="Profiles will store enabled mod IDs and validated deployment settings." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,0">
+          <StackPanel>
+            <TextBlock Text="SESSION SAFETY" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Once GTA5.exe starts, all configuration controls lock. The app will not deploy, remove, or change mods until the game exits." TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock x:Name="LockExplanationText" Text="Game not running — configuration is available." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+
+    <DockPanel Grid.Row="3" Margin="0,18,0,0">
+      <TextBlock x:Name="StatusText" Text="Ready. Locate GTA V Legacy to continue." Foreground="{StaticResource SecondaryText}" VerticalAlignment="Center"/>
+      <Button x:Name="LaunchButton" DockPanel.Dock="Right" Content="APPLY PROFILE &amp; LAUNCH" Padding="24,13" FontWeight="Bold" Background="{StaticResource AccentBrush}" Foreground="White" IsEnabled="False" Click="LaunchButton_Click"/>
+    </DockPanel>
+  </Grid>
+</Window>
