@@ -177,11 +177,12 @@
                   <Button x:Name="VerifyRageCliButton" Content="Verify version and checksum" Padding="9,6" Click="VerifyRageCliButton_Click"/>
                 </WrapPanel>
                 <WrapPanel Margin="0,0,0,7">
-                  <Button x:Name="BuildAssetCatalogueButton" Content="Build GTA V asset catalogue" Padding="9,6" IsEnabled="False" Click="BuildAssetCatalogueButton_Click"/>
+                  <Button x:Name="BuildAssetCatalogueButton" Content="Build model/texture catalogue" Padding="9,6" IsEnabled="False" Click="BuildAssetCatalogueButton_Click"/>
+                  <Button x:Name="DiscoverEcologyMetadataButton" Content="Discover ecology metadata" Padding="9,6" Margin="6,0,0,0" IsEnabled="False" Click="DiscoverEcologyMetadataButton_Click"/>
                   <Button x:Name="CancelAssetCatalogueButton" Content="Cancel scan" Padding="9,6" Margin="6,0,0,0" IsEnabled="False" Click="CancelAssetCatalogueButton_Click"/>
                 </WrapPanel>
                 <TextBlock x:Name="RageCliStatusText" Text="No rage-cli executable has been verified." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
-                <TextBlock Text="This first scan indexes supported drawables, fragments, model/texture dictionaries and textures. It is not a complete species, population, habitat or water-system inventory, and it never unlocks ecology packages by itself." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                <TextBlock Text="Asset catalogue scans drawables, fragments, dictionaries and textures. Metadata discovery searches nested RPFs for population/model-set, water, animal, plant and map metadata candidates and fingerprints source archives. Both are discovery tools only: neither is a complete ecological baseline, and neither unlocks ecology packages." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,0"/>
               </StackPanel>
             </Expander>
           </StackPanel>
