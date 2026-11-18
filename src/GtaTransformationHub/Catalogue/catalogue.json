@@ -325,9 +325,7 @@
       "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
       "sha256": null,
       "dependencies": [],
-      "conflicts": [
-        "gta-vi-hud-exclusive"
-      ],
+      "conflicts": [],
       "status": "Researching",
       "installAdapter": "ScriptHookVDotNet scripts-folder adapter (not implemented)",
       "restoreStrategy": "Manifest-based per-file backup after archive inspection; test script data persistence and rollback",
@@ -352,9 +350,7 @@
       "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
       "sha256": null,
       "dependencies": [],
-      "conflicts": [
-        "gta-vi-hud-exclusive"
-      ],
+      "conflicts": [],
       "status": "Researching",
       "installAdapter": "OpenIV OIV plus managed script-folder adapter (not implemented)",
       "restoreStrategy": "OpenIV mods-folder backups and per-script transaction backup; OIV archive edits are not supported by the Hub yet",
@@ -378,9 +374,7 @@
       "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
       "sha256": null,
       "dependencies": [],
-      "conflicts": [
-        "gta-vi-hud-exclusive"
-      ],
+      "conflicts": [],
       "status": "Researching",
       "installAdapter": "ASI plus managed scripts-folder adapter (not implemented)",
       "restoreStrategy": "Back up MiniMap.asi, MiniMap.dll and font assets; verify rollback against user-modified files",
@@ -427,9 +421,7 @@
       "dependencies": [
         "gta-vi-styled-minimap-hud-legacy"
       ],
-      "conflicts": [
-        "minimap-editor-exclusive"
-      ],
+      "conflicts": [],
       "status": "Researching",
       "installAdapter": "Manual external script package; no automated installer adapter",
       "restoreStrategy": "Documented manual removal and manifest-based backup required before any Hub-managed deployment",
@@ -455,9 +447,7 @@
       "maximumGameBuild": "Not specified; author says GTA V Legacy and tests at 1920x1080",
       "sha256": null,
       "dependencies": [],
-      "conflicts": [
-        "gta-vi-hud-exclusive"
-      ],
+      "conflicts": [],
       "status": "Researching",
       "installAdapter": "OpenIV OIV adapter (not implemented)",
       "restoreStrategy": "Back up conflicting minimap/graphics assets in the mods folder and verify rollback",
@@ -484,9 +474,7 @@
       "maximumGameBuild": "Not specified; build compatibility test required",
       "sha256": null,
       "dependencies": [],
-      "conflicts": [
-        "loading-screen-overhaul-exclusive"
-      ],
+      "conflicts": [],
       "status": "Researching",
       "installAdapter": "OpenIV asset adapter (not implemented)",
       "restoreStrategy": "Back up original loading assets in the mods folder; verify restore on clean launch",
