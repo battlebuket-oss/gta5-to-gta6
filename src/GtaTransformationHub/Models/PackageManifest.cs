@@ -17,7 +17,8 @@ public sealed record PackageManifest(
     string MaximumGameBuild,
     IReadOnlyList<string> Dependencies,
     IReadOnlyList<string> Conflicts,
-    IReadOnlyList<PackageManifestFile> Files);
+    IReadOnlyList<PackageManifestFile> Files,
+    string? ExclusiveGroup = null);
 
 public sealed record PackageManifestFile(
     string SourcePath,
