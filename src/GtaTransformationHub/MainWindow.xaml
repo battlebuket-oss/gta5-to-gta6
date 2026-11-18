@@ -52,13 +52,13 @@
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <TextBlock Text="PACKAGE LIBRARY" FontSize="17" FontWeight="SemiBold"/>
-            <TextBlock Text="Import a ZIP containing gta-hub-manifest.json. Packages are imported locally; nothing is installed until you review and apply a selection." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
+            <TextBlock Text="Import a ZIP containing gta-hub-manifest.json. Applying a profile reconciles installed packages and preserves an intact package that is already active." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
           </StackPanel>
 
           <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <Button x:Name="ImportPackageButton" Content="Import package ZIP" Padding="14,9" Margin="0,0,8,0" Click="ImportPackageButton_Click"/>
             <Button x:Name="ValidateButton" Content="Validate selection" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="ValidateButton_Click"/>
-            <Button x:Name="ApplyButton" Content="Apply selected" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Background="{StaticResource AccentBrush}" Foreground="White" Click="ApplyButton_Click"/>
+            <Button x:Name="ApplyButton" Content="Apply profile" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Background="{StaticResource AccentBrush}" Foreground="White" Click="ApplyButton_Click"/>
             <Button x:Name="RemoveSelectedButton" Content="Remove selected" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="RemoveSelectedButton_Click"/>
             <Button x:Name="RollbackButton" Content="Rollback latest" Padding="14,9" IsEnabled="False" Click="RollbackButton_Click"/>
           </WrapPanel>
