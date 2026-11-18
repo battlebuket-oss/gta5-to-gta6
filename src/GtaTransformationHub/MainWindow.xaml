@@ -80,11 +80,18 @@
                    BorderBrush="#343841"
                    Foreground="{StaticResource PrimaryText}">
             <ListBox.ItemTemplate>
-              <DataTemplate>
+                            <DataTemplate>
                 <StackPanel Margin="5,4">
                   <TextBlock Text="{Binding Manifest.Name}" FontWeight="SemiBold"/>
                   <TextBlock Text="{Binding Manifest.Author}" Foreground="{StaticResource SecondaryText}" FontSize="11"/>
                   <TextBlock Text="{Binding Manifest.Id}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <TextBlock Text="{Binding Manifest.Licence}" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
+                  <Button Content="Open author/source page"
+                          Tag="{Binding Manifest.SourceUri}"
+                          HorizontalAlignment="Left"
+                          Padding="8,4"
+                          Margin="0,5,0,0"
+                          Click="OpenPackageSourceButton_Click"/>
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
