@@ -48,11 +48,29 @@ A search that reaches a hit cap, has truncated output, cannot parse JSON, or rep
 
 **This is candidate discovery only.** It does not parse the metadata payloads, prove that the pattern list found every species or habitat, or establish a complete population/water baseline. Generic `.ymap` and `.ymt` searches may reach the cap. A completed pattern scan must not be labelled a complete ecological inventory.
 
+## Selective metadata payload dumps
+
+After a discovery report has been created, the Hub can dump up to 50 supported metadata candidates from that report to JSON. It rechecks that the report matches the selected GTA5.exe fingerprint and the pinned rage-cli version/digest, and re-hashes each source RPF before and after extraction.
+
+For a nested resource, the Hub follows the exact RPF chain recorded by the search result. It extracts only the next nested `.rpf` layer into a temporary staging folder, opens that extracted archive, and repeats until it reaches the resource. It then calls rage-cli `resource dump --archive ... --json --output ...` for the leaf resource. It does **not** use recursive extraction, which would read every leaf in the archive.
+
+Supported candidate extensions are `.ymt`, `.meta`, `.ytyp`, `.ymap`, `.ymf`, `.pso` and `.xml` when the search result identifies the entry as a resource. Candidate ordering gives priority to names containing population/model-set, animal/fish, vegetation/flora/fauna and water terms. Unsupported or unparseable resources are reported as errors rather than silently ignored.
+
+Safety limits: 50 candidate dumps per run, 512 MB of nested RPF extraction per candidate, 128 MB per JSON dump and 512 MB aggregate JSON output. The index report includes the outer source RPF hash, each extracted nested-RPF hash, dumped JSON path/hash/size and parse root type. Temporary extracted RPF layers are removed after each candidate.
+
+Outputs are stored under:
+
+```text
+%LOCALAPPDATA%\GtaTransformationHub\rage-cli\metadata-dumps\<full GTA5.exe SHA-256>\
+```
+
+The JSON dumps are inspection artifacts for building and validating the semantic inventory parser. They are **not** a verified species inventory and do not unlock ecology-sensitive packages.
+
 ## What this scan covers — and what it does not
 
 Upstream rage-cli's `catalog build` indexes supported drawables, fragments, drawable dictionaries, dictionary entries, texture dictionaries and textures in game load order. It can inspect nested RPF archives and read retail archive keys using the user's own GTA5.exe.
 
-The current Hub integration does **not** yet turn the drawable/texture catalogue or metadata-discovery references into a complete ecological inventory. The search stage does not dump/parse the contents of every candidate `.ymt`, `.meta`, `.ytyp`, `.ymap` or `.ymf`. It does not yet enumerate and semantically verify every terrestrial animal, fish, marine animal, terrestrial plant, tree, aquatic plant, spawn/population record, habitat, animation behaviour or water-simulation definition. The current output does not establish that a package preserves those identities.
+The current Hub integration does **not** yet turn the drawable/texture catalogue or the bounded set of metadata JSON dumps into a complete ecological inventory. Candidate discovery is limited to the listed filename patterns and hit caps; the payload dumper processes at most 50 selected resources. Resources outside those patterns, beyond hit caps, unsupported by rage-cli or not successfully dumped remain unexamined. The pipeline does not yet enumerate and semantically verify every terrestrial animal, fish, marine animal, terrestrial plant, tree, aquatic plant, spawn/population record, habitat, animation behaviour or water-simulation definition. The output does not establish that a package preserves those identities.
 
 In particular, a successful asset catalogue build is not permission to install any animal, vegetation, water or population-data package. The ecological preflight remains fail-closed.
 
