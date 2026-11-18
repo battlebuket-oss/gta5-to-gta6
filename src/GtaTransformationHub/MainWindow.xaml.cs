@@ -56,37 +56,6 @@ public partial class MainWindow : Window
     private void LaunchButton_Click(object sender, RoutedEventArgs e)
     {
         StatusText.Text = "Launch is intentionally disabled until verified mod deployment and profile validation are connected.";
-        return;
-
-        if (IsGameRunning())
-        {
-            RefreshSessionState();
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_gameExecutable) || !File.Exists(_gameExecutable))
-        {
-            StatusText.Text = "Locate a valid GTA5.exe before launching.";
-            LaunchButton.IsEnabled = false;
-            return;
-        }
-
-        // Deployment remains disabled until the transactional installer is implemented.
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = _gameExecutable,
-                WorkingDirectory = Path.GetDirectoryName(_gameExecutable)!,
-                UseShellExecute = true
-            });
-            StatusText.Text = "GTA V launch requested. Configuration is locked as soon as its process is detected.";
-            RefreshSessionState();
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = $"Could not launch GTA V: {ex.Message}";
-        }
     }
 
     private bool IsGameRunning()
