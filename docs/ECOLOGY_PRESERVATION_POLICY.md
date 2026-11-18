@@ -29,7 +29,7 @@ Examples of prohibited work:
 
 ## Package review contract
 
-Any package whose declared impact areas or destination paths indicate ecology-sensitive assets must carry an EcologyPreservationContract.
+Any package whose declared impact areas or destination paths indicate ecology-sensitive assets must carry an EcologyPreservationContract. The current conservative classifier also requires review for GTA model, texture, map, metadata and animation asset extensions, even when a package author omits an ecology impact label.
 
 The contract must affirm:
 - ReviewStatus = Approved.

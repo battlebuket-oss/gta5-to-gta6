@@ -4,6 +4,11 @@ namespace GtaTransformationHub.Services;
 
 public static class EcologyCompatibilityService
 {
+    private static readonly HashSet<string> SensitiveAssetExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".ydr", ".ydd", ".yft", ".ytd", ".ymap", ".ytyp", ".ymt", ".ybn", ".ycd", ".meta"
+    };
+
     private static readonly string[] SensitivePathTokens =
     {
         "wildlife", "animal", "fauna", "flora", "vegetation", "foliage",
@@ -18,7 +23,8 @@ public static class EcologyCompatibilityService
         return manifest.Files?.Any(file =>
         {
             var destination = (file.DestinationPath ?? string.Empty).Replace('\\', '/');
-            return SensitivePathTokens.Any(token => destination.Contains(token, StringComparison.OrdinalIgnoreCase));
+            return SensitivePathTokens.Any(token => destination.Contains(token, StringComparison.OrdinalIgnoreCase)) ||
+                   SensitiveAssetExtensions.Contains(Path.GetExtension(destination));
         }) == true;
     }
 

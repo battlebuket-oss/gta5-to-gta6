@@ -7,7 +7,7 @@ The desktop Hub accepts a direct HTTPS URL to a ZIP or OIV package. It does not 
 The downloader:
 - Requires HTTPS on port 443.
 - Rejects localhost and local/private DNS destinations.
-- Revalidates every redirect.
+- Revalidates every redirect and validates DNS again at socket-connect time, rejecting private/reserved IP addresses to mitigate DNS rebinding.
 - Limits redirects to five.
 - Limits the download to 2 GiB.
 - Computes SHA-256 while streaming to a temporary file.
