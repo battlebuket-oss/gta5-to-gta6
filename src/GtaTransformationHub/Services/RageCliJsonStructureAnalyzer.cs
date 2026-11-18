@@ -13,7 +13,6 @@ public sealed record RageCliJsonStructureSummary(
     int MaximumDepth,
     int TruncatedPropertyNameCount,
     bool PropertyNameLimitReached,
-    bool NodeLimitReached,
     IReadOnlyDictionary<string, int> PropertyNameFrequency);
 
 /// <summary>
@@ -28,8 +27,10 @@ public static class RageCliJsonStructureAnalyzer
     public const int MaximumUniquePropertyNames = 4096;
     public const int MaximumPropertyNameLength = 256;
 
-    public static RageCliJsonStructureSummary Analyze(JsonElement root)
+    public static RageCliJsonStructureSummary Analyze(JsonElement root, int maximumNodes = MaximumNodes)
     {
+        if (maximumNodes is < 1 or > MaximumNodes)
+            throw new ArgumentOutOfRangeException(nameof(maximumNodes));
         var objectCount = 0;
         var arrayCount = 0;
         var propertyCount = 0;
@@ -40,7 +41,6 @@ public static class RageCliJsonStructureAnalyzer
         var maximumDepth = 0;
         var truncatedPropertyNameCount = 0;
         var propertyNameLimitReached = false;
-        var nodeLimitReached = false;
         var nodeCount = 0;
         var propertyNames = new Dictionary<string, int>(StringComparer.Ordinal);
 
@@ -48,11 +48,10 @@ public static class RageCliJsonStructureAnalyzer
         {
             if (depth > MaximumDepth)
                 throw new InvalidDataException("The metadata JSON structure exceeds the maximum depth of 128.");
-            if (++nodeCount > MaximumNodes)
-            {
-                nodeLimitReached = true;
-                throw new InvalidDataException("The metadata JSON structure exceeds the maximum node limit of 5,000,000.");
-            }
+            if (++nodeCount > maximumNodes)
+                throw new InvalidDataException(
+                    "The metadata JSON structure exceeds the maximum node limit of " +
+                    maximumNodes.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".");
 
             maximumDepth = Math.Max(maximumDepth, depth);
             switch (element.ValueKind)
@@ -118,7 +117,6 @@ public static class RageCliJsonStructureAnalyzer
             maximumDepth,
             truncatedPropertyNameCount,
             propertyNameLimitReached,
-            nodeLimitReached,
             propertyNames);
     }
 }
