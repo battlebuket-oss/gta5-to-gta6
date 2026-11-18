@@ -53,6 +53,30 @@ public sealed class PackageRemovalServiceTests : IDisposable
         Assert.False(File.Exists(target));
     }
 
+
+    [Fact]
+    public async Task ActivePackageInventory_TracksApplyRemoveAndRollback()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("inventory tracking package");
+        var imported = await ImportPackageAsync(content);
+        var installation = CreateInstallation();
+        var deployer = new TransactionalDeploymentService(dataRoot: _transactionsRoot);
+        var coordinator = new PackageDeploymentCoordinator(deployer, _stagingRoot);
+        var remover = new TransactionalRemovalService(new GameProcessMonitor(), _transactionsRoot);
+
+        await coordinator.ApplyAsync(installation, new[] { imported });
+        var afterApply = await remover.GetActivePackageIdentitiesAsync();
+        Assert.Contains("test-package\u001f1.0.0", afterApply);
+
+        var removal = await remover.RemovePackagesAsync(installation, new[] { imported });
+        var afterRemoval = await remover.GetActivePackageIdentitiesAsync();
+        Assert.DoesNotContain("test-package\u001f1.0.0", afterRemoval);
+
+        await deployer.RollbackLatestAsync(removal.TransactionId);
+        var afterRollback = await remover.GetActivePackageIdentitiesAsync();
+        Assert.Contains("test-package\u001f1.0.0", afterRollback);
+    }
+
     [Fact]
     public async Task RemovePackage_RejectsUserModifiedFile()
     {
