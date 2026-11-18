@@ -47,7 +47,7 @@ public sealed class RageCliToolchainService
 {
     public const string PinnedVersion = "0.28.1";
     public const string PinnedSha256 =
-        "B7A9AA1D6196632544889CDC97481DB001936DAD8C046784EADEB38ACD3B1AC";
+        "B7A9AA1D6196632544889CDC97481DB001936DADC8E046784EADEB38ACD3B1AC";
     public const string ReleaseUrl = "https://github.com/VIRUXE/rage-cli/releases/tag/v0.28.1";
     public const string WindowsAssetUrl =
         "https://github.com/VIRUXE/rage-cli/releases/download/v0.28.1/rage-windows-x86_64.exe";
