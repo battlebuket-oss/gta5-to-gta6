@@ -147,6 +147,8 @@ public sealed class TrustedPublisherStore
             if (publisher is null ||
                 string.IsNullOrWhiteSpace(publisher.Name) ||
                 publisher.Name.Length > 120 ||
+                string.IsNullOrWhiteSpace(publisher.Fingerprint) ||
+                string.IsNullOrWhiteSpace(publisher.PublicKeyPem) ||
                 !seen.Add(NormalizeFingerprint(publisher.Fingerprint)))
                 throw new InvalidDataException("The trusted-publisher store contains invalid or duplicate entries.");
 
