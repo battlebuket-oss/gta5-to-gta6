@@ -18,7 +18,9 @@ public sealed record PackageManifest(
     IReadOnlyList<string> Dependencies,
     IReadOnlyList<string> Conflicts,
     IReadOnlyList<PackageManifestFile> Files,
-    string? ExclusiveGroup = null);
+    string? ExclusiveGroup = null,
+    string? SigningKeyId = null,
+    string? Signature = null);
 
 public sealed record PackageManifestFile(
     string SourcePath,
@@ -30,4 +32,5 @@ public sealed record ImportedPackage(
     PackageManifest Manifest,
     string PackageRoot,
     string ArchiveSha256,
-    DateTimeOffset ImportedAt);
+    DateTimeOffset ImportedAt,
+    string SignatureStatus = "Not verified");
