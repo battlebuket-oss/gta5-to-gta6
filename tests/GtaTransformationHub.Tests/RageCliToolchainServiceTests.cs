@@ -56,6 +56,20 @@ public sealed class RageCliToolchainServiceTests : IDisposable
     }
 
     [Fact]
+    public void BuildDirectoryNameFromExecutableHash_IsStableAndBuildSpecific()
+    {
+        var first = new string('A', 64);
+        var second = "B" + new string('A', 63);
+
+        Assert.Equal("aaaaaaaaaaaaaaaa", RageCliToolchainService.BuildDirectoryNameFromExecutableHash(first));
+        Assert.NotEqual(
+            RageCliToolchainService.BuildDirectoryNameFromExecutableHash(first),
+            RageCliToolchainService.BuildDirectoryNameFromExecutableHash(second));
+        Assert.Throws<ArgumentException>(() =>
+            RageCliToolchainService.BuildDirectoryNameFromExecutableHash("not-a-sha256"));
+    }
+
+    [Fact]
     public void BuildCatalogueArguments_UsesExplicitPathsAndDisablesBackgroundUpdateChecks()
     {
         var gameRoot = Path.Combine(_root, "Grand Theft Auto V");
