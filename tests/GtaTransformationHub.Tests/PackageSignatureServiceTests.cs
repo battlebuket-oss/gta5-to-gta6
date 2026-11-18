@@ -92,6 +92,27 @@ public sealed class PackageSignatureServiceTests : IDisposable
         Assert.Equal(correct, publisher.Fingerprint);
     }
 
+
+    [Fact]
+    public async Task RevokingPublisherKey_MakesPreviouslyTrustedSignatureUnknown()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+        var signed = Sign(CreateManifest(), rsa, fingerprint);
+
+        var trusted = await service.VerifyAsync(signed);
+        Assert.Equal(PackageSignatureStatus.TrustedPublisher, trusted.Status);
+
+        Assert.True(await store.RemoveAsync(fingerprint));
+
+        var afterRevocation = await service.VerifyAsync(signed);
+        Assert.Equal(PackageSignatureStatus.UnknownPublisher, afterRevocation.Status);
+    }
+
     private static PackageManifest Sign(PackageManifest manifest, RSA privateKey, string fingerprint)
     {
         var toSign = manifest with { SigningKeyId = fingerprint, Signature = null };
