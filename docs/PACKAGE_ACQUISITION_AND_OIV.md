@@ -36,6 +36,6 @@ This is deliberate. OIV's full installation semantics are broader than a safe co
 
 - Signed catalogue metadata and signed update manifests.
 - Publisher identity verification and licence/redistribution checks.
-- DNS-pinned outbound connections to close DNS-rebinding gaps.
+- Periodic security review of outbound download and redirect handling.
 - A complete, audited OIV/RPF adapter for supported operations.
 - Real installation tests against clean GTA V Legacy builds.
