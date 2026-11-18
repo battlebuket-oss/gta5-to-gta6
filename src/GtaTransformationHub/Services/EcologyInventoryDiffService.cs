@@ -23,6 +23,15 @@ public static class EcologyInventoryDiffService
         ValidateSnapshot(baseline, "Baseline", errors);
         ValidateSnapshot(candidate, "Candidate", errors);
 
+        var baselineSpeciesItems = baseline.Species ?? Array.Empty<EcologySpeciesIdentity>();
+        var candidateSpeciesItems = candidate.Species ?? Array.Empty<EcologySpeciesIdentity>();
+        var baselineHabitatItems = baseline.Habitats ?? Array.Empty<EcologyHabitatIdentity>();
+        var candidateHabitatItems = candidate.Habitats ?? Array.Empty<EcologyHabitatIdentity>();
+        var baselinePopulationItems = baseline.PopulationEntries ?? Array.Empty<EcologyPopulationEntry>();
+        var candidatePopulationItems = candidate.PopulationEntries ?? Array.Empty<EcologyPopulationEntry>();
+        var baselineWaterItems = baseline.WaterBodies ?? Array.Empty<EcologyWaterBodyIdentity>();
+        var candidateWaterItems = candidate.WaterBodies ?? Array.Empty<EcologyWaterBodyIdentity>();
+
         if (baseline.SchemaVersion != candidate.SchemaVersion)
             errors.Add("Inventory schema versions do not match.");
         if (!Same(baseline.GameBuild, candidate.GameBuild))
@@ -30,14 +39,19 @@ public static class EcologyInventoryDiffService
         if (!SameHash(baseline.GameExecutableSha256, candidate.GameExecutableSha256))
             errors.Add("The GTA5.exe fingerprint does not match the vanilla baseline.");
 
-        var baselineSpecies = IndexById(baseline.Species, item => item.Id, "baseline species", errors);
-        var candidateSpecies = IndexById(candidate.Species, item => item.Id, "candidate species", errors);
-        var baselineHabitats = IndexById(baseline.Habitats, item => item.Id, "baseline habitats", errors);
-        var candidateHabitats = IndexById(candidate.Habitats, item => item.Id, "candidate habitats", errors);
-        var baselinePopulation = IndexById(baseline.PopulationEntries, item => item.Id, "baseline population entries", errors);
-        var candidatePopulation = IndexById(candidate.PopulationEntries, item => item.Id, "candidate population entries", errors);
-        var baselineWater = IndexById(baseline.WaterBodies, item => item.Id, "baseline water bodies", errors);
-        var candidateWater = IndexById(candidate.WaterBodies, item => item.Id, "candidate water bodies", errors);
+        var baselineSpecies = IndexById(baselineSpeciesItems, item => item.Id, "baseline species", errors);
+        var candidateSpecies = IndexById(candidateSpeciesItems, item => item.Id, "candidate species", errors);
+        var baselineHabitats = IndexById(baselineHabitatItems, item => item.Id, "baseline habitats", errors);
+        var candidateHabitats = IndexById(candidateHabitatItems, item => item.Id, "candidate habitats", errors);
+        var baselinePopulation = IndexById(baselinePopulationItems, item => item.Id, "baseline population entries", errors);
+        var candidatePopulation = IndexById(candidatePopulationItems, item => item.Id, "candidate population entries", errors);
+        var baselineWater = IndexById(baselineWaterItems, item => item.Id, "baseline water bodies", errors);
+        var candidateWater = IndexById(candidateWaterItems, item => item.Id, "candidate water bodies", errors);
+
+        ValidateReferences(baselineSpeciesItems, baselineHabitatItems, baselinePopulationItems,
+            baselineWaterItems, "Baseline", errors);
+        ValidateReferences(candidateSpeciesItems, candidateHabitatItems, candidatePopulationItems,
+            candidateWaterItems, "Candidate", errors);
 
         foreach (var original in baselineSpecies.Values)
         {
@@ -77,7 +91,8 @@ public static class EcologyInventoryDiffService
             // improvements can be compared without silently replacing water behaviour.
         }
 
-        var baselineModelIds = baseline.Species
+        var baselineModelIds = baselineSpeciesItems
+            .Where(item => item.ModelIdentifiers is not null)
             .SelectMany(item => item.ModelIdentifiers)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var added = candidateSpecies.Values
@@ -121,7 +136,7 @@ public static class EcologyInventoryDiffService
                 errors.Add($"Population entry '{entry.Id}' references missing habitat '{entry.HabitatId}'.");
         }
 
-        ValidateGlobalModelUniqueness(candidate.Species, errors);
+        ValidateGlobalModelUniqueness(candidateSpeciesItems, errors);
         return new EcologyInventoryDiff(
             errors.Count == 0,
             errors,
@@ -150,7 +165,7 @@ public static class EcologyInventoryDiffService
         if (string.IsNullOrWhiteSpace(snapshot.ExtractorId) ||
             string.IsNullOrWhiteSpace(snapshot.ExtractorVersion))
             errors.Add($"{label} inventory has no extractor identity/version.");
-        if (snapshot.SourceArchiveSha256.Count == 0 ||
+        if (snapshot.SourceArchiveSha256 is null || snapshot.SourceArchiveSha256.Count == 0 ||
             snapshot.SourceArchiveSha256.Any(hash => !IsSha256(hash)))
             errors.Add($"{label} inventory has incomplete source archive hashes.");
 
@@ -178,6 +193,58 @@ public static class EcologyInventoryDiffService
                 errors.Add($"The {description} inventory contains duplicate identifier '{key}'.");
         }
         return result;
+    }
+
+    private static void ValidateReferences(
+        IReadOnlyList<EcologySpeciesIdentity> species,
+        IReadOnlyList<EcologyHabitatIdentity> habitats,
+        IReadOnlyList<EcologyPopulationEntry> populationEntries,
+        IReadOnlyList<EcologyWaterBodyIdentity> waterBodies,
+        string label,
+        List<string> errors)
+    {
+        var speciesIds = species.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var habitatIds = habitats.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var waterIds = waterBodies.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in species)
+        {
+            if (item.ModelIdentifiers is null || item.ModelIdentifiers.Count == 0)
+                errors.Add($"{label} species '{item.Id}' has no model identifiers.");
+            if (item.HabitatIds is null)
+            {
+                errors.Add($"{label} species '{item.Id}' has no habitat list.");
+                continue;
+            }
+            foreach (var habitatId in item.HabitatIds)
+                if (!habitatIds.Contains(habitatId))
+                    errors.Add($"{label} species '{item.Id}' references missing habitat '{habitatId}'.");
+        }
+
+        foreach (var habitat in habitats)
+        {
+            if (!string.IsNullOrWhiteSpace(habitat.WaterBodyId) && !waterIds.Contains(habitat.WaterBodyId))
+                errors.Add($"{label} habitat '{habitat.Id}' references missing water body '{habitat.WaterBodyId}'.");
+        }
+
+        foreach (var entry in populationEntries)
+        {
+            if (!speciesIds.Contains(entry.SpeciesId))
+                errors.Add($"{label} population entry '{entry.Id}' references missing species '{entry.SpeciesId}'.");
+            if (!habitatIds.Contains(entry.HabitatId))
+                errors.Add($"{label} population entry '{entry.Id}' references missing habitat '{entry.HabitatId}'.");
+            if (!IsSha256(entry.DefinitionSha256))
+                errors.Add($"{label} population entry '{entry.Id}' has an invalid definition fingerprint.");
+        }
+
+        foreach (var water in waterBodies)
+        {
+            if (string.IsNullOrWhiteSpace(water.WaterType) ||
+                string.IsNullOrWhiteSpace(water.SimulationProfileId) ||
+                string.IsNullOrWhiteSpace(water.InteractionProfileId) ||
+                string.IsNullOrWhiteSpace(water.RenderingProfileId))
+                errors.Add($"{label} water body '{water.Id}' has incomplete water profile identifiers.");
+        }
     }
 
     private static void ValidateGlobalModelUniqueness(
