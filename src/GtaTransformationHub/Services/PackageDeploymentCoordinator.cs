@@ -138,6 +138,12 @@ public sealed class PackageDeploymentCoordinator
             foreach (var file in manifest.Files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (file is null)
+                {
+                    errors.Add(manifest.Name + " contains an empty file entry.");
+                    continue;
+                }
+
                 string relativeSource;
                 string relativeDestination;
                 try
@@ -158,12 +164,18 @@ public sealed class PackageDeploymentCoordinator
                     Path.GetExtension(relativeDestination).Equals(".exe", StringComparison.OrdinalIgnoreCase))
                     errors.Add(manifest.Name + " attempts to replace an executable. Executable replacement is blocked.");
 
-                if (file.SizeBytes < 0 ||
+                if (file.SizeBytes < 0 || file.SizeBytes > 512L * 1024 * 1024 ||
                     string.IsNullOrWhiteSpace(file.Sha256) ||
                     file.Sha256.Length != 64 ||
                     !file.Sha256.All(Uri.IsHexDigit))
                 {
                     errors.Add(manifest.Name + " contains a file with invalid size or SHA-256 metadata.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(imported.PackageRoot))
+                {
+                    errors.Add(manifest.Name + " has no local package directory.");
                     continue;
                 }
 
