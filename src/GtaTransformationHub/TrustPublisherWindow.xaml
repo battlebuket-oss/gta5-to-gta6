@@ -1,0 +1,62 @@
+<Window x:Class="GtaTransformationHub.TrustPublisherWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Trust a Mod Publisher"
+        Width="650" Height="590"
+        MinWidth="560" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackground}"
+        Foreground="{StaticResource PrimaryText}"
+        ResizeMode="CanResize">
+  <Grid Margin="22">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,16">
+      <TextBlock Text="TRUSTED PUBLISHER" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
+      <TextBlock Text="Add an RSA public key" FontSize="23" FontWeight="SemiBold" Margin="0,4,0,0"/>
+      <TextBlock Text="Only trust a key after comparing its SHA-256 fingerprint with a value published through an independent official channel. Trusting a key allows the Hub to authenticate packages signed by that publisher." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Margin="0,0,0,12">
+      <TextBlock Text="Publisher name" FontWeight="SemiBold" Margin="0,0,0,5"/>
+      <TextBox x:Name="PublisherNameText" AutomationProperties.Name="Publisher name" Padding="9"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="2" Margin="0,0,0,12">
+      <TextBlock Text="Independently verified SHA-256 fingerprint" FontWeight="SemiBold" Margin="0,0,0,5"/>
+      <TextBox x:Name="FingerprintText" AutomationProperties.Name="Verified public key fingerprint" Padding="9" FontFamily="Consolas"/>
+    </StackPanel>
+
+    <StackPanel Grid.Row="3">
+      <TextBlock Text="Public key PEM (BEGIN PUBLIC KEY)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+      <TextBox x:Name="PublicKeyText"
+               AutomationProperties.Name="RSA public key PEM"
+               AcceptsReturn="True"
+               TextWrapping="NoWrap"
+               VerticalScrollBarVisibility="Auto"
+               HorizontalScrollBarVisibility="Auto"
+               FontFamily="Consolas"
+               FontSize="11"
+               Padding="9"/>
+    </StackPanel>
+
+    <TextBlock Grid.Row="4"
+               Text="Private keys are not accepted or stored. The fingerprint is calculated from the public key and must match your independently verified value."
+               Foreground="{StaticResource SecondaryText}"
+               FontSize="11"
+               TextWrapping="Wrap"
+               Margin="0,12,0,14"/>
+
+    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="Cancel" Padding="18,9" Margin="0,0,8,0" IsCancel="True"/>
+      <Button Content="Trust this publisher key" Padding="18,9" Background="{StaticResource AccentBrush}" Foreground="White" Click="TrustButton_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>
