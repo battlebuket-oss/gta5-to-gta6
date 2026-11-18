@@ -47,6 +47,10 @@ public sealed class PackageRemovalServiceTests : IDisposable
 
         await deployer.RollbackLatestAsync(removal.TransactionId);
         Assert.Equal("removable package file", await File.ReadAllTextAsync(target));
+
+        var removalAfterRollback = await remover.RemovePackagesAsync(installation, new[] { imported });
+        Assert.Equal(1, removalAfterRollback.FilesApplied);
+        Assert.False(File.Exists(target));
     }
 
     [Fact]
@@ -82,6 +86,28 @@ public sealed class PackageRemovalServiceTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             remover.RemovePackagesAsync(CreateInstallation(), new[] { imported }));
+        Assert.Equal(content, await File.ReadAllBytesAsync(target));
+    }
+
+
+    [Fact]
+    public async Task RemovePackage_DoesNotDeleteFileRecreatedAfterCompletedRemoval()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("package bytes");
+        var imported = await ImportPackageAsync(content);
+        var installation = CreateInstallation();
+        var deployer = new TransactionalDeploymentService(dataRoot: _transactionsRoot);
+        var coordinator = new PackageDeploymentCoordinator(deployer, _stagingRoot);
+        await coordinator.ApplyAsync(installation, new[] { imported });
+
+        var target = Path.Combine(_gameRoot, "mods", "sample.dat");
+        var remover = new TransactionalRemovalService(
+            new GameProcessMonitor(), _transactionsRoot);
+        await remover.RemovePackagesAsync(installation, new[] { imported });
+        await File.WriteAllBytesAsync(target, content);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            remover.RemovePackagesAsync(installation, new[] { imported }));
         Assert.Equal(content, await File.ReadAllBytesAsync(target));
     }
 
