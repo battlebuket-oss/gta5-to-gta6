@@ -87,7 +87,7 @@ public sealed class TransactionalDeploymentService
 
                     var record = new DeploymentJournalEntry(
                         item.PackageId, item.DestinationRelativePath, existed, backupRelative,
-                        item.ExpectedSha256, originalSha256);
+                        item.ExpectedSha256, originalSha256, item.PackageVersion);
                     journal = journal with { Entries = journal.Entries.Append(record).ToArray() };
                     await SaveJournalAsync(journalPath, journal, cancellationToken);
 
@@ -253,7 +253,7 @@ public sealed class TransactionalDeploymentService
             if (!actualHash.Equals(file.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("A package file failed SHA-256 verification: " + file.SourcePath);
 
-            result.Add(new ValidatedFile(file.PackageId, source, destination, actualHash));
+            result.Add(new ValidatedFile(file.PackageId, source, destination, actualHash, file.PackageVersion));
         }
 
         return result;
@@ -430,7 +430,8 @@ public sealed class TransactionalDeploymentService
     }
 
     private sealed record ValidatedFile(
-        string PackageId, string SourcePath, string DestinationRelativePath, string ExpectedSha256);
+        string PackageId, string SourcePath, string DestinationRelativePath, string ExpectedSha256,
+        string PackageVersion);
 }
 
 public sealed record DeploymentResult(string TransactionId, int FilesApplied, string TransactionDirectory);
@@ -447,4 +448,5 @@ public sealed record DeploymentJournalEntry(
     bool ExistedBefore,
     string BackupFile,
     string DeployedSha256,
-    string? OriginalSha256);
+    string? OriginalSha256,
+    string PackageVersion = "");
