@@ -89,8 +89,8 @@ public sealed class RageCliMetadataDiscoveryServiceTests
         Assert.Equal(@"C:/Games/GTA V/x64v.rpf", hit.ArchivePath);
         Assert.Equal("x64v.rpf/levels/gta5/popgroups.ymt", hit.Path);
         Assert.Equal("popgroups.ymt", hit.Name);
-        Assert.Equal(1024, hit.Size);
-        Assert.Equal(2048, hit.MemorySize);
+        Assert.Equal(1024L, hit.Size);
+        Assert.Equal(2048L, hit.MemorySize);
         Assert.Equal("resource", hit.Kind);
         Assert.Equal("0x12345678", hit.Hash);
         Assert.Equal("0x87654321", hit.StemHash);
@@ -99,8 +99,6 @@ public sealed class RageCliMetadataDiscoveryServiceTests
     [Fact]
     public void ParseSearchJson_RejectsTraversalOrRootedInternalPaths()
     {
-        using var document = JsonDocument.Parse(SearchJson);
-        var root = document.RootElement[0].Clone();
         var forged = JsonSerializer.Serialize(new[]
         {
             new
