@@ -12,7 +12,7 @@ The current development branch includes:
 - Local ZIP package import with a root-level gta-hub-manifest.json.
 - Archive path, duplicate, link, undeclared-file and expansion-size checks.
 - SHA-256 and file-size verification for every manifest-declared file.
-- A local package library and persistent user profiles.
+- A local package library and persistent user profiles with exact package-version pins.
 - Desired-profile reconciliation using version-aware deployment journals: stale packages are removed, intact active packages are preserved, and missing/repair-needed packages are deployed.
 - Package preflight for build compatibility, dependencies, conflicts, exclusive groups, destination collisions and file hashes.
 - Copy-only staged deployment with per-file backups and transaction journals.
@@ -51,7 +51,7 @@ Do not use the development build on your only game installation. Test against a 
 
 See [Production readiness status](docs/PRODUCTION_STATUS.md) for implemented functions, outstanding engineering work and mandatory release gates.
 
-Outstanding work includes trusted package signatures, automatic downloads, host-specific installation adapters, a tested mod compatibility matrix, profile version pinning, in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
+Outstanding work includes trusted package signatures, automatic downloads, host-specific installation adapters, a tested mod compatibility matrix, in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
 
 ## Product experience priorities
 
