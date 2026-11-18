@@ -55,6 +55,9 @@ public partial class MainWindow : Window
 
     private void LaunchButton_Click(object sender, RoutedEventArgs e)
     {
+        StatusText.Text = "Launch is intentionally disabled until verified mod deployment and profile validation are connected.";
+        return;
+
         if (IsGameRunning())
         {
             RefreshSessionState();
