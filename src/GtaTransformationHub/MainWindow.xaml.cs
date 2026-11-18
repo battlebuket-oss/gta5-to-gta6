@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
     private readonly ProfileStoreService _profileStore = new();
+    private readonly TrustedPublisherStore _trustedPublisherStore = new();
     private readonly ObservableCollection<ImportedPackage> _packages = new();
     private readonly ObservableCollection<ModProfile> _profiles = new();
     private readonly DispatcherTimer _processTimer;
@@ -181,6 +182,43 @@ public partial class MainWindow : Window
             _deploymentReady = false;
             DetectionText.Text = exception.Message;
             StatusText.Text = "Game installation validation failed.";
+        }
+
+        RefreshSessionState();
+    }
+
+    private async void TrustPublisherButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        var dialog = new TrustPublisherWindow { Owner = this };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            var publisher = await _trustedPublisherStore.AddAsync(
+                dialog.PublisherName,
+                dialog.PublicKeyPem,
+                dialog.Fingerprint);
+            StatusText.Text = "Trusted publisher '" + publisher.Name +
+                              "' (" + publisher.Fingerprint + "). Package signatures will be rechecked during preflight.";
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Publisher key was not trusted.";
+            MessageBox.Show(
+                exception.Message,
+                "Publisher trust failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
         }
 
         RefreshSessionState();
