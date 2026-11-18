@@ -1,0 +1,12 @@
+<Application x:Class="GtaTransformationHub.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+  <Application.Resources>
+    <SolidColorBrush x:Key="WindowBackground" Color="#101114"/>
+    <SolidColorBrush x:Key="PanelBackground" Color="#191B20"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#E5484D"/>
+    <SolidColorBrush x:Key="PrimaryText" Color="#F4F4F5"/>
+    <SolidColorBrush x:Key="SecondaryText" Color="#A1A1AA"/>
+  </Application.Resources>
+</Application>
