@@ -64,6 +64,8 @@ Outputs are stored under:
 %LOCALAPPDATA%\GtaTransformationHub\rage-cli\metadata-dumps\<full GTA5.exe SHA-256>\
 ```
 
+Each JSON dump is also given a bounded structural summary in the index: object/array/scalar counts, maximum nesting depth and property-name frequency. Property-name collection is capped at 4,096 unique names, and individual names longer than 256 characters are shortened with an explicit truncation marker. These limits are recorded in the summary. The structural analyser does not treat field names or string values as proof of species identity, habitat, spawn behaviour or water simulation semantics.
+
 The JSON dumps are inspection artifacts for building and validating the semantic inventory parser. They are **not** a verified species inventory and do not unlock ecology-sensitive packages.
 
 ## What this scan covers — and what it does not
