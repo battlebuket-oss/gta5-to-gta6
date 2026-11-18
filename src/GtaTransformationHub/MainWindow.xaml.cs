@@ -554,49 +554,18 @@ public partial class MainWindow : Window
         try
         {
             PackageList.SelectedItems.Clear();
-            var missing = new List<string>();
-            var ambiguous = new List<string>();
+            var resolution = ProfilePackageResolver.Resolve(profile, _packages);
 
-            foreach (var packageId in profile.EnabledPackageIds)
-            {
-                var matchingPackages = _packages
-                    .Where(item => item.Manifest.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                if (profile.PackageVersions is not null &&
-                    profile.PackageVersions.TryGetValue(packageId, out var pinnedVersion))
-                {
-                    var pinnedPackage = matchingPackages.FirstOrDefault(item =>
-                        item.Manifest.Version.Equals(pinnedVersion, StringComparison.OrdinalIgnoreCase));
-
-                    if (pinnedPackage is null)
-                        missing.Add(packageId + "@" + pinnedVersion);
-                    else
-                        PackageList.SelectedItems.Add(pinnedPackage);
-
-                    continue;
-                }
-
-                if (matchingPackages.Length == 0)
-                {
-                    missing.Add(packageId);
-                }
-                else if (matchingPackages.Length == 1)
-                {
-                    PackageList.SelectedItems.Add(matchingPackages[0]);
-                }
-                else
-                {
-                    ambiguous.Add(packageId);
-                }
-            }
+            foreach (var package in resolution.SelectedPackages)
+                PackageList.SelectedItems.Add(package);
 
             var warnings = new List<string>();
-            if (missing.Count > 0)
-                warnings.Add("Missing imported packages: " + string.Join(", ", missing));
-            if (ambiguous.Count > 0)
+            if (resolution.MissingPackages.Count > 0)
+                warnings.Add("Missing imported packages: " +
+                             string.Join(", ", resolution.MissingPackages));
+            if (resolution.AmbiguousPackages.Count > 0)
                 warnings.Add("Choose an exact version for these legacy profile entries before saving: " +
-                             string.Join(", ", ambiguous));
+                             string.Join(", ", resolution.AmbiguousPackages));
 
             ProfileWarningText.Text = warnings.Count == 0
                 ? "Package versions are pinned for this profile."
