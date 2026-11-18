@@ -109,7 +109,7 @@ public static class EcologyInventoryDiffService
             if (species.ModelIdentifiers.Count == 0)
                 errors.Add($"New species '{species.Id}' has no model identifiers.");
 
-            foreach (var modelId in species.ModelIdentifiers)
+            foreach (var modelId in species.ModelIdentifiers ?? Array.Empty<string>())
             {
                 if (baselineModelIds.Contains(modelId))
                     errors.Add($"New species '{species.Id}' reuses a vanilla model identifier '{modelId}'.");
@@ -121,7 +121,7 @@ public static class EcologyInventoryDiffService
             if (entries.Length == 0)
                 errors.Add($"New species '{species.Id}' has no additive population or distribution entry.");
 
-            foreach (var habitatId in species.HabitatIds)
+            foreach (var habitatId in species.HabitatIds ?? Array.Empty<string>())
             {
                 if (!candidateHabitats.ContainsKey(habitatId))
                     errors.Add($"New species '{species.Id}' references missing habitat '{habitatId}'.");
@@ -183,6 +183,11 @@ public static class EcologyInventoryDiffService
         var result = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
         foreach (var value in values)
         {
+            if (value is null)
+            {
+                errors.Add($"The {description} inventory contains a null record.");
+                continue;
+            }
             var key = keySelector(value);
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -254,7 +259,7 @@ public static class EcologyInventoryDiffService
         var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in species)
         {
-            foreach (var model in item.ModelIdentifiers)
+            foreach (var model in item.ModelIdentifiers ?? Array.Empty<string>())
             {
                 if (string.IsNullOrWhiteSpace(model))
                 {
@@ -294,7 +299,8 @@ public static class EcologyInventoryDiffService
         Same(left.SimulationProfileId, right.SimulationProfileId) &&
         Same(left.InteractionProfileId, right.InteractionProfileId);
 
-    private static bool SetEquals(IReadOnlyList<string> left, IReadOnlyList<string> right) =>
+    private static bool SetEquals(IReadOnlyList<string>? left, IReadOnlyList<string>? right) =>
+        left is not null && right is not null &&
         left.ToHashSet(StringComparer.OrdinalIgnoreCase)
             .SetEquals(right);
 
