@@ -172,6 +172,23 @@ public sealed class EcologyInventoryDiffServiceTests
     }
 
     [Fact]
+    public void Compare_RejectsMalformedPopulationReferencesWithoutThrowing()
+    {
+        var baseline = CreateBaseline();
+        var candidate = baseline with
+        {
+            PopulationEntries = baseline.PopulationEntries.Append(
+                new EcologyPopulationEntry("malformed-entry", null!, null!, HashB)).ToArray()
+        };
+
+        var result = EcologyInventoryDiffService.Compare(baseline, candidate);
+
+        Assert.False(result.VanillaPreserved);
+        Assert.Contains(result.Errors, error => error.Contains("references missing species"));
+        Assert.Contains(result.Errors, error => error.Contains("references missing habitat"));
+    }
+
+    [Fact]
     public void Compare_RejectsDifferentGameBuildOrExecutableFingerprint()
     {
         var baseline = CreateBaseline();
