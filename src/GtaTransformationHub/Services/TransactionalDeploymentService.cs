@@ -165,8 +165,7 @@ public sealed class TransactionalDeploymentService
                     await File.ReadAllTextAsync(journalPath, cancellationToken))
                     ?? throw new InvalidDataException("An interrupted deployment journal is invalid.");
 
-                if (!string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
-                    throw new InvalidDataException("A transaction journal ID does not match its directory.");
+                ValidateJournal(journal, transactionId);
 
                 if (string.Equals(journal.State, "Applying", StringComparison.Ordinal))
                 {
@@ -209,8 +208,7 @@ public sealed class TransactionalDeploymentService
                 await File.ReadAllTextAsync(journalPath, cancellationToken))
                 ?? throw new InvalidDataException("The deployment journal is invalid.");
 
-            if (!string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
-                throw new InvalidDataException("The transaction journal ID does not match its directory.");
+            ValidateJournal(journal, transactionId);
             if (!string.Equals(journal.State, "Applied", StringComparison.Ordinal))
                 throw new InvalidOperationException("Only a fully applied transaction can be rolled back.");
 
@@ -366,6 +364,62 @@ public sealed class TransactionalDeploymentService
 
         var rolledBack = journal with { State = "RolledBack" };
         await SaveJournalAsync(journalPath, rolledBack, cancellationToken);
+    }
+
+    private static void ValidateJournal(DeploymentJournal journal, string expectedTransactionId)
+    {
+        if (!string.Equals(journal.TransactionId, expectedTransactionId, StringComparison.Ordinal))
+            throw new InvalidDataException("A transaction journal ID does not match its directory.");
+
+        if (journal.Entries is null)
+            throw new InvalidDataException("A transaction journal has no entries array.");
+
+        if (journal.State is not ("Applying" or "Applied" or "RolledBack"))
+            throw new InvalidDataException("A transaction journal contains an unknown state.");
+
+        foreach (var entry in journal.Entries)
+        {
+            if (entry is null ||
+                string.IsNullOrWhiteSpace(entry.PackageId) ||
+                string.IsNullOrWhiteSpace(entry.DeployedSha256) ||
+                entry.DeployedSha256.Length != 64 ||
+                !entry.DeployedSha256.All(Uri.IsHexDigit))
+                throw new InvalidDataException("A transaction journal contains an invalid file entry.");
+
+            _ = ValidateRelativePath(entry.DestinationRelativePath);
+
+            if (entry.ExistedBefore)
+            {
+                _ = ValidateRelativePath(entry.BackupFile);
+                if (string.IsNullOrWhiteSpace(entry.OriginalSha256) ||
+                    entry.OriginalSha256.Length != 64 ||
+                    !entry.OriginalSha256.All(Uri.IsHexDigit))
+                    throw new InvalidDataException("A transaction journal contains an invalid original-file hash.");
+            }
+
+            if (entry.PackageId.StartsWith("removed:", StringComparison.OrdinalIgnoreCase))
+            {
+                var marker = entry.PackageId.Split(':', 4);
+                if (marker.Length != 4 ||
+                    !PackageIdValidator.IsValid(marker[1]) ||
+                    !Version.TryParse(marker[2], out _) ||
+                    string.IsNullOrWhiteSpace(marker[3]) ||
+                    !string.Equals(entry.PackageVersion, marker[2], StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("A package-removal journal marker is invalid.");
+
+                foreach (var ownerTransactionId in marker[3].Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (ownerTransactionId.Length > 128 ||
+                        ownerTransactionId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                        ownerTransactionId.Contains("..", StringComparison.Ordinal))
+                        throw new InvalidDataException("A package-removal journal contains an invalid owner reference.");
+                }
+            }
+            else if (!PackageIdValidator.IsValid(entry.PackageId))
+            {
+                throw new InvalidDataException("A transaction journal contains an invalid package ID.");
+            }
+        }
     }
 
     private static string ValidateGameRoot(string gameRoot)
