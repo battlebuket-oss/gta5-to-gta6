@@ -17,6 +17,7 @@ public sealed record RageCliCatalogueBuildResult(
     long ReportBytes,
     string DatabaseSha256,
     string ReportSha256,
+    string GameExecutableSha256,
     TimeSpan Duration,
     string Summary);
 
@@ -184,7 +185,15 @@ public sealed class RageCliToolchainService
         Directory.CreateDirectory(_dataRoot);
         EnsureDirectoryIsNotReparsePoint(_dataRoot);
 
-        var databaseDirectory = Path.Combine(_dataRoot, "catalogue");
+        // Keep catalogues isolated by the exact GTA5.exe bytes. A scan from a
+        // different game build must never silently reuse or overwrite this build's DB.
+        var gameExecutableSha256 = await ComputeSha256Async(executable, cancellationToken);
+        var buildDirectoryName = gameExecutableSha256[..16].ToLowerInvariant();
+        var catalogueRoot = Path.Combine(_dataRoot, "catalogue");
+        Directory.CreateDirectory(catalogueRoot);
+        EnsureDirectoryIsNotReparsePoint(catalogueRoot);
+
+        var databaseDirectory = Path.Combine(catalogueRoot, buildDirectoryName);
         Directory.CreateDirectory(databaseDirectory);
         EnsureDirectoryIsNotReparsePoint(databaseDirectory);
 
@@ -239,6 +248,7 @@ public sealed class RageCliToolchainService
             reportInfo.Length,
             databaseHash,
             reportHash,
+            gameExecutableSha256,
             result.Duration,
             result.StandardOutput.Trim());
     }
