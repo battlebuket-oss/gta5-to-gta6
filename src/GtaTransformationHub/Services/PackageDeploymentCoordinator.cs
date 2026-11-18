@@ -68,11 +68,16 @@ public sealed class PackageDeploymentCoordinator
                 string.IsNullOrWhiteSpace(manifest.Author))
                 errors.Add(manifest.Id + " is missing its package name or author.");
 
+            if (!string.IsNullOrWhiteSpace(manifest.ExclusiveGroup) &&
+                !PackageIdValidator.IsValid(manifest.ExclusiveGroup))
+                errors.Add(manifest.Name + " has an invalid exclusive group ID.");
+
             if (!Uri.TryCreate(manifest.SourceUri, UriKind.Absolute, out var sourceUri) ||
                 sourceUri.Scheme != Uri.UriSchemeHttps)
                 errors.Add(manifest.Name + " does not declare a valid HTTPS author/source page.");
 
-            if (string.IsNullOrWhiteSpace(manifest.Licence))
+            var licenceText = manifest.Licence ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(licenceText))
                 errors.Add(manifest.Name + " is missing its licence/permission statement.");
 
             if (!Version.TryParse(manifest.Version, out _))
@@ -175,10 +180,10 @@ public sealed class PackageDeploymentCoordinator
                     filesToDeploy++;
             }
 
-            if (manifest.Licence.Contains("unknown", StringComparison.OrdinalIgnoreCase) ||
-                manifest.Licence.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
-                manifest.Licence.Contains("review", StringComparison.OrdinalIgnoreCase) ||
-                manifest.Licence.Contains("prohibit", StringComparison.OrdinalIgnoreCase))
+            if (licenceText.Contains("unknown", StringComparison.OrdinalIgnoreCase) ||
+                licenceText.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
+                licenceText.Contains("review", StringComparison.OrdinalIgnoreCase) ||
+                licenceText.Contains("prohibit", StringComparison.OrdinalIgnoreCase))
                 warnings.Add(manifest.Name + " has licence terms requiring manual review.");
 
             if (manifest.Files.Count == 0)
@@ -188,6 +193,9 @@ public sealed class PackageDeploymentCoordinator
         foreach (var imported in packageMap.Values)
         {
             var manifest = imported.Manifest;
+            if (manifest.Dependencies is null || manifest.Conflicts is null)
+                continue;
+
             foreach (var dependency in manifest.Dependencies)
             {
                 if (!packageMap.ContainsKey(dependency))
