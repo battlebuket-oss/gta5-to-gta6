@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.2.0-research",
+  "catalogueVersion": "0.3.0-research",
   "categories": [
     {
       "id": "graphics",
@@ -34,6 +34,34 @@
     {
       "id": "experimental-ai",
       "name": "Experimental AI-assisted features"
+    },
+    {
+      "id": "accessibility",
+      "name": "Accessibility, controls and comfort"
+    },
+    {
+      "id": "activities",
+      "name": "Side activities, jobs and world events"
+    },
+    {
+      "id": "combat",
+      "name": "Combat, weapons and encounter systems"
+    },
+    {
+      "id": "audio",
+      "name": "Audio, ambience and dialogue"
+    },
+    {
+      "id": "wildlife",
+      "name": "Wildlife, animals and ecosystems"
+    },
+    {
+      "id": "economy",
+      "name": "Economy, shops and services"
+    },
+    {
+      "id": "ui",
+      "name": "Interface, HUD and navigation"
     }
   ],
   "packages": [
@@ -161,6 +189,18 @@
       "id": "story-expansion",
       "name": "Story Expansion",
       "description": "A future gameplay/story profile. Enable only tested single-player packages with pinned dependencies.",
+      "enabledPackageIds": []
+    },
+    {
+      "id": "story-complete",
+      "name": "Story & World Expansion",
+      "description": "Prioritises compatible single-player story expansions, side missions, activities, interiors and ambient world systems. Every mission pack must be tested for save compatibility and load order.",
+      "enabledPackageIds": []
+    },
+    {
+      "id": "accessibility-comfort",
+      "name": "Accessibility & Comfort",
+      "description": "Prioritises readable UI, subtitle clarity, control flexibility, camera comfort, audio clarity and other verified accessibility improvements. Native game settings are preferred over risky modifications.",
       "enabledPackageIds": []
     }
   ],
