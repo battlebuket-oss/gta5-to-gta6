@@ -88,13 +88,10 @@ public sealed class PackageArchiveService
             manifestEntry.Length > MaximumManifestBytes)
             throw new InvalidDataException("The archive must contain a root-level gta-hub-manifest.json under 1 MB.");
 
-        PackageManifest manifest;
-        await using (var manifestStream = manifestEntry.Open())
-        {
-            manifest = await JsonSerializer.DeserializeAsync<PackageManifest>(
-                manifestStream, JsonOptions, cancellationToken)
-                ?? throw new InvalidDataException("The package manifest is empty or invalid.");
-        }
+        var manifestBytes = await ReadEntryBoundedAsync(
+            manifestEntry, MaximumManifestBytes, cancellationToken);
+        var manifest = JsonSerializer.Deserialize<PackageManifest>(manifestBytes, JsonOptions)
+            ?? throw new InvalidDataException("The package manifest is empty or invalid.");
 
         ValidateManifest(manifest);
 
@@ -110,6 +107,11 @@ public sealed class PackageArchiveService
                 throw new InvalidDataException("The manifest contains duplicate source paths.");
             if (!filesByPath.ContainsKey(sourcePath))
                 throw new InvalidDataException("A manifest file is missing from the archive: " + sourcePath);
+
+            var archiveEntry = filesByPath[sourcePath];
+            if (archiveEntry.Length != file.SizeBytes)
+                throw new InvalidDataException(
+                    "The manifest file size does not match the ZIP directory entry: " + sourcePath);
         }
 
         var unlisted = filesByPath.Keys.Where(path =>
@@ -139,14 +141,8 @@ public sealed class PackageArchiveService
                 var destination = ResolveContainedPath(stagingPath, item.Key);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
 
-                await using (var input = filesByPath[item.Key].Open())
-                await using (var output = new FileStream(
-                    destination, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                    81920, FileOptions.Asynchronous | FileOptions.WriteThrough))
-                {
-                    await input.CopyToAsync(output, cancellationToken);
-                    await output.FlushAsync(cancellationToken);
-                }
+                await CopyEntryBoundedAsync(
+                    filesByPath[item.Key], destination, item.Value.SizeBytes, cancellationToken);
 
                 var info = new FileInfo(destination);
                 if (info.Length != item.Value.SizeBytes)
@@ -176,6 +172,68 @@ public sealed class PackageArchiveService
                 Directory.Delete(stagingPath, recursive: true);
             throw;
         }
+    }
+
+
+    private static async Task<byte[]> ReadEntryBoundedAsync(
+        ZipArchiveEntry entry,
+        int maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        if (entry.Length < 0 || entry.Length > maximumBytes)
+            throw new InvalidDataException("The manifest exceeds its decompression limit.");
+
+        await using var input = entry.Open();
+        using var output = new MemoryStream((int)entry.Length);
+        var buffer = new byte[81920];
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read == 0)
+                break;
+
+            if (output.Length + read > maximumBytes)
+                throw new InvalidDataException("The manifest expanded beyond its decompression limit.");
+
+            output.Write(buffer, 0, read);
+        }
+
+        return output.ToArray();
+    }
+
+    private static async Task CopyEntryBoundedAsync(
+        ZipArchiveEntry entry,
+        string destination,
+        long expectedSize,
+        CancellationToken cancellationToken)
+    {
+        if (expectedSize < 0 || expectedSize > MaximumFileBytes || entry.Length != expectedSize)
+            throw new InvalidDataException("A package entry has an invalid or unexpected expanded size.");
+
+        await using var input = entry.Open();
+        await using var output = new FileStream(
+            destination, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+            81920, FileOptions.Asynchronous | FileOptions.WriteThrough);
+
+        var buffer = new byte[81920];
+        long copied = 0;
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read == 0)
+                break;
+
+            copied = checked(copied + read);
+            if (copied > expectedSize || copied > MaximumFileBytes)
+                throw new InvalidDataException("A package entry expanded beyond its declared size.");
+
+            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
+
+        if (copied != expectedSize)
+            throw new InvalidDataException("A package entry expanded to a size different from its declaration.");
+
+        await output.FlushAsync(cancellationToken);
     }
 
     private static void ValidateManifest(PackageManifest manifest)
