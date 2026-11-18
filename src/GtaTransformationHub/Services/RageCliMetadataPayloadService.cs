@@ -16,7 +16,8 @@ public sealed record RageCliMetadataPayload(
     string DumpJsonPath,
     long DumpJsonBytes,
     string DumpJsonSha256,
-    string JsonRootKind);
+    string JsonRootKind,
+    RageCliJsonStructureSummary JsonStructure);
 
 public sealed record RageCliMetadataDumpResult(
     string IndexReportPath,
@@ -235,14 +236,19 @@ public sealed class RageCliMetadataPayloadService
                     throw new InvalidDataException("The aggregate metadata JSON output would exceed 512 MB.");
 
                 string jsonRootKind;
+                RageCliJsonStructureSummary jsonStructure;
                 await using (var dumpStream = new FileStream(
                     temporaryJsonPath, FileMode.Open, FileAccess.Read, FileShare.Read,
                     81920, FileOptions.Asynchronous | FileOptions.SequentialScan))
-                using (var parsed = await JsonDocument.ParseAsync(dumpStream, cancellationToken: cancellationToken))
+                using (var parsed = await JsonDocument.ParseAsync(
+                    dumpStream,
+                    new JsonDocumentOptions { MaxDepth = RageCliJsonStructureAnalyzer.MaximumDepth },
+                    cancellationToken))
                 {
                     jsonRootKind = parsed.RootElement.ValueKind.ToString();
                     if (parsed.RootElement.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array))
                         throw new InvalidDataException("The metadata JSON dump has an unexpected root value.");
+                    jsonStructure = RageCliJsonStructureAnalyzer.Analyze(parsed.RootElement);
                 }
 
                 var finalJsonPath = Path.Combine(
@@ -275,7 +281,8 @@ public sealed class RageCliMetadataPayloadService
                     finalJsonPath,
                     finalInfo.Length,
                     finalHash,
-                    jsonRootKind));
+                    jsonRootKind,
+                    jsonStructure));
             }
             catch (Exception exception) when (
                 exception is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or
