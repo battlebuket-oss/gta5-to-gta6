@@ -15,6 +15,7 @@ public sealed class TransactionalRemovalService
         string RelativePath,
         string ExpectedSha256,
         string FullPath,
+        string PackageVersion,
         IReadOnlyList<string> OwnerTransactionIds);
 
     private static readonly SemaphoreSlim RemovalLock = new(1, 1);
@@ -94,7 +95,7 @@ public sealed class TransactionalRemovalService
                             ". It will not remove a file it cannot prove it currently manages.");
 
                     candidates.Add(new RemovalCandidate(
-                        package.Manifest.Id, relativePath, file.Sha256, destination, owners));
+                        package.Manifest.Id, relativePath, file.Sha256, destination, package.Manifest.Version, owners));
                 }
             }
 
@@ -138,6 +139,7 @@ public sealed class TransactionalRemovalService
                         throw new InvalidDataException("A removal backup failed SHA-256 verification.");
 
                     var removalMarker = "removed:" + candidate.PackageId + ":" +
+                                        candidate.PackageVersion + ":" +
                                         string.Join(",", candidate.OwnerTransactionIds);
                     var entry = new DeploymentJournalEntry(
                         removalMarker,
