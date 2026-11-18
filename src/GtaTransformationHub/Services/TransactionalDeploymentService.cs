@@ -388,6 +388,7 @@ public sealed class TransactionalDeploymentService
                 throw new InvalidDataException("A transaction journal contains an invalid file entry.");
 
             _ = ValidateRelativePath(entry.DestinationRelativePath);
+            ProtectedGamePathPolicy.ValidateDestination(entry.DestinationRelativePath);
 
             if (entry.ExistedBefore)
             {

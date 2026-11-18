@@ -25,14 +25,14 @@ public sealed class TransactionalDeploymentServiceTests : IDisposable
     [Fact]
     public async Task ApplyAndRollback_RestoresOriginalFile()
     {
-        var destination = Path.Combine(_gameRoot, "update.rpf");
+        var destination = Path.Combine(_gameRoot, "update.dat");
         File.WriteAllText(destination, "original");
-        var source = CreatePackageFile("update.rpf", "replacement");
+        var source = CreatePackageFile("update.dat", "replacement");
         var service = new TransactionalDeploymentService(dataRoot: _transactionRoot);
 
         var result = await service.ApplyAsync(_gameRoot, _packageRoot, new[]
         {
-            Entry("update.rpf", source)
+            Entry("update.dat", source)
         });
 
         Assert.Equal("replacement", await File.ReadAllTextAsync(destination));
@@ -65,7 +65,7 @@ public sealed class TransactionalDeploymentServiceTests : IDisposable
         var backupDirectory = Path.Combine(transactionDirectory, "backup");
         Directory.CreateDirectory(backupDirectory);
 
-        var destination = Path.Combine(_gameRoot, "update.rpf");
+        var destination = Path.Combine(_gameRoot, "update.dat");
         await File.WriteAllTextAsync(destination, "replacement already copied");
         var backupPath = Path.Combine(backupDirectory, "000000.bak");
         await File.WriteAllTextAsync(backupPath, "original");
@@ -82,7 +82,7 @@ public sealed class TransactionalDeploymentServiceTests : IDisposable
             {
                 new DeploymentJournalEntry(
                     "test.package",
-                    "update.rpf",
+                    "update.dat",
                     true,
                     "000000.bak",
                     deployedHash,
@@ -102,11 +102,11 @@ public sealed class TransactionalDeploymentServiceTests : IDisposable
     [Fact]
     public async Task Apply_RejectsHashMismatch_BeforeChangingGameFiles()
     {
-        var destination = Path.Combine(_gameRoot, "update.rpf");
+        var destination = Path.Combine(_gameRoot, "update.dat");
         File.WriteAllText(destination, "original");
-        var source = CreatePackageFile("update.rpf", "replacement");
+        var source = CreatePackageFile("update.dat", "replacement");
         var service = new TransactionalDeploymentService(dataRoot: _transactionRoot);
-        var entry = Entry("update.rpf", source) with { ExpectedSha256 = new string('0', 64) };
+        var entry = Entry("update.dat", source) with { ExpectedSha256 = new string('0', 64) };
 
         await Assert.ThrowsAsync<InvalidDataException>(() =>
             service.ApplyAsync(_gameRoot, _packageRoot, new[] { entry }));
