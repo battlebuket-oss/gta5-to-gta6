@@ -33,6 +33,69 @@ public sealed class ProfileStoreServiceTests : IDisposable
         Assert.Contains("test-package", result.EnabledPackageIds);
     }
 
+
+    [Fact]
+    public async Task SaveAndLoad_PreservesExactPackageVersions()
+    {
+        var profile = new ModProfile(
+            "pinned-profile",
+            "Pinned Profile",
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "visual-pack", "police-pack" },
+            DateTimeOffset.UtcNow,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["visual-pack"] = "2.1.0",
+                ["police-pack"] = "1.4.2"
+            });
+
+        await new ProfileStoreService(_path).SaveAsync(profile);
+        var loaded = await new ProfileStoreService(_path).LoadAsync();
+
+        var result = Assert.Single(loaded);
+        Assert.NotNull(result.PackageVersions);
+        Assert.Equal("2.1.0", result.PackageVersions["visual-pack"]);
+        Assert.Equal("1.4.2", result.PackageVersions["police-pack"]);
+    }
+
+    [Fact]
+    public async Task Load_LegacyProfileWithoutPackageVersions_RemainsCompatible()
+    {
+        var legacyJson = """
+        {
+          "SchemaVersion": 1,
+          "Profiles": [
+            {
+              "Id": "legacy-profile",
+              "Name": "Legacy Profile",
+              "EnabledPackageIds": [ "old-package" ],
+              "UpdatedAt": "2026-11-18T12:00:00+00:00"
+            }
+          ]
+        }
+        """;
+        await File.WriteAllTextAsync(_path, legacyJson);
+
+        var loaded = await new ProfileStoreService(_path).LoadAsync();
+
+        var result = Assert.Single(loaded);
+        Assert.Contains("old-package", result.EnabledPackageIds);
+        Assert.Null(result.PackageVersions);
+    }
+
+    [Fact]
+    public async Task Save_RejectsPartialVersionPins()
+    {
+        var profile = new ModProfile(
+            "partial-profile",
+            "Partial Profile",
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "visual-pack", "police-pack" },
+            DateTimeOffset.UtcNow,
+            new Dictionary<string, string> { ["visual-pack"] = "1.0.0" });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new ProfileStoreService(_path).SaveAsync(profile));
+    }
+
     [Fact]
     public async Task Delete_RemovesOnlyTheRequestedProfile()
     {
