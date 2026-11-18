@@ -38,8 +38,8 @@ public sealed class EcologyInventoryDiffServiceTests
             {
                 new EcologyPopulationEntry("reef-fish-school", "reef-fish", "pacific-ocean", HashB),
                 new EcologyPopulationEntry("marsh-lily-patch", "marsh-lily", "coastal-wetland", HashB),
-                new EcologyPopulationEntry("wild-orchid-patch", "wild-orchid", "sandy-hills", HashB),
-                new EcologyPopulationEntry("scrub-fox-range", "scrub-fox", "sandy-hills", HashB)
+                new EcologyPopulationEntry("wild-orchid-patch", "wild-orchid", "marsh-edge", HashB),
+                new EcologyPopulationEntry("scrub-fox-range", "scrub-fox", "marsh-edge", HashB)
             }).ToArray(),
             WaterBodies = baseline.WaterBodies.Select(water => water with
             {
