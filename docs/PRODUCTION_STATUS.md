@@ -16,7 +16,7 @@ This document distinguishes implemented development-branch functions from releas
 | Direct HTTPS package acquisition | Implemented for user-supplied direct URLs; bounded streaming, redirect validation and DNS validation at socket connection |
 | OIV 2.2 import | Implemented for direct loose-file add operations only; RPF/patch/script operations rejected and compatibility-unverified packages blocked |
 | Ecology preservation and semantic comparison | Fail-closed terrestrial/aquatic classifier and parser-independent inventory comparison engine implemented; ALL ecology-sensitive packages remain blocked until trusted exact-build asset extractors, provenance and package-bound evidence are integrated |
-| External asset inspection toolchain | Optional user-selected rage-cli v0.28.1 Windows x64 integration; verifies pinned SHA/version, runs strict model/texture cataloguing, bounded nested-RPF metadata discovery and selective JSON dumps for up to 50 resources. Records GTA5.exe, source/nested RPF and JSON hashes; removes staging after each candidate. Not a complete ecology baseline |
+| External asset inspection toolchain | Optional user-selected rage-cli v0.28.1 Windows x64 integration; verifies pinned SHA/version, runs strict model/texture cataloguing, bounded nested-RPF metadata discovery and selective JSON dumps for up to 50 resources. Records GTA5.exe, source/nested RPF and JSON hashes; removes staging after each candidate. Adds bounded JSON structure summaries (depth, node, property-name and scalar counts) without claiming semantic interpretation. Not a complete ecology baseline |
 | Shared mutation lock and protected destinations | Implemented for deployment, removal, rollback and recovery, including a lock-already-held recovery path; executable, RPF and save/profile paths blocked |
 | Story Mode save backup | Implemented as read-only ZIP archive backup of a user-selected Profiles folder; verification handles are closed before final archive rename |
 | Hardware/performance guidance | Implemented as conservative recommendation only; no game settings are modified |
@@ -40,7 +40,7 @@ This document distinguishes implemented development-branch functions from releas
 
 | Area | Remaining work |
 |---|---|
-| Trusted publisher management | Add and revoke trusted RSA keys in the UI; signed central catalogue and update channel remain outstanding |
+| Trusted publisher management | Local add/revoke UI and independent fingerprint confirmation are implemented; signed central catalogue and signed application-update channel remain outstanding |
 | Automatic package downloads | Direct user-supplied HTTPS URL downloads implemented; no HTML scraping, host API crawling or signed catalogue feed |
 | Mod-host-specific installers | Restricted OIV 2.2 loose-file add import implemented; no RPF mutation, XML/GFX, ASI-specific or other host-specific deployment adapters |
 | Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation. All ecology-sensitive packages are blocked; exact-build extraction, inventory provenance and package-preflight integration remain outstanding |
