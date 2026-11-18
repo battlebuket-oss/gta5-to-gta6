@@ -13,7 +13,10 @@ public static class EcologyCompatibilityService
     {
         "wildlife", "animal", "fauna", "flora", "vegetation", "foliage",
         "plant", "tree", "species", "popcycle", "popgroups",
-        "pedmodelsets", "ambientpedmodelsets", "scenario"
+        "pedmodelsets", "ambientpedmodelsets", "scenario",
+        "aquatic", "underwater", "marine", "fish", "fishing",
+        "seagrass", "kelp", "coral", "reef", "water", "ocean",
+        "river", "lake", "pond", "coast", "shore", "submerged"
     };
 
     public static bool RequiresEcologyReview(PackageManifest manifest)
@@ -41,15 +44,14 @@ public static class EcologyCompatibilityService
         }
         if (!string.Equals(contract.ReviewStatus, "Approved", StringComparison.OrdinalIgnoreCase))
             errors.Add(manifest.Name + " has not passed an ecological identity review.");
-        var allowedImpact = new[] { "None", "VisualOnly", "DensityOnly", "AudioOnly", "BehaviourOnly" };
+        var allowedImpact = new[] { "None", "VisualOnly", "DensityOnly", "AudioOnly", "BehaviourOnly", "AdditiveBiodiversity" };
         if (contract.ImpactType is null || !allowedImpact.Contains(contract.ImpactType, StringComparer.OrdinalIgnoreCase))
             errors.Add(manifest.Name + " declares an unsupported ecological change type.");
         if (!contract.PreservesVanillaAnimalSpecies || !contract.PreservesVanillaPlantSpecies ||
             !contract.PreservesVanillaVegetationSpecies || !contract.PreservesVanillaModelIdentifiers)
             errors.Add(manifest.Name + " does not guarantee preservation of every vanilla animal, plant, vegetation species and model identifier.");
-        if (contract.AllowsNewSpecies || contract.AllowsSpeciesReplacement ||
-            contract.AllowsSpeciesRemoval || contract.ChangesSpeciesSpawnTables)
-            errors.Add(manifest.Name + " adds, replaces, removes or changes the spawn table for vanilla species. This project policy prohibits that.");
+        if (contract.AllowsSpeciesReplacement || contract.AllowsSpeciesRemoval || contract.ChangesSpeciesSpawnTables)
+            errors.Add(manifest.Name + " replaces/removes vanilla species or changes existing species population/spawn definitions. Only strictly additive species entries are permitted.");
         if (contract.VanillaIdentityInventorySha256 is null || contract.VanillaIdentityInventorySha256.Length != 64 ||
             !contract.VanillaIdentityInventorySha256.All(Uri.IsHexDigit))
             errors.Add(manifest.Name + " has no valid SHA-256 fingerprint for its vanilla identity comparison inventory.");
@@ -57,13 +59,16 @@ public static class EcologyCompatibilityService
             errors.Add(manifest.Name + " has no HTTPS ecological review evidence.");
 
         // Deliberately fail closed: this build does not yet parse every supported
-        // GTA V asset format or perform a semantic species/model inventory diff.
-        // A manifest declaration and a URL are not proof that the species are unchanged.
-        errors.Add(manifest.Name + " is blocked because exact-build semantic verification of animal, plant, vegetation and model identities is not implemented yet. The package cannot be approved by manifest claims alone.");
+        // GTA V asset format or perform a semantic species/model diff. A manifest
+        // declaration, inventory hash and evidence URL are not proof by themselves.
+        errors.Add(manifest.Name + " is blocked because exact-build semantic verification of terrestrial and aquatic animal, plant, vegetation, water and model identities is not implemented yet. Manifest claims cannot self-approve the package.");
         return errors;
     }
 
     private static bool IsEcologyArea(string value) =>
-        new[] { "ecology", "wildlife", "flora", "fauna", "vegetation", "environment", "population" }
-            .Contains(value, StringComparer.OrdinalIgnoreCase);
+        new[]
+        {
+            "ecology", "wildlife", "flora", "fauna", "vegetation", "environment",
+            "population", "aquatic", "underwater", "marine", "water"
+        }.Contains(value, StringComparer.OrdinalIgnoreCase);
 }
