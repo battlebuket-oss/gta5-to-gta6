@@ -92,8 +92,8 @@ public static class EcologyInventoryDiffService
         }
 
         var baselineModelIds = baselineSpeciesItems
-            .Where(item => item.ModelIdentifiers is not null)
-            .SelectMany(item => item.ModelIdentifiers)
+            .Where(item => item is not null)
+            .SelectMany(item => item.ModelIdentifiers ?? Array.Empty<string>())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var added = candidateSpecies.Values
             .Where(item => !baselineSpecies.ContainsKey(item.Id))
@@ -106,7 +106,7 @@ public static class EcologyInventoryDiffService
                 !AllowedDomains.Contains(species.Domain))
                 errors.Add($"New species '{species.Id}' has an unsupported ecological domain.");
 
-            if (species.ModelIdentifiers.Count == 0)
+            if (species.ModelIdentifiers is null || species.ModelIdentifiers.Count == 0)
                 errors.Add($"New species '{species.Id}' has no model identifiers.");
 
             foreach (var modelId in species.ModelIdentifiers ?? Array.Empty<string>())
@@ -115,8 +115,8 @@ public static class EcologyInventoryDiffService
                     errors.Add($"New species '{species.Id}' reuses a vanilla model identifier '{modelId}'.");
             }
 
-            var entries = candidate.PopulationEntries
-                .Where(item => Same(item.SpeciesId, species.Id))
+            var entries = candidatePopulationItems
+                .Where(item => item is not null && Same(item.SpeciesId, species.Id))
                 .ToArray();
             if (entries.Length == 0)
                 errors.Add($"New species '{species.Id}' has no additive population or distribution entry.");
@@ -136,7 +136,9 @@ public static class EcologyInventoryDiffService
                 errors.Add($"Population entry '{entry.Id}' references missing habitat '{entry.HabitatId}'.");
         }
 
-        ValidateGlobalModelUniqueness(candidateSpeciesItems, errors);
+        // Vanilla species may intentionally share an original model alias. Only
+        // newly introduced species must have model identifiers unique among themselves.
+        ValidateGlobalModelUniqueness(added, errors);
         return new EcologyInventoryDiff(
             errors.Count == 0,
             errors,
@@ -208,11 +210,14 @@ public static class EcologyInventoryDiffService
         string label,
         List<string> errors)
     {
-        var speciesIds = species.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var habitatIds = habitats.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var waterIds = waterBodies.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var speciesIds = species.Where(item => item is not null)
+            .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var habitatIds = habitats.Where(item => item is not null)
+            .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var waterIds = waterBodies.Where(item => item is not null)
+            .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var item in species)
+        foreach (var item in species.Where(item => item is not null))
         {
             if (item.ModelIdentifiers is null || item.ModelIdentifiers.Count == 0)
                 errors.Add($"{label} species '{item.Id}' has no model identifiers.");
@@ -226,13 +231,13 @@ public static class EcologyInventoryDiffService
                     errors.Add($"{label} species '{item.Id}' references missing habitat '{habitatId}'.");
         }
 
-        foreach (var habitat in habitats)
+        foreach (var habitat in habitats.Where(item => item is not null))
         {
             if (!string.IsNullOrWhiteSpace(habitat.WaterBodyId) && !waterIds.Contains(habitat.WaterBodyId))
                 errors.Add($"{label} habitat '{habitat.Id}' references missing water body '{habitat.WaterBodyId}'.");
         }
 
-        foreach (var entry in populationEntries)
+        foreach (var entry in populationEntries.Where(item => item is not null))
         {
             if (!speciesIds.Contains(entry.SpeciesId))
                 errors.Add($"{label} population entry '{entry.Id}' references missing species '{entry.SpeciesId}'.");
@@ -242,7 +247,7 @@ public static class EcologyInventoryDiffService
                 errors.Add($"{label} population entry '{entry.Id}' has an invalid definition fingerprint.");
         }
 
-        foreach (var water in waterBodies)
+        foreach (var water in waterBodies.Where(item => item is not null))
         {
             if (string.IsNullOrWhiteSpace(water.WaterType) ||
                 string.IsNullOrWhiteSpace(water.SimulationProfileId) ||
