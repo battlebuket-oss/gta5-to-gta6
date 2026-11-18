@@ -97,6 +97,8 @@ A SHA-256 digest establishes inventory integrity, not the truth of the review. T
 
 The Hub currently classifies common GTA model, texture, map, metadata and animation formats, and now explicitly classifies aquatic, underwater, marine, fish, seagrass, kelp, coral, reef, water, ocean, river, lake, pond, coast, shore and submerged paths as ecology-sensitive.
 
-The Hub does not yet contain a complete extractor for every proprietary RPF archive, a complete terrestrial/aquatic species inventory for every GTA V Legacy build, a water-system semantic baseline, or an automated binary/model/metadata semantic diff. All ecology-sensitive packages remain blocked regardless of manifest claims. The classifier and tests are safeguards, not proof of ecological compatibility.
+The Hub now includes a parser-independent semantic inventory comparison engine. It can compare parser-produced snapshots and detect removed or altered vanilla species, model identities, habitats, population entries and water-body simulation/interaction identities. It also permits unique append-only terrestrial and aquatic species additions and controlled water rendering-profile changes.
+
+The Hub still does not contain validated extractors for every proprietary RPF/model/metadata format, a trusted complete species inventory for each supported GTA V Legacy build, or a verified water-system baseline. The comparison engine is not yet fed by a trusted exact-build extractor or bound to package preflight. All ecology-sensitive packages therefore remain blocked regardless of manifest claims. The classifier, comparator and tests are safeguards; they do not yet prove compatibility of arbitrary game assets.
 
 When in doubt, the package is blocked rather than assumed safe.
