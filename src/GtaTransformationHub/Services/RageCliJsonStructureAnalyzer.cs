@@ -13,6 +13,7 @@ public sealed record RageCliJsonStructureSummary(
     int MaximumDepth,
     int TruncatedPropertyNameCount,
     bool PropertyNameLimitReached,
+    bool NodeLimitReached,
     IReadOnlyDictionary<string, int> PropertyNameFrequency);
 
 /// <summary>
@@ -23,7 +24,9 @@ public sealed record RageCliJsonStructureSummary(
 public static class RageCliJsonStructureAnalyzer
 {
     public const int MaximumDepth = 128;
+    public const int MaximumNodes = 5_000_000;
     public const int MaximumUniquePropertyNames = 4096;
+    public const int MaximumPropertyNameLength = 256;
 
     public static RageCliJsonStructureSummary Analyze(JsonElement root)
     {
@@ -37,17 +40,21 @@ public static class RageCliJsonStructureAnalyzer
         var maximumDepth = 0;
         var truncatedPropertyNameCount = 0;
         var propertyNameLimitReached = false;
+        var nodeLimitReached = false;
+        var nodeCount = 0;
         var propertyNames = new Dictionary<string, int>(StringComparer.Ordinal);
-        var pending = new Stack<(JsonElement Element, int Depth)>();
-        pending.Push((root, 0));
 
-        while (pending.Count > 0)
+        void Visit(JsonElement element, int depth)
         {
-            var (element, depth) = pending.Pop();
             if (depth > MaximumDepth)
                 throw new InvalidDataException("The metadata JSON structure exceeds the maximum depth of 128.");
-            maximumDepth = Math.Max(maximumDepth, depth);
+            if (++nodeCount > MaximumNodes)
+            {
+                nodeLimitReached = true;
+                throw new InvalidDataException("The metadata JSON structure exceeds the maximum node limit of 5,000,000.");
+            }
 
+            maximumDepth = Math.Max(maximumDepth, depth);
             switch (element.ValueKind)
             {
                 case JsonValueKind.Object:
@@ -56,10 +63,10 @@ public static class RageCliJsonStructureAnalyzer
                     {
                         propertyCount++;
                         var propertyName = property.Name;
-                        if (propertyName.Length > 256)
+                        if (propertyName.Length > MaximumPropertyNameLength)
                         {
                             truncatedPropertyNameCount++;
-                            propertyName = propertyName[..256] + "...[truncated]";
+                            propertyName = propertyName[..MaximumPropertyNameLength] + "...[truncated]";
                         }
 
                         if (propertyNames.TryGetValue(propertyName, out var count))
@@ -69,14 +76,14 @@ public static class RageCliJsonStructureAnalyzer
                         else
                             propertyNameLimitReached = true;
 
-                        pending.Push((property.Value, depth + 1));
+                        Visit(property.Value, depth + 1);
                     }
                     break;
 
                 case JsonValueKind.Array:
                     arrayCount++;
                     foreach (var item in element.EnumerateArray())
-                        pending.Push((item, depth + 1));
+                        Visit(item, depth + 1);
                     break;
 
                 case JsonValueKind.String:
@@ -99,6 +106,7 @@ public static class RageCliJsonStructureAnalyzer
             }
         }
 
+        Visit(root, 0);
         return new RageCliJsonStructureSummary(
             objectCount,
             arrayCount,
@@ -110,6 +118,7 @@ public static class RageCliJsonStructureAnalyzer
             maximumDepth,
             truncatedPropertyNameCount,
             propertyNameLimitReached,
+            nodeLimitReached,
             propertyNames);
     }
 }
