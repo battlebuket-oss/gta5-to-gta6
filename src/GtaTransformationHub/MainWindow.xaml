@@ -58,6 +58,7 @@
           <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <Button x:Name="ImportPackageButton" Content="Import package ZIP" Padding="14,9" Margin="0,0,8,0" Click="ImportPackageButton_Click"/>
             <Button x:Name="TrustPublisherButton" Content="Trust publisher key" Padding="14,9" Margin="0,0,8,0" Click="TrustPublisherButton_Click"/>
+            <Button x:Name="ManagePublishersButton" Content="Manage trusted keys" Padding="14,9" Margin="0,0,8,0" Click="ManagePublishersButton_Click"/>
             <Button x:Name="ValidateButton" Content="Validate selection" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="ValidateButton_Click"/>
             <Button x:Name="ApplyButton" Content="Apply profile" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Background="{StaticResource AccentBrush}" Foreground="White" Click="ApplyButton_Click"/>
             <Button x:Name="RemoveSelectedButton" Content="Remove selected" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="RemoveSelectedButton_Click"/>
