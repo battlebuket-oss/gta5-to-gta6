@@ -260,8 +260,11 @@ public static class EcologyInventoryDiffService
             if (string.IsNullOrWhiteSpace(water.WaterType) ||
                 string.IsNullOrWhiteSpace(water.SimulationProfileId) ||
                 string.IsNullOrWhiteSpace(water.InteractionProfileId) ||
-                string.IsNullOrWhiteSpace(water.RenderingProfileId))
-                errors.Add($"{label} water body '{water.Id}' has incomplete water profile identifiers.");
+                string.IsNullOrWhiteSpace(water.RenderingProfileId) ||
+                !IsSha256(water.SimulationDefinitionSha256) ||
+                !IsSha256(water.InteractionDefinitionSha256) ||
+                !IsSha256(water.RenderingDefinitionSha256))
+                errors.Add($"{label} water body '{water.Id}' has incomplete or invalid water profile fingerprints.");
         }
     }
 
