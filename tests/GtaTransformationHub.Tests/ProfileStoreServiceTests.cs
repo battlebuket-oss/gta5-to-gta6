@@ -115,4 +115,37 @@ public sealed class ProfileStoreServiceTests : IDisposable
         if (Directory.Exists(_root))
             Directory.Delete(_root, recursive: true);
     }
+
+    [Fact]
+    public async Task SaveAndLoad_PreservesExactPackageVersionPins()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "GtaHubProfilePins-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var store = new ProfileStoreService(path);
+            var profile = new ModProfile(
+                "version-pins",
+                "Version Pins",
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "package-a@1.2.3",
+                    "package-b@4.5.6"
+                },
+                DateTimeOffset.UtcNow);
+
+            await store.SaveAsync(profile);
+            var loaded = await store.LoadAsync();
+
+            Assert.Single(loaded);
+            Assert.Contains("package-a@1.2.3", loaded[0].EnabledPackageIds);
+            Assert.Contains("package-b@4.5.6", loaded[0].EnabledPackageIds);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+
 }
