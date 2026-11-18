@@ -358,14 +358,50 @@ public partial class MainWindow : Window
             return;
         }
 
+        PackagePreflightReport? preflightReport = null;
+        if (selected.Count > 0)
+        {
+            try
+            {
+                StatusText.Text = "Checking signatures, licences, build compatibility and package files...";
+                preflightReport = await _deploymentCoordinator.ValidateAsync(_installation, selected);
+                if (!preflightReport.IsValid)
+                {
+                    StatusText.Text = "Profile preflight rejected the selected packages.";
+                    MessageBox.Show(
+                        string.Join(Environment.NewLine, preflightReport.Errors),
+                        "Profile preflight failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+            }
+            catch (Exception exception)
+            {
+                StatusText.Text = "Profile preflight could not be completed.";
+                MessageBox.Show(
+                    exception.Message,
+                    "Profile preflight failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+        }
+
         var confirmationText = selected.Count == 0
             ? "The selected profile contains no packages. The Hub will attempt to remove every currently managed imported package, restoring original files where its journals and hashes permit it."
             : "The Hub will reconcile the selected profile: remove no-longer-selected managed packages, preserve intact packages that are already active, and install missing desired packages." +
               Environment.NewLine + Environment.NewLine +
               "Some mod files, including ASI or DLL plugins, may execute when GTA V starts. The Hub does not sandbox those files or verify the publisher's identity. Continue only if you obtained and trust these packages.";
 
+        var warningText = preflightReport is null || preflightReport.Warnings.Count == 0
+            ? "No package metadata warnings were reported."
+            : "Review these package warnings:" + Environment.NewLine +
+              string.Join(Environment.NewLine, preflightReport.Warnings);
+
         var confirmation = MessageBox.Show(
             confirmationText + Environment.NewLine + Environment.NewLine +
+            warningText + Environment.NewLine + Environment.NewLine +
             "A transaction journal and backups will be created for file changes. Continue?",
             "Confirm profile activation",
             MessageBoxButton.YesNo,
@@ -689,6 +725,7 @@ public partial class MainWindow : Window
         LocateButton.IsEnabled = canConfigure;
         RefreshButton.IsEnabled = canConfigure;
         ImportPackageButton.IsEnabled = canConfigure;
+        TrustPublisherButton.IsEnabled = canConfigure;
         PackageList.IsEnabled = canConfigure;
         ProfileSelector.IsEnabled = canConfigure;
         ProfileNameText.IsEnabled = canConfigure;
