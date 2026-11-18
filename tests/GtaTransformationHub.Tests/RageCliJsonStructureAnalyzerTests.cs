@@ -63,6 +63,17 @@ public sealed class RageCliJsonStructureAnalyzerTests
     }
 
     [Fact]
+    public void Analyze_RejectsNodeCountAboveConfiguredSafetyLimit()
+    {
+        using var document = JsonDocument.Parse("""{"a": 1, "b": 2}""");
+
+        Assert.Throws<InvalidDataException>(() =>
+            RageCliJsonStructureAnalyzer.Analyze(document.RootElement, maximumNodes: 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            RageCliJsonStructureAnalyzer.Analyze(document.RootElement, maximumNodes: 0));
+    }
+
+    [Fact]
     public void Analyze_RejectsJsonBeyondMaximumDepth()
     {
         using var document = JsonDocument.Parse(
