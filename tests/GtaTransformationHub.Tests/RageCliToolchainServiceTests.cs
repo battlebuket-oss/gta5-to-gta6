@@ -61,10 +61,11 @@ public sealed class RageCliToolchainServiceTests : IDisposable
         var first = new string('A', 64);
         var second = "B" + new string('A', 63);
 
-        Assert.Equal("aaaaaaaaaaaaaaaa", RageCliToolchainService.BuildDirectoryNameFromExecutableHash(first));
+        Assert.Equal(first.ToLowerInvariant(), RageCliToolchainService.BuildDirectoryNameFromExecutableHash(first));
         Assert.NotEqual(
             RageCliToolchainService.BuildDirectoryNameFromExecutableHash(first),
             RageCliToolchainService.BuildDirectoryNameFromExecutableHash(second));
+        Assert.Equal(64, RageCliToolchainService.BuildDirectoryNameFromExecutableHash(first).Length);
         Assert.Throws<ArgumentException>(() =>
             RageCliToolchainService.BuildDirectoryNameFromExecutableHash("not-a-sha256"));
     }
