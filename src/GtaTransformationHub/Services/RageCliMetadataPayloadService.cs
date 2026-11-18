@@ -40,6 +40,7 @@ public sealed class RageCliMetadataPayloadService
     public const int MaximumCandidatesToDump = 50;
     public const long MaximumNestedArchiveBytesPerCandidate = 512L * 1024 * 1024;
     public const long MaximumDumpJsonBytes = 128L * 1024 * 1024;
+    public const long MaximumTotalDumpJsonBytes = 512L * 1024 * 1024;
 
     private static readonly TimeSpan ExtractTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan DumpTimeout = TimeSpan.FromMinutes(2);
@@ -129,9 +130,16 @@ public sealed class RageCliMetadataPayloadService
         EnsureDirectoryIsNotReparsePoint(stagingRoot);
 
         var payloads = new List<RageCliMetadataPayload>();
+        long totalDumpJsonBytes = 0;
         for (var index = 0; index < selected.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (totalDumpJsonBytes >= MaximumTotalDumpJsonBytes)
+            {
+                errors.Add("The aggregate 512 MB metadata JSON output limit was reached. Remaining candidates were not dumped.");
+                break;
+            }
+
             var candidate = selected[index];
             var stagingDirectory = Path.Combine(stagingRoot, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(stagingDirectory);
@@ -223,6 +231,8 @@ public sealed class RageCliMetadataPayloadService
                 var dumpInfo = new FileInfo(temporaryJsonPath);
                 if (dumpInfo.Length == 0 || dumpInfo.Length > MaximumDumpJsonBytes)
                     throw new InvalidDataException("The metadata JSON dump is empty or exceeds 128 MB.");
+                if (totalDumpJsonBytes + dumpInfo.Length > MaximumTotalDumpJsonBytes)
+                    throw new InvalidDataException("The aggregate metadata JSON output would exceed 512 MB.");
 
                 string jsonRootKind;
                 await using (var dumpStream = new FileStream(
@@ -254,6 +264,7 @@ public sealed class RageCliMetadataPayloadService
                     throw new IOException("The source archive changed while its metadata was being dumped.");
                 }
 
+                totalDumpJsonBytes += finalInfo.Length;
                 payloads.Add(new RageCliMetadataPayload(
                     sourceArchive,
                     candidate.SourceArchiveSha256,
