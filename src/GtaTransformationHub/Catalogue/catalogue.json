@@ -48,10 +48,7 @@
       "minimumGameBuild": "Latest GTA V Legacy build stated by author; exact build pending",
       "maximumGameBuild": "Latest GTA V Legacy build stated by author; exact build pending",
       "sha256": null,
-      "dependencies": [
-        "OpenIV",
-        "Script Hook V"
-      ],
+      "dependencies": [],
       "conflicts": [
         "visual-overhaul-exclusive"
       ],
@@ -59,7 +56,12 @@
       "installAdapter": "OpenIV package adapter (not implemented)",
       "restoreStrategy": "Per-file transaction backup after manifest extraction",
       "performanceTier": "High; optional performance add-on and experimental RT require testing",
-      "notes": "Creator's November 2026 update mentions latest-build support. No binaries bundled; package archive, licence, exact build, manifest, hash and 1080p/6GB VRAM performance must be verified before approval."
+      "notes": "Creator's November 2026 update mentions latest-build support. No binaries bundled; package archive, licence, exact build, manifest, hash and 1080p/6GB VRAM performance must be verified before approval.",
+      "externalRequirements": [
+        "OpenIV",
+        "Script Hook V"
+      ],
+      "exclusiveGroup": "graphics-overhaul"
     },
     {
       "id": "better-euphoria",
@@ -72,15 +74,16 @@
       "minimumGameBuild": "Not specified; compatibility test required",
       "maximumGameBuild": "Not specified; compatibility test required",
       "sha256": null,
-      "dependencies": [
-        "OpenIV"
-      ],
+      "dependencies": [],
       "conflicts": [],
       "status": "Researching",
       "installAdapter": "OpenIV OIV adapter (not implemented)",
       "restoreStrategy": "Per-file transaction backup after manifest extraction",
       "performanceTier": "Medium; runtime impact not measured",
-      "notes": "Release page lists version 1.3 dated 2026-03-29 and an OIV package. Verify base assets, exact supported game build, full file list and clean rollback."
+      "notes": "Release page lists version 1.3 dated 2026-03-29 and an OIV package. Verify base assets, exact supported game build, full file list and clean rollback.",
+      "externalRequirements": [
+        "OpenIV"
+      ]
     },
     {
       "id": "betterchaseremade-legacy",
@@ -93,11 +96,7 @@
       "minimumGameBuild": "1.0.3788.0",
       "maximumGameBuild": "1.0.3788.0",
       "sha256": null,
-      "dependencies": [
-        "Script Hook V",
-        "ScriptHookVDotNet 3 Nightly",
-        "LemonUI SHVDN3"
-      ],
+      "dependencies": [],
       "conflicts": [
         "dispatch-overhaul-exclusive"
       ],
@@ -105,7 +104,13 @@
       "installAdapter": "ASI and managed script adapter (not implemented)",
       "restoreStrategy": "Per-file transaction backup after manifest extraction",
       "performanceTier": "Medium; runtime impact not measured",
-      "notes": "The author's page explicitly lists Legacy build 1.0.3788.0 and the dependencies above. Do not enable unless the user's exact game build matches and the full stack passes testing."
+      "notes": "The author's page explicitly lists Legacy build 1.0.3788.0 and the dependencies above. Do not enable unless the user's exact game build matches and the full stack passes testing.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3 Nightly",
+        "LemonUI SHVDN3"
+      ],
+      "exclusiveGroup": "police-dispatch"
     },
     {
       "id": "world-of-variety-plus-2026",
@@ -118,9 +123,7 @@
       "minimumGameBuild": "Not specified; compatibility test required",
       "maximumGameBuild": "Not specified; compatibility test required",
       "sha256": null,
-      "dependencies": [
-        "World Of Variety 10.1"
-      ],
+      "dependencies": [],
       "conflicts": [
         "population-overhaul-exclusive"
       ],
@@ -128,7 +131,11 @@
       "installAdapter": "OpenIV package adapter (not implemented)",
       "restoreStrategy": "Per-file transaction backup after manifest extraction",
       "performanceTier": "Medium; population density and runtime impact require testing",
-      "notes": "Nexus page describes restored content and expanded world events. External-source-only until all dependency and build compatibility checks pass; do not bundle binaries."
+      "notes": "Nexus page describes restored content and expanded world events. External-source-only until all dependency and build compatibility checks pass; do not bundle binaries.",
+      "externalRequirements": [
+        "World Of Variety 10.1"
+      ],
+      "exclusiveGroup": "population-overhaul"
     }
   ],
   "profiles": [
