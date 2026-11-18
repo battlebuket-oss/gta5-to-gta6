@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly PackageArchiveService _archiveService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
+    private readonly ProfileActivationService _profileActivationService;
     private readonly ProfileStoreService _profileStore = new();
     private readonly ObservableCollection<ImportedPackage> _packages = new();
     private readonly ObservableCollection<ModProfile> _profiles = new();
@@ -29,7 +30,7 @@ public partial class MainWindow : Window
     private bool _deploymentReady;
     private bool _loading;
     private bool _operationInProgress;
-    private string? _lastDeploymentTransactionId;
+    private readonly List<string> _rollbackTransactionIds = new();
 
     public MainWindow()
     {
@@ -37,6 +38,8 @@ public partial class MainWindow : Window
 
         _gameInstallationService = new GameInstallationService(_processMonitor);
         _deploymentCoordinator = new PackageDeploymentCoordinator(_deploymentService);
+        _profileActivationService = new ProfileActivationService(
+            _deploymentCoordinator, _removalService, _deploymentService);
 
         PackageList.ItemsSource = _packages;
         ProfileSelector.ItemsSource = _profiles;
@@ -138,7 +141,7 @@ public partial class MainWindow : Window
         {
             _installation = _gameInstallationService.ValidateExecutable(dialog.FileName);
             _deploymentReady = false;
-            _lastDeploymentTransactionId = null;
+            _rollbackTransactionIds.Clear();
             GamePathText.Text = _installation.RootPath;
             DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " detected.";
             StatusText.Text = "Installation validated. Import packages, review the source and run preflight.";
@@ -310,20 +313,23 @@ public partial class MainWindow : Window
         if (!CanChangeConfiguration() || _installation is null)
             return;
 
-        if (TrustPackagesCheckBox.IsChecked != true)
+        var selected = GetSelectedPackages();
+        if (selected.Count > 0 && TrustPackagesCheckBox.IsChecked != true)
         {
             StatusText.Text = "Acknowledge package source and execution risk before applying.";
             return;
         }
 
-        var selected = GetSelectedPackages();
+        var confirmationText = selected.Count == 0
+            ? "The selected profile contains no packages. The Hub will attempt to remove every currently managed imported package, restoring original files where its journals and hashes permit it."
+            : "The Hub will reconcile the selected profile: remove no-longer-selected managed packages, preserve intact packages that are already active, and install missing desired packages." +
+              Environment.NewLine + Environment.NewLine +
+              "Some mod files, including ASI or DLL plugins, may execute when GTA V starts. The Hub does not sandbox those files or verify the publisher's identity. Continue only if you obtained and trust these packages.";
+
         var confirmation = MessageBox.Show(
-            "You are about to copy third-party mod files into this GTA V installation." +
-            Environment.NewLine + Environment.NewLine +
-            "Some mod files, including ASI or DLL plugins, may execute when GTA V starts. The Hub does not sandbox those files or verify the publisher's identity. Continue only if you obtained and trust these packages." +
-            Environment.NewLine + Environment.NewLine +
-            "A transaction journal and backups will be created. Continue with final preflight and deployment?",
-            "Confirm third-party package installation",
+            confirmationText + Environment.NewLine + Environment.NewLine +
+            "A transaction journal and backups will be created for file changes. Continue?",
+            "Confirm profile activation",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
 
@@ -334,29 +340,33 @@ public partial class MainWindow : Window
         RefreshSessionState();
         try
         {
-            StatusText.Text = "Running final preflight checks...";
-            var report = await _deploymentCoordinator.ValidateAsync(_installation, selected);
-            if (!report.IsValid)
-            {
-                StatusText.Text = "Preflight rejected the selected packages.";
-                MessageBox.Show(string.Join(Environment.NewLine, report.Errors),
-                    "Preflight failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            StatusText.Text = "Reconciling the selected profile against active deployment records...";
+            var result = await _profileActivationService.ActivateAsync(
+                _installation, _packages.ToArray(), selected);
 
-            StatusText.Text = "Applying verified files through the transactional deployment engine...";
-            var result = await _deploymentCoordinator.ApplyAsync(_installation, selected);
-            _lastDeploymentTransactionId = result.TransactionId;
+            foreach (var transactionId in result.TransactionIds)
+                _rollbackTransactionIds.Add(transactionId);
+
             _deploymentReady = true;
-            StatusText.Text = "Applied " + result.FilesApplied + " file(s). Transaction: " + result.TransactionId;
+            if (result.TransactionIds.Count == 0)
+            {
+                StatusText.Text = "The selected profile is already active. No game files needed changing.";
+            }
+            else
+            {
+                StatusText.Text = "Profile reconciled. Removed " + result.FilesRemoved +
+                                  " file(s), installed/repaired " + result.FilesApplied +
+                                  " file(s), kept " + result.PackagesAlreadyActive +
+                                  " intact package(s).";
+            }
         }
         catch (Exception exception)
         {
             _deploymentReady = false;
-            StatusText.Text = "Deployment failed. Inspect the transaction journal before retrying.";
+            StatusText.Text = "Profile activation failed. The previous package state was preserved where rollback was possible.";
             MessageBox.Show(
                 exception.Message,
-                "Deployment failed",
+                "Profile activation failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -397,11 +407,11 @@ public partial class MainWindow : Window
             if (result.FilesApplied == 0)
             {
                 StatusText.Text = "No matching Hub-managed files were found to remove.";
-                _lastDeploymentTransactionId = null;
+                // No transaction was created because no managed files were present.
             }
             else
             {
-                _lastDeploymentTransactionId = result.TransactionId;
+                _rollbackTransactionIds.Add(result.TransactionId);
                 StatusText.Text = "Removed " + result.FilesApplied +
                                   " managed file(s). Rollback is available for this removal transaction.";
             }
@@ -425,11 +435,12 @@ public partial class MainWindow : Window
 
     private async void RollbackButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!CanChangeConfiguration() || string.IsNullOrWhiteSpace(_lastDeploymentTransactionId))
+        if (!CanChangeConfiguration() || _rollbackTransactionIds.Count == 0)
             return;
 
+        var transactionId = _rollbackTransactionIds[^1];
         var confirmation = MessageBox.Show(
-            "Restore files from the latest deployment or removal transaction? Files changed after the operation will be protected and may cause rollback to stop.",
+            "Restore files from the latest transaction? Files changed after the operation will be protected and may cause rollback to stop.",
             "Confirm rollback",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -441,10 +452,10 @@ public partial class MainWindow : Window
         RefreshSessionState();
         try
         {
-            await _deploymentService.RollbackLatestAsync(_lastDeploymentTransactionId);
-            StatusText.Text = "The latest transaction was rolled back.";
-            _lastDeploymentTransactionId = null;
+            await _deploymentService.RollbackLatestAsync(transactionId);
+            _rollbackTransactionIds.RemoveAt(_rollbackTransactionIds.Count - 1);
             _deploymentReady = false;
+            StatusText.Text = "The latest transaction was rolled back. Roll back again to reverse the preceding step of a profile change.";
         }
         catch (Exception exception)
         {
@@ -471,7 +482,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        var selectedIds = GetSelectedPackages()
+        var selectedPackages = GetSelectedPackages();
+        if (selectedPackages.Select(package => package.Manifest.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != selectedPackages.Count)
+        {
+            StatusText.Text = "Select only one imported version of each package ID before saving a profile.";
+            return;
+        }
+
+        var selectedIds = selectedPackages
             .Select(package => package.Manifest.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var id = CreateProfileId(name);
@@ -530,19 +549,23 @@ public partial class MainWindow : Window
         try
         {
             PackageList.SelectedItems.Clear();
-            var availableIds = new HashSet<string>(
-                _packages.Select(package => package.Manifest.Id),
-                StringComparer.OrdinalIgnoreCase);
+            var missing = new List<string>();
 
-            foreach (var package in _packages)
+            foreach (var packageId in profile.EnabledPackageIds)
             {
-                if (profile.EnabledPackageIds.Contains(package.Manifest.Id))
+                var package = _packages
+                    .Where(item => item.Manifest.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(item => item.ImportedAt)
+                    .FirstOrDefault();
+
+                if (package is null)
+                    missing.Add(packageId);
+                else
                     PackageList.SelectedItems.Add(package);
             }
 
-            var missing = profile.EnabledPackageIds.Where(id => !availableIds.Contains(id)).ToArray();
-            ProfileWarningText.Text = missing.Length == 0
-                ? "This profile references packages available in the local library."
+            ProfileWarningText.Text = missing.Count == 0
+                ? "The profile selects the most recently imported version of each listed package ID."
                 : "Missing imported packages: " + string.Join(", ", missing);
             ProfileNameText.Text = profile.Name;
         }
@@ -570,9 +593,9 @@ public partial class MainWindow : Window
 
     private void LaunchButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!CanChangeConfiguration() || !_deploymentReady || _installation is null)
+        if (!CanChangeConfiguration() || _installation is null)
         {
-            StatusText.Text = "Apply a validated package selection before launching from the Hub.";
+            StatusText.Text = "Locate and validate GTA5.exe before launching.";
             return;
         }
 
@@ -585,7 +608,7 @@ public partial class MainWindow : Window
                 WorkingDirectory = _installation.RootPath,
                 UseShellExecute = true
             });
-            StatusText.Text = "GTA V launch requested. Configuration will lock when GTA5.exe starts.";
+            StatusText.Text = "GTA V launch requested. Configuration will lock when a protected GTA V process starts.";
         }
         catch (Exception exception)
         {
@@ -622,13 +645,13 @@ public partial class MainWindow : Window
         SaveProfileButton.IsEnabled = canConfigure;
         ValidateButton.IsEnabled = canConfigure && _installation is not null && PackageList.SelectedItems.Count > 0;
         TrustPackagesCheckBox.IsEnabled = canConfigure && _installation is not null && PackageList.SelectedItems.Count > 0;
-        ApplyButton.IsEnabled = canConfigure && _installation is not null &&
-                                PackageList.SelectedItems.Count > 0 &&
-                                TrustPackagesCheckBox.IsChecked == true;
+        ApplyButton.IsEnabled = canConfigure && _installation is not null && _packages.Count > 0 &&
+                                (PackageList.SelectedItems.Count == 0 ||
+                                 TrustPackagesCheckBox.IsChecked == true);
         RemoveSelectedButton.IsEnabled = canConfigure && _installation is not null &&
                                          PackageList.SelectedItems.Count > 0;
-        RollbackButton.IsEnabled = canConfigure && !string.IsNullOrWhiteSpace(_lastDeploymentTransactionId);
-        LaunchButton.IsEnabled = canConfigure && _installation is not null && _deploymentReady;
+        RollbackButton.IsEnabled = canConfigure && _rollbackTransactionIds.Count > 0;
+        LaunchButton.IsEnabled = canConfigure && _installation is not null;
 
         SessionStateText.Text = running ? "GAME RUNNING · LOCKED" :
             _operationInProgress ? "OPERATION IN PROGRESS" :
