@@ -188,7 +188,7 @@ public sealed class RageCliToolchainService
         // Keep catalogues isolated by the exact GTA5.exe bytes. A scan from a
         // different game build must never silently reuse or overwrite this build's DB.
         var gameExecutableSha256 = await ComputeSha256Async(executable, cancellationToken);
-        var buildDirectoryName = gameExecutableSha256[..16].ToLowerInvariant();
+        var buildDirectoryName = BuildDirectoryNameFromExecutableHash(gameExecutableSha256);
         var catalogueRoot = Path.Combine(_dataRoot, "catalogue");
         Directory.CreateDirectory(catalogueRoot);
         EnsureDirectoryIsNotReparsePoint(catalogueRoot);
@@ -251,6 +251,15 @@ public sealed class RageCliToolchainService
             gameExecutableSha256,
             result.Duration,
             result.StandardOutput.Trim());
+    }
+
+    public static string BuildDirectoryNameFromExecutableHash(string executableSha256)
+    {
+        if (executableSha256 is null || executableSha256.Length != 64 ||
+            executableSha256.Any(character => !Uri.IsHexDigit(character)))
+            throw new ArgumentException("A 64-character SHA-256 digest is required.", nameof(executableSha256));
+
+        return executableSha256[..16].ToLowerInvariant();
     }
 
     public static IReadOnlyList<string> BuildCatalogueArguments(
