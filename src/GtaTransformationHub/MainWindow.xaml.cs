@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly OivPackageImportService _oivImportService = new();
     private readonly PackageAcquisitionService _acquisitionService = new();
     private readonly StorySaveBackupService _storySaveBackupService = new();
+    private readonly RageCliToolchainService _rageCliToolchainService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -33,6 +34,8 @@ public partial class MainWindow : Window
     private GameInstallation? _installation;
     private bool _recoveryCompleted;    private bool _loading;
     private bool _operationInProgress;
+    private string? _verifiedRageCliExecutablePath;
+    private CancellationTokenSource? _assetCatalogueCancellation;
     private readonly List<string> _rollbackTransactionIds = new();
 
     public MainWindow()
@@ -77,6 +80,19 @@ public partial class MainWindow : Window
             }
 
             await LoadProfilesAsync();
+
+            try
+            {
+                RageCliExecutablePathText.Text =
+                    await _rageCliToolchainService.LoadConfiguredExecutablePathAsync() ?? string.Empty;
+                RageCliStatusText.Text = string.IsNullOrWhiteSpace(RageCliExecutablePathText.Text)
+                    ? "No rage-cli executable has been configured. Select the official v0.28.1 Windows x64 asset."
+                    : "Saved tool path found. Verify its checksum and version before use.";
+            }
+            catch (Exception toolchainException)
+            {
+                RageCliStatusText.Text = "Saved rage-cli settings could not be read: " + toolchainException.Message;
+            }
 
             if (recovered.Count == 0)
                 StatusText.Text = "Recovery passed. No interrupted deployments were found.";
@@ -415,6 +431,133 @@ public partial class MainWindow : Window
             _operationInProgress = false;
         }
         RefreshSessionState();
+    }
+
+    private void SelectRageCliButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select the official rage-cli v0.28.1 Windows x64 executable",
+            Filter = "rage-cli v0.28.1 Windows x64 (rage-windows-x86_64.exe)|rage-windows-x86_64.exe",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        RageCliExecutablePathText.Text = dialog.FileName;
+        _verifiedRageCliExecutablePath = null;
+        RageCliStatusText.Text = "Executable selected. Verify its pinned SHA-256 and reported version before running it.";
+        RefreshSessionState();
+    }
+
+    private async void VerifyRageCliButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        _operationInProgress = true;
+        _verifiedRageCliExecutablePath = null;
+        RefreshSessionState();
+        try
+        {
+            RageCliStatusText.Text = "Checking the executable digest and invoking its version command...";
+            var verified = await _rageCliToolchainService.ValidateExecutableAsync(
+                RageCliExecutablePathText.Text.Trim());
+            await _rageCliToolchainService.SaveConfiguredExecutablePathAsync(verified.ExecutablePath);
+
+            _verifiedRageCliExecutablePath = verified.ExecutablePath;
+            RageCliStatusText.Text =
+                "Verified rage " + verified.Version + Environment.NewLine +
+                "SHA-256: " + verified.Sha256 + Environment.NewLine +
+                "Pinned release: " + RageCliToolchainService.ReleaseUrl;
+            StatusText.Text = "The external GTA V asset inspection tool passed version and checksum verification.";
+        }
+        catch (Exception exception)
+        {
+            RageCliStatusText.Text = "rage-cli verification failed: " + exception.Message;
+            StatusText.Text = "The external asset inspection tool was not trusted or launched.";
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void BuildAssetCatalogueButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null ||
+            string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
+            return;
+
+        var confirmation = MessageBox.Show(
+            "rage-cli will read the selected GTA V installation and build a local catalogue of supported model and texture assets. It will not modify game files or install mods. The scan can take a long time and may use several gigabytes of disk space. A strict scan failure will remain a failure; it will not be treated as a verified ecological baseline. Continue?",
+            "Build GTA V asset catalogue",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _assetCatalogueCancellation?.Dispose();
+        _assetCatalogueCancellation = new CancellationTokenSource();
+        _operationInProgress = true;
+        RefreshSessionState();
+        RageCliStatusText.Text = "Scanning game archives in load order. The original game files are read only...";
+        StatusText.Text = "Building the optional GTA V model and texture catalogue...";
+
+        try
+        {
+            var result = await _rageCliToolchainService.BuildAssetCatalogueAsync(
+                _verifiedRageCliExecutablePath,
+                _installation,
+                _assetCatalogueCancellation.Token);
+
+            RageCliStatusText.Text =
+                "Asset catalogue scan completed." + Environment.NewLine +
+                "Database: " + result.DatabasePath + " (" +
+                (result.DatabaseBytes / (1024.0 * 1024.0)).ToString("0.0") + " MB)" + Environment.NewLine +
+                "Report: " + result.ReportPath + Environment.NewLine +
+                "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
+                "Database SHA-256: " + result.DatabaseSha256 + Environment.NewLine +
+                "Duration: " + result.Duration.ToString(@"hh\:mm\:ss") + Environment.NewLine +
+                result.Summary + Environment.NewLine +
+                "This is a model/texture catalogue, not a complete flora/fauna/population/water baseline.";
+            StatusText.Text = "GTA V asset catalogue created. Ecology-sensitive packages remain blocked.";
+        }
+        catch (OperationCanceledException)
+        {
+            RageCliStatusText.Text =
+                "The asset catalogue scan was cancelled. Any partial output must be treated as incomplete.";
+            StatusText.Text = "GTA V asset catalogue scan cancelled.";
+        }
+        catch (Exception exception)
+        {
+            RageCliStatusText.Text = "Asset catalogue scan failed: " + exception.Message;
+            StatusText.Text = "The GTA V asset catalogue was not accepted.";
+        }
+        finally
+        {
+            _assetCatalogueCancellation?.Dispose();
+            _assetCatalogueCancellation = null;
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private void CancelAssetCatalogueButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_assetCatalogueCancellation is null)
+            return;
+
+        RageCliStatusText.Text = "Cancellation requested. Waiting for the scan process to stop safely...";
+        _assetCatalogueCancellation.Cancel();
+        CancelAssetCatalogueButton.IsEnabled = false;
     }
 
     private static string? FindProfilesDirectory(string? startDirectory)
@@ -909,6 +1052,14 @@ public partial class MainWindow : Window
                                          PackageList.SelectedItems.Count > 0;
         RollbackButton.IsEnabled = canConfigure && _rollbackTransactionIds.Count > 0;
         LaunchButton.IsEnabled = canConfigure && _installation is not null;
+        SelectRageCliButton.IsEnabled = canConfigure;
+        VerifyRageCliButton.IsEnabled = canConfigure &&
+                                        !string.IsNullOrWhiteSpace(RageCliExecutablePathText.Text);
+        BuildAssetCatalogueButton.IsEnabled = canConfigure &&
+                                              _installation is not null &&
+                                              !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
+        CancelAssetCatalogueButton.IsEnabled = _operationInProgress &&
+                                               _assetCatalogueCancellation is not null;
 
         SessionStateText.Text = running ? "GAME RUNNING · LOCKED" :
             _operationInProgress ? "OPERATION IN PROGRESS" :
@@ -942,6 +1093,8 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _assetCatalogueCancellation?.Cancel();
+        _assetCatalogueCancellation?.Dispose();
         _processTimer.Stop();
         _acquisitionService.Dispose();
         base.OnClosed(e);
