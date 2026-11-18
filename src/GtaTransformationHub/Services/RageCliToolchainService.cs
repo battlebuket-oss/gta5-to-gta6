@@ -259,7 +259,7 @@ public sealed class RageCliToolchainService
             executableSha256.Any(character => !Uri.IsHexDigit(character)))
             throw new ArgumentException("A 64-character SHA-256 digest is required.", nameof(executableSha256));
 
-        return executableSha256[..16].ToLowerInvariant();
+        return executableSha256.ToLowerInvariant();
     }
 
     public static IReadOnlyList<string> BuildCatalogueArguments(
