@@ -1,0 +1,285 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace GtaTransformationHub.Services;
+
+/// <summary>
+/// Compares parser-produced ecological inventories. This is a semantic comparison
+/// engine, not an RPF extractor or proof that an inventory came from the game.
+/// Callers must only trust snapshots produced by a separately verified exact-build
+/// extraction pipeline. The package preflight remains fail-closed until that pipeline
+/// and its provenance checks are integrated.
+/// </summary>
+public static class EcologyInventoryDiffService
+{
+    public static EcologyInventoryDiff Compare(
+        EcologyInventorySnapshot baseline,
+        EcologyInventorySnapshot candidate)
+    {
+        var errors = new List<string>();
+        var addedSpecies = new List<EcologySpeciesIdentity>();
+
+        ValidateSnapshot(baseline, "Baseline", errors);
+        ValidateSnapshot(candidate, "Candidate", errors);
+
+        if (baseline.SchemaVersion != candidate.SchemaVersion)
+            errors.Add("Inventory schema versions do not match.");
+        if (!Same(baseline.GameBuild, candidate.GameBuild))
+            errors.Add("The candidate inventory targets a different GTA V game build.");
+        if (!SameHash(baseline.GameExecutableSha256, candidate.GameExecutableSha256))
+            errors.Add("The GTA5.exe fingerprint does not match the vanilla baseline.");
+
+        var baselineSpecies = IndexById(baseline.Species, item => item.Id, "baseline species", errors);
+        var candidateSpecies = IndexById(candidate.Species, item => item.Id, "candidate species", errors);
+        var baselineHabitats = IndexById(baseline.Habitats, item => item.Id, "baseline habitats", errors);
+        var candidateHabitats = IndexById(candidate.Habitats, item => item.Id, "candidate habitats", errors);
+        var baselinePopulation = IndexById(baseline.PopulationEntries, item => item.Id, "baseline population entries", errors);
+        var candidatePopulation = IndexById(candidate.PopulationEntries, item => item.Id, "candidate population entries", errors);
+        var baselineWater = IndexById(baseline.WaterBodies, item => item.Id, "baseline water bodies", errors);
+        var candidateWater = IndexById(candidate.WaterBodies, item => item.Id, "candidate water bodies", errors);
+
+        foreach (var original in baselineSpecies.Values)
+        {
+            if (!candidateSpecies.TryGetValue(original.Id, out var current))
+            {
+                errors.Add($"Vanilla species '{original.Id}' was removed.");
+                continue;
+            }
+
+            if (!SpeciesIdentityEquals(original, current))
+                errors.Add($"Vanilla species '{original.Id}' changed its model, domain or behaviour identity.");
+        }
+
+        foreach (var original in baselineHabitats.Values)
+        {
+            if (!candidateHabitats.TryGetValue(original.Id, out var current))
+                errors.Add($"Vanilla habitat '{original.Id}' was removed.");
+            else if (!HabitatEquals(original, current))
+                errors.Add($"Vanilla habitat '{original.Id}' was changed.");
+        }
+
+        foreach (var original in baselinePopulation.Values)
+        {
+            if (!candidatePopulation.TryGetValue(original.Id, out var current))
+                errors.Add($"Vanilla population entry '{original.Id}' was removed.");
+            else if (!PopulationEquals(original, current))
+                errors.Add($"Vanilla population entry '{original.Id}' was changed.");
+        }
+
+        foreach (var original in baselineWater.Values)
+        {
+            if (!candidateWater.TryGetValue(original.Id, out var current))
+                errors.Add($"Vanilla water body '{original.Id}' was removed.");
+            else if (!WaterIdentityEquals(original, current))
+                errors.Add($"Water body '{original.Id}' changed its type, simulation or interaction identity.");
+            // RenderingProfileId is intentionally allowed to change so visual water
+            // improvements can be compared without silently replacing water behaviour.
+        }
+
+        var baselineModelIds = baseline.Species
+            .SelectMany(item => item.ModelIdentifiers)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var added = candidateSpecies.Values
+            .Where(item => !baselineSpecies.ContainsKey(item.Id))
+            .ToArray();
+
+        foreach (var species in added)
+        {
+            addedSpecies.Add(species);
+            if (string.IsNullOrWhiteSpace(species.Domain) ||
+                !AllowedDomains.Contains(species.Domain))
+                errors.Add($"New species '{species.Id}' has an unsupported ecological domain.");
+
+            if (species.ModelIdentifiers.Count == 0)
+                errors.Add($"New species '{species.Id}' has no model identifiers.");
+
+            foreach (var modelId in species.ModelIdentifiers)
+            {
+                if (baselineModelIds.Contains(modelId))
+                    errors.Add($"New species '{species.Id}' reuses a vanilla model identifier '{modelId}'.");
+            }
+
+            var entries = candidate.PopulationEntries
+                .Where(item => Same(item.SpeciesId, species.Id))
+                .ToArray();
+            if (entries.Length == 0)
+                errors.Add($"New species '{species.Id}' has no additive population or distribution entry.");
+
+            foreach (var habitatId in species.HabitatIds)
+            {
+                if (!candidateHabitats.ContainsKey(habitatId))
+                    errors.Add($"New species '{species.Id}' references missing habitat '{habitatId}'.");
+            }
+        }
+
+        foreach (var entry in candidatePopulation.Values.Where(item => !baselinePopulation.ContainsKey(item.Id)))
+        {
+            if (!added.Any(item => Same(item.Id, entry.SpeciesId)))
+                errors.Add($"New population entry '{entry.Id}' modifies or adds population data for a vanilla species.");
+            if (!candidateHabitats.ContainsKey(entry.HabitatId))
+                errors.Add($"Population entry '{entry.Id}' references missing habitat '{entry.HabitatId}'.");
+        }
+
+        ValidateGlobalModelUniqueness(candidate.Species, errors);
+        return new EcologyInventoryDiff(
+            errors.Count == 0,
+            errors,
+            added);
+    }
+
+    private static readonly HashSet<string> AllowedDomains = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "TerrestrialAnimal",
+        "AquaticAnimal",
+        "TerrestrialPlant",
+        "AquaticPlant"
+    };
+
+    private static void ValidateSnapshot(
+        EcologyInventorySnapshot snapshot,
+        string label,
+        List<string> errors)
+    {
+        if (snapshot.SchemaVersion != 1)
+            errors.Add($"{label} inventory schema version is unsupported.");
+        if (string.IsNullOrWhiteSpace(snapshot.GameBuild))
+            errors.Add($"{label} inventory has no game build.");
+        if (!IsSha256(snapshot.GameExecutableSha256))
+            errors.Add($"{label} inventory has no valid GTA5.exe SHA-256.");
+        if (string.IsNullOrWhiteSpace(snapshot.ExtractorId) ||
+            string.IsNullOrWhiteSpace(snapshot.ExtractorVersion))
+            errors.Add($"{label} inventory has no extractor identity/version.");
+        if (snapshot.SourceArchiveSha256.Count == 0 ||
+            snapshot.SourceArchiveSha256.Any(hash => !IsSha256(hash)))
+            errors.Add($"{label} inventory has incomplete source archive hashes.");
+
+        if (snapshot.Species is null || snapshot.Habitats is null ||
+            snapshot.PopulationEntries is null || snapshot.WaterBodies is null)
+            errors.Add($"{label} inventory has a missing inventory collection.");
+    }
+
+    private static Dictionary<string, T> IndexById<T>(
+        IEnumerable<T> values,
+        Func<T, string> keySelector,
+        string description,
+        List<string> errors)
+    {
+        var result = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        foreach (var value in values)
+        {
+            var key = keySelector(value);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                errors.Add($"A {description} record has an empty identifier.");
+                continue;
+            }
+            if (!result.TryAdd(key, value))
+                errors.Add($"The {description} inventory contains duplicate identifier '{key}'.");
+        }
+        return result;
+    }
+
+    private static void ValidateGlobalModelUniqueness(
+        IReadOnlyList<EcologySpeciesIdentity> species,
+        List<string> errors)
+    {
+        var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in species)
+        {
+            foreach (var model in item.ModelIdentifiers)
+            {
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    errors.Add($"Species '{item.Id}' contains an empty model identifier.");
+                    continue;
+                }
+
+                if (owners.TryGetValue(model, out var owner) && !Same(owner, item.Id))
+                    errors.Add($"Model identifier '{model}' is shared by species '{owner}' and '{item.Id}'.");
+                else
+                    owners[model] = item.Id;
+            }
+        }
+    }
+
+    private static bool SpeciesIdentityEquals(EcologySpeciesIdentity left, EcologySpeciesIdentity right) =>
+        Same(left.Id, right.Id) &&
+        Same(left.Domain, right.Domain) &&
+        Same(left.BehaviourProfileId, right.BehaviourProfileId) &&
+        SetEquals(left.ModelIdentifiers, right.ModelIdentifiers) &&
+        SetEquals(left.HabitatIds, right.HabitatIds);
+
+    private static bool HabitatEquals(EcologyHabitatIdentity left, EcologyHabitatIdentity right) =>
+        Same(left.Id, right.Id) &&
+        Same(left.HabitatType, right.HabitatType) &&
+        Same(left.WaterBodyId, right.WaterBodyId);
+
+    private static bool PopulationEquals(EcologyPopulationEntry left, EcologyPopulationEntry right) =>
+        Same(left.Id, right.Id) &&
+        Same(left.SpeciesId, right.SpeciesId) &&
+        Same(left.HabitatId, right.HabitatId) &&
+        SameHash(left.DefinitionSha256, right.DefinitionSha256);
+
+    private static bool WaterIdentityEquals(EcologyWaterBodyIdentity left, EcologyWaterBodyIdentity right) =>
+        Same(left.Id, right.Id) &&
+        Same(left.WaterType, right.WaterType) &&
+        Same(left.SimulationProfileId, right.SimulationProfileId) &&
+        Same(left.InteractionProfileId, right.InteractionProfileId);
+
+    private static bool SetEquals(IReadOnlyList<string> left, IReadOnlyList<string> right) =>
+        left.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            .SetEquals(right);
+
+    private static bool IsSha256(string? value) =>
+        value is { Length: 64 } && value.All(Uri.IsHexDigit);
+
+    private static bool SameHash(string? left, string? right) =>
+        IsSha256(left) && IsSha256(right) &&
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private static bool Same(string? left, string? right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+}
+
+public sealed record EcologyInventorySnapshot(
+    int SchemaVersion,
+    string GameBuild,
+    string GameExecutableSha256,
+    string ExtractorId,
+    string ExtractorVersion,
+    IReadOnlyList<string> SourceArchiveSha256,
+    IReadOnlyList<EcologySpeciesIdentity> Species,
+    IReadOnlyList<EcologyHabitatIdentity> Habitats,
+    IReadOnlyList<EcologyPopulationEntry> PopulationEntries,
+    IReadOnlyList<EcologyWaterBodyIdentity> WaterBodies);
+
+public sealed record EcologySpeciesIdentity(
+    string Id,
+    string Domain,
+    IReadOnlyList<string> ModelIdentifiers,
+    IReadOnlyList<string> HabitatIds,
+    string BehaviourProfileId);
+
+public sealed record EcologyHabitatIdentity(
+    string Id,
+    string HabitatType,
+    string WaterBodyId);
+
+public sealed record EcologyPopulationEntry(
+    string Id,
+    string SpeciesId,
+    string HabitatId,
+    string DefinitionSha256);
+
+public sealed record EcologyWaterBodyIdentity(
+    string Id,
+    string WaterType,
+    string SimulationProfileId,
+    string InteractionProfileId,
+    string RenderingProfileId);
+
+public sealed record EcologyInventoryDiff(
+    bool VanillaPreserved,
+    IReadOnlyList<string> Errors,
+    IReadOnlyList<EcologySpeciesIdentity> AddedSpecies);
