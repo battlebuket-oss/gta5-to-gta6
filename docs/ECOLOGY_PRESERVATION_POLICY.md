@@ -99,6 +99,8 @@ The Hub currently classifies common GTA model, texture, map, metadata and animat
 
 The Hub now includes a parser-independent semantic inventory comparison engine. It can compare parser-produced snapshots and detect removed or altered vanilla species, model identities, habitats, population entries and water-body simulation/interaction identities. It also permits unique append-only terrestrial and aquatic species additions and controlled water rendering-profile changes.
 
+Extracted Meta/PSO JSON payloads now receive a bounded structural summary in the metadata dump index. The summary records JSON object/array/scalar counts, maximum depth and capped property-name frequencies. It intentionally does not interpret a property called "animal", "fish", "water" or similar as proof of a species, habitat, spawn rule or water-system definition. This structural index is an aid for format research and parser development only.
+
 The Hub still does not contain validated extractors for every proprietary RPF/model/metadata format, a trusted complete species inventory for each supported GTA V Legacy build, or a verified water-system baseline. The comparison engine is not yet fed by a trusted exact-build extractor or bound to package preflight. All ecology-sensitive packages therefore remain blocked regardless of manifest claims. The classifier, comparator and tests are safeguards; they do not yet prove compatibility of arbitrary game assets.
 
 When in doubt, the package is blocked rather than assumed safe.
