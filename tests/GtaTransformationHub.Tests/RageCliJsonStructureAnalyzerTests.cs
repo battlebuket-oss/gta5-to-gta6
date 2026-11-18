@@ -30,6 +30,8 @@ public sealed class RageCliJsonStructureAnalyzerTests
         Assert.Equal(1, result.NullValueCount);
         Assert.Equal(2, result.PropertyNameFrequency["name"]);
         Assert.Equal(2, result.PropertyNameFrequency["hash"]);
+        Assert.False(result.PropertyNameLimitReached);
+        Assert.Equal(0, result.TruncatedPropertyNameCount);
     }
 
     [Fact]
@@ -44,9 +46,23 @@ public sealed class RageCliJsonStructureAnalyzerTests
         Assert.Equal(5000, result.PropertyCount);
         Assert.Equal(RageCliJsonStructureAnalyzer.MaximumUniquePropertyNames,
             result.PropertyNameFrequency.Count);
+        Assert.True(result.PropertyNameLimitReached);
     }
 
+
     [Fact]
+    public void Analyze_TruncatesExtremelyLongPropertyNames()
+    {
+        var propertyName = new string('x', 1024);
+        using var document = JsonDocument.Parse(
+            "{\\\"" + propertyName + "\\\": 1}");
+
+        var result = RageCliJsonStructureAnalyzer.Analyze(document.RootElement);
+
+        Assert.Equal(1, result.TruncatedPropertyNameCount);
+        Assert.Contains("...[truncated]", Assert.Single(result.PropertyNameFrequency.Keys));
+    }
+\n    [Fact]
     public void Analyze_RejectsJsonBeyondMaximumDepth()
     {
         using var document = JsonDocument.Parse(
