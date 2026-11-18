@@ -26,16 +26,33 @@ public sealed class GameInstallationService
 
         var fullPath = Path.GetFullPath(executablePath);
         if (!string.Equals(Path.GetFileName(fullPath), "GTA5.exe", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The selected executable must be named GTA5.exe.");
+            throw new InvalidDataException("Only the GTA V Legacy GTA5.exe executable is supported.");
         if (!File.Exists(fullPath))
             throw new FileNotFoundException("GTA5.exe was not found.", fullPath);
+        if ((File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("A reparse-point executable cannot be used as a game installation.");
 
         var root = Path.GetDirectoryName(fullPath)
             ?? throw new InvalidDataException("The GTA V installation folder could not be determined.");
+        if (!Directory.Exists(root) ||
+            (File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("The selected GTA V installation folder is missing or is a reparse point.");
 
         _processMonitor.EnsureConfigurationUnlocked();
 
         var info = FileVersionInfo.GetVersionInfo(fullPath);
+        var productIdentity = string.Join(" ", new[]
+        {
+            info.ProductName ?? string.Empty,
+            info.FileDescription ?? string.Empty,
+            info.CompanyName ?? string.Empty
+        });
+
+        if (!productIdentity.Contains("Grand Theft Auto V", StringComparison.OrdinalIgnoreCase) &&
+            !productIdentity.Contains("Rockstar", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException(
+                "The selected GTA5.exe does not expose a recognisable Rockstar Games or Grand Theft Auto V file identity.");
+
         var candidates = new[] { info.ProductVersion, info.FileVersion };
         var build = candidates.FirstOrDefault(value =>
             Version.TryParse(NormalizeVersion(value), out _));
