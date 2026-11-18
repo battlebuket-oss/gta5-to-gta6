@@ -890,6 +890,9 @@ public partial class MainWindow : Window
         LocateButton.IsEnabled = canConfigure;
         RefreshButton.IsEnabled = canConfigure;
         ImportPackageButton.IsEnabled = canConfigure;
+        DownloadPackageButton.IsEnabled = canConfigure;
+        DetectPerformanceButton.IsEnabled = canConfigure;
+        BackupStorySavesButton.IsEnabled = canConfigure;
         TrustPublisherButton.IsEnabled = canConfigure;
         PackageList.IsEnabled = canConfigure;
         ResearchCatalogueList.IsEnabled = canConfigure;
@@ -940,6 +943,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _processTimer.Stop();
+        _acquisitionService.Dispose();
         base.OnClosed(e);
     }
 }
