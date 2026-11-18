@@ -158,7 +158,31 @@
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
             <TextBlock Text="ECOLOGICAL FIDELITY" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock Text="Preserve the original GTA V animal, plant and vegetation species, their model identities and species spawn tables. Visual improvements such as higher-resolution textures, lighting, shadows and animation are allowed only when species identities remain unchanged. Ecology-sensitive packages without an approved preservation review are blocked." TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock Text="Preserve every original land and aquatic animal, plant, underwater vegetation species, model identity and population entry. New species may only be added as unique additions. Existing water simulation and interaction behaviour must remain intact. Ecology-sensitive packages stay blocked until a trusted exact-build inventory is available." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Expander x:Name="AssetToolchainExpander"
+                      Header="ASSET INSPECTION TOOLCHAIN — OPTIONAL"
+                      IsExpanded="False"
+                      Margin="0,6,0,0">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock Text="Use a separately downloaded, checksum-pinned rage-cli v0.28.1 executable to inspect this GTA V installation. The Hub does not download or bundle the third-party binary." TextWrapping="Wrap" Foreground="{StaticResource SecondaryText}" FontSize="10" Margin="0,0,0,7"/>
+                <TextBox x:Name="RageCliExecutablePathText"
+                         AutomationProperties.Name="Verified rage-cli executable path"
+                         IsReadOnly="True"
+                         ToolTip="Select rage-windows-x86_64.exe v0.28.1"
+                         Padding="7"
+                         Margin="0,0,0,7"/>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="SelectRageCliButton" Content="Choose rage-cli" Padding="9,6" Margin="0,0,6,0" Click="SelectRageCliButton_Click"/>
+                  <Button x:Name="VerifyRageCliButton" Content="Verify version and checksum" Padding="9,6" Click="VerifyRageCliButton_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="BuildAssetCatalogueButton" Content="Build GTA V asset catalogue" Padding="9,6" IsEnabled="False" Click="BuildAssetCatalogueButton_Click"/>
+                  <Button x:Name="CancelAssetCatalogueButton" Content="Cancel scan" Padding="9,6" Margin="6,0,0,0" IsEnabled="False" Click="CancelAssetCatalogueButton_Click"/>
+                </WrapPanel>
+                <TextBlock x:Name="RageCliStatusText" Text="No rage-cli executable has been verified." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
+                <TextBlock Text="This first scan indexes supported drawables, fragments, model/texture dictionaries and textures. It is not a complete species, population, habitat or water-system inventory, and it never unlocks ecology packages by itself." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,0"/>
+              </StackPanel>
+            </Expander>
           </StackPanel>
         </Border>
 
