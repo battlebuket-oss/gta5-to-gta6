@@ -32,7 +32,7 @@ The catalog is stored under the current user's Local AppData folder:
 %LOCALAPPDATA%\GtaTransformationHub\rage-cli\catalogue\
 ```
 
-The generated SQLite database and JSON scan report are hashed and their paths are shown in the Hub. No GTA V game file is modified by this scan.
+The generated SQLite database and JSON scan report are hashed and their paths are shown in the Hub. Catalogues are stored in a subfolder keyed by the SHA-256 of the selected GTA5.exe, preventing a scan from one executable build from silently reusing another build's database. No GTA V game file is modified by this scan.
 
 ## What this scan covers — and what it does not
 
