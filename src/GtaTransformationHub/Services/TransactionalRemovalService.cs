@@ -16,6 +16,7 @@ public sealed class TransactionalRemovalService
         string ExpectedSha256,
         string FullPath,
         string PackageVersion,
+        bool ExistsAtRemoval,
         IReadOnlyList<string> OwnerTransactionIds);
 
     private static readonly SemaphoreSlim RemovalLock = new(1, 1);
@@ -75,27 +76,38 @@ public sealed class TransactionalRemovalService
                     var destination = ResolveContainedPath(gameRoot, relativePath);
                     EnsureNoReparsePoints(gameRoot, destination);
 
-                    if (!File.Exists(destination))
-                        continue;
-
                     if (string.IsNullOrWhiteSpace(file.Sha256) || file.Sha256.Length != 64 ||
                         !file.Sha256.All(Uri.IsHexDigit))
                         throw new InvalidDataException("A package manifest contains an invalid SHA-256 digest.");
 
-                    var actualHash = await ComputeSha256Async(destination, cancellationToken);
-                    if (!actualHash.Equals(file.Sha256, StringComparison.OrdinalIgnoreCase))
-                        throw new IOException(
-                            "The game file no longer matches the selected package and was not removed: " + relativePath);
+                    var existsAtRemoval = File.Exists(destination);
+                    if (existsAtRemoval)
+                    {
+                        var actualHash = await ComputeSha256Async(destination, cancellationToken);
+                        if (!actualHash.Equals(file.Sha256, StringComparison.OrdinalIgnoreCase))
+                            throw new IOException(
+                                "The game file no longer matches the selected package and was not removed: " + relativePath);
+                    }
 
                     var owners = await GetActiveDeploymentOwnersAsync(
                         package.Manifest.Id, package.Manifest.Version, relativePath, file.Sha256, cancellationToken);
                     if (owners.Count == 0)
-                        throw new InvalidOperationException(
-                            "The Hub has no active deployment record for " + relativePath +
-                            ". It will not remove a file it cannot prove it currently manages.");
+                    {
+                        if (existsAtRemoval)
+                            throw new InvalidOperationException(
+                                "The Hub has no active deployment record for " + relativePath +
+                                ". It will not remove a file it cannot prove it currently manages.");
+                        continue;
+                    }
 
                     candidates.Add(new RemovalCandidate(
-                        package.Manifest.Id, relativePath, file.Sha256, destination, package.Manifest.Version, owners));
+                        package.Manifest.Id,
+                        relativePath,
+                        file.Sha256,
+                        destination,
+                        package.Manifest.Version,
+                        existsAtRemoval,
+                        owners));
                 }
             }
 
@@ -122,8 +134,34 @@ public sealed class TransactionalRemovalService
 
                     var candidate = candidates[index];
                     EnsureNoReparsePoints(gameRoot, candidate.FullPath);
-                    if (!File.Exists(candidate.FullPath))
+
+                    var removalMarker = "removed:" + candidate.PackageId + ":" +
+                                        candidate.PackageVersion + ":" +
+                                        string.Join(",", candidate.OwnerTransactionIds);
+
+                    if (!candidate.ExistsAtRemoval)
+                    {
+                        // Record the ownership change even though the payload file was already
+                        // missing. Rollback restores journal ownership only; it never recreates
+                        // that absent file or deletes a file created later by the user.
+                        var ownershipEntry = new DeploymentJournalEntry(
+                            removalMarker,
+                            candidate.RelativePath,
+                            false,
+                            string.Empty,
+                            candidate.ExpectedSha256,
+                            null,
+                            candidate.PackageVersion,
+                            OwnershipOnly: true);
+                        journal = journal with { Entries = journal.Entries.Append(ownershipEntry).ToArray() };
+                        await SaveJournalAsync(journalPath, journal, cancellationToken);
                         continue;
+                    }
+
+                    if (!File.Exists(candidate.FullPath))
+                        throw new IOException(
+                            "A game file disappeared during removal and its ownership record was not changed: " +
+                            candidate.RelativePath);
 
                     var currentHash = await ComputeSha256Async(candidate.FullPath, cancellationToken);
                     if (!currentHash.Equals(candidate.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
@@ -138,16 +176,14 @@ public sealed class TransactionalRemovalService
                     if (!backupHash.Equals(candidate.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
                         throw new InvalidDataException("A removal backup failed SHA-256 verification.");
 
-                    var removalMarker = "removed:" + candidate.PackageId + ":" +
-                                        candidate.PackageVersion + ":" +
-                                        string.Join(",", candidate.OwnerTransactionIds);
                     var entry = new DeploymentJournalEntry(
                         removalMarker,
                         candidate.RelativePath,
                         true,
                         backupRelative,
                         candidate.ExpectedSha256,
-                        currentHash);
+                        currentHash,
+                        candidate.PackageVersion);
                     journal = journal with { Entries = journal.Entries.Append(entry).ToArray() };
                     await SaveJournalAsync(journalPath, journal, cancellationToken);
 
