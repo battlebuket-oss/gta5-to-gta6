@@ -36,8 +36,8 @@
           <TextBlock x:Name="GamePathText" Text="GTA V Legacy not located" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
           <TextBlock x:Name="DetectionText" Text="Locate your GTA5.exe installation to begin." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,4,0,0"/>
         </StackPanel>
-        <Button x:Name="LocateButton" Grid.Column="1" Content="Locate game" Padding="18,10" Margin="12,0" Click="LocateButton_Click"/>
-        <Button x:Name="RefreshButton" Grid.Column="2" Content="Recheck" Padding="18,10" Click="RefreshButton_Click"/>
+        <Button x:Name="LocateButton" AutomationProperties.Name="Locate GTA V Legacy executable" Grid.Column="1" Content="Locate game" Padding="18,10" Margin="12,0" Click="LocateButton_Click"/>
+        <Button x:Name="RefreshButton" AutomationProperties.Name="Recheck GTA V process and installation state" Grid.Column="2" Content="Recheck" Padding="18,10" Click="RefreshButton_Click"/>
       </Grid>
     </Border>
 
@@ -60,9 +60,16 @@
       <StackPanel Grid.Column="1">
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
-            <TextBlock Text="ACTIVE PROFILE" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold"/>
-            <TextBlock Text="GTA VI-inspired / Balanced" FontSize="16" FontWeight="SemiBold" Margin="0,7,0,4"/>
-            <TextBlock Text="Profiles will store enabled mod IDs and validated deployment settings." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Text="DEFAULT EXPERIENCE" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold"/>
+            <TextBlock Text="Story Mode + World Expansion" FontSize="16" FontWeight="SemiBold" Margin="0,7,0,4"/>
+            <TextBlock Text="The original GTA V campaign stays intact. Separate profiles will manage verified story packs, side activities, world systems and visual changes." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="ACCESSIBILITY" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Accessibility is a core track: subtitle readability, screen-reader compatibility, clear controls, scalable UI, contrast and motion comfort." TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock Text="Catalogue candidates are research-only until individually verified. Unsupported settings will never appear as working toggles." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
           </StackPanel>
         </Border>
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,0">
@@ -77,7 +84,7 @@
 
     <DockPanel Grid.Row="3" Margin="0,18,0,0">
       <TextBlock x:Name="StatusText" Text="Ready. Locate GTA V Legacy to continue." Foreground="{StaticResource SecondaryText}" VerticalAlignment="Center"/>
-      <Button x:Name="LaunchButton" DockPanel.Dock="Right" Content="APPLY PROFILE &amp; LAUNCH" Padding="24,13" FontWeight="Bold" Background="{StaticResource AccentBrush}" Foreground="White" IsEnabled="False" Click="LaunchButton_Click"/>
+      <Button x:Name="LaunchButton" AutomationProperties.Name="Apply validated Story Mode profile and launch GTA V" DockPanel.Dock="Right" Content="APPLY PROFILE &amp; LAUNCH" Padding="24,13" FontWeight="Bold" Background="{StaticResource AccentBrush}" Foreground="White" IsEnabled="False" Click="LaunchButton_Click"/>
     </DockPanel>
   </Grid>
 </Window>
