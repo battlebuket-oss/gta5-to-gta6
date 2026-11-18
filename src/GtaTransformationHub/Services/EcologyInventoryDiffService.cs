@@ -222,6 +222,9 @@ public static class EcologyInventoryDiffService
         {
             if (item.ModelIdentifiers is null || item.ModelIdentifiers.Count == 0)
                 errors.Add($"{label} species '{item.Id}' has no model identifiers.");
+            if (string.IsNullOrWhiteSpace(item.BehaviourProfileId) ||
+                !IsSha256(item.BehaviourDefinitionSha256))
+                errors.Add($"{label} species '{item.Id}' has an incomplete behaviour profile fingerprint.");
             if (item.HabitatIds is null)
             {
                 errors.Add($"{label} species '{item.Id}' has no habitat list.");
@@ -236,6 +239,8 @@ public static class EcologyInventoryDiffService
         {
             if (!string.IsNullOrWhiteSpace(habitat.WaterBodyId) && !waterIds.Contains(habitat.WaterBodyId))
                 errors.Add($"{label} habitat '{habitat.Id}' references missing water body '{habitat.WaterBodyId}'.");
+            if (string.IsNullOrWhiteSpace(habitat.HabitatType) || !IsSha256(habitat.DefinitionSha256))
+                errors.Add($"{label} habitat '{habitat.Id}' has an incomplete habitat definition fingerprint.");
         }
 
         foreach (var entry in populationEntries.Where(item => item is not null))
@@ -295,13 +300,15 @@ public static class EcologyInventoryDiffService
         Same(left.Id, right.Id) &&
         Same(left.Domain, right.Domain) &&
         Same(left.BehaviourProfileId, right.BehaviourProfileId) &&
+        SameHash(left.BehaviourDefinitionSha256, right.BehaviourDefinitionSha256) &&
         SetEquals(left.ModelIdentifiers, right.ModelIdentifiers) &&
         SetEquals(left.HabitatIds, right.HabitatIds);
 
     private static bool HabitatEquals(EcologyHabitatIdentity left, EcologyHabitatIdentity right) =>
         Same(left.Id, right.Id) &&
         Same(left.HabitatType, right.HabitatType) &&
-        Same(left.WaterBodyId, right.WaterBodyId);
+        Same(left.WaterBodyId, right.WaterBodyId) &&
+        SameHash(left.DefinitionSha256, right.DefinitionSha256);
 
     private static bool PopulationEquals(EcologyPopulationEntry left, EcologyPopulationEntry right) =>
         Same(left.Id, right.Id) &&
@@ -350,12 +357,14 @@ public sealed record EcologySpeciesIdentity(
     string Domain,
     IReadOnlyList<string> ModelIdentifiers,
     IReadOnlyList<string> HabitatIds,
-    string BehaviourProfileId);
+    string BehaviourProfileId,
+    string BehaviourDefinitionSha256 = "");
 
 public sealed record EcologyHabitatIdentity(
     string Id,
     string HabitatType,
-    string WaterBodyId);
+    string WaterBodyId,
+    string DefinitionSha256 = "");
 
 public sealed record EcologyPopulationEntry(
     string Id,
