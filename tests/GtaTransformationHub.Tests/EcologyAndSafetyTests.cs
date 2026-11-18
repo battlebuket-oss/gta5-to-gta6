@@ -30,7 +30,8 @@ public sealed class EcologyAndSafetyTests : IDisposable
             ecology: new EcologyPreservationContract("Approved", "VisualOnly", true, true, true, true,
                 false, true, false, false, new string('A', 64), "https://example.com/ecology-review"));
         var errors = EcologyCompatibilityService.Validate(manifest);
-        Assert.Contains(errors, error => error.Contains("adds, replaces, removes"));
+        Assert.Contains(errors, error => error.Contains("replaces/removes vanilla species"));
+        Assert.Contains(errors, error => error.Contains("semantic verification"));
     }
 
     [Fact]
