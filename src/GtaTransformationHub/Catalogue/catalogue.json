@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "gameTarget": "GTA V Legacy",
+  "catalogueVersion": "0.1.0-research",
+  "categories": [
+    { "id": "graphics", "name": "Graphics, lighting and weather" },
+    { "id": "world", "name": "Map, roads, buildings and interiors" },
+    { "id": "vehicles", "name": "Vehicles, handling and damage" },
+    { "id": "pedestrians", "name": "Pedestrians, traffic and NPC behaviour" },
+    { "id": "police", "name": "Police, dispatch and pursuits" },
+    { "id": "gameplay", "name": "Movement, animation and interactions" },
+    { "id": "story", "name": "Story expansions and missions" },
+    { "id": "experimental-ai", "name": "Experimental AI-assisted features" }
+  ],
+  "packages": [],
+  "profiles": [
+    {
+      "id": "balanced-1080p",
+      "name": "Balanced 1080p",
+      "description": "Conservative starting profile for 6 GB VRAM systems. No packages are enabled until individually verified and installed.",
+      "enabledPackageIds": []
+    },
+    {
+      "id": "visual-priority",
+      "name": "Visual Priority",
+      "description": "For later use after graphics packages have been compatibility-tested.",
+      "enabledPackageIds": []
+    },
+    {
+      "id": "performance-priority",
+      "name": "Performance Priority",
+      "description": "For later use after lightweight packages have been compatibility-tested.",
+      "enabledPackageIds": []
+    },
+    {
+      "id": "story-expansion",
+      "name": "Story Expansion",
+      "description": "For later use after mission packs have been reviewed and tested.",
+      "enabledPackageIds": []
+    }
+  ],
+  "cataloguePolicy": "Third-party binaries are not bundled unless redistribution is explicitly permitted. See docs/MOD_CATALOGUE_POLICY.md."
+}
