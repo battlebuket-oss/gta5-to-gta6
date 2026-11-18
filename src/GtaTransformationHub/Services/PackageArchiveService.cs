@@ -269,6 +269,9 @@ public sealed class PackageArchiveService
             throw new InvalidDataException("The package manifest must declare at least one file.");
         if (manifest.Dependencies is null || manifest.Conflicts is null)
             throw new InvalidDataException("Dependencies and conflicts must be declared, even when empty.");
+        if (!string.IsNullOrWhiteSpace(manifest.ExclusiveGroup) &&
+            !PackageIdValidator.IsValid(manifest.ExclusiveGroup))
+            throw new InvalidDataException("The package manifest contains an invalid exclusive group ID.");
 
         foreach (var id in manifest.Dependencies.Concat(manifest.Conflicts))
         {
@@ -278,6 +281,14 @@ public sealed class PackageArchiveService
 
         foreach (var file in manifest.Files)
         {
+            if (file is null ||
+                string.IsNullOrWhiteSpace(file.SourcePath) ||
+                string.IsNullOrWhiteSpace(file.DestinationPath))
+                throw new InvalidDataException("The package manifest contains an empty file entry.");
+
+            _ = ValidateArchivePath(file.SourcePath, isDirectory: false);
+            _ = ValidateArchivePath(file.DestinationPath, isDirectory: false);
+
             if (file.SizeBytes < 0 || file.SizeBytes > MaximumFileBytes)
                 throw new InvalidDataException("A manifest file size is outside the supported limit.");
             if (file.Sha256 is null || file.Sha256.Length != 64 || !file.Sha256.All(Uri.IsHexDigit))
