@@ -310,7 +310,9 @@ public static class EcologyInventoryDiffService
         Same(left.Id, right.Id) &&
         Same(left.WaterType, right.WaterType) &&
         Same(left.SimulationProfileId, right.SimulationProfileId) &&
-        Same(left.InteractionProfileId, right.InteractionProfileId);
+        Same(left.InteractionProfileId, right.InteractionProfileId) &&
+        SameHash(left.SimulationDefinitionSha256, right.SimulationDefinitionSha256) &&
+        SameHash(left.InteractionDefinitionSha256, right.InteractionDefinitionSha256);
 
     private static bool SetEquals(IReadOnlyList<string>? left, IReadOnlyList<string>? right) =>
         left is not null && right is not null &&
@@ -363,7 +365,10 @@ public sealed record EcologyWaterBodyIdentity(
     string WaterType,
     string SimulationProfileId,
     string InteractionProfileId,
-    string RenderingProfileId);
+    string RenderingProfileId,
+    string SimulationDefinitionSha256,
+    string InteractionDefinitionSha256,
+    string RenderingDefinitionSha256);
 
 public sealed record EcologyInventoryDiff(
     bool VanillaPreserved,
