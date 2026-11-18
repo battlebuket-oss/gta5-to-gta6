@@ -100,3 +100,7 @@ These entries are research leads, not approved one-click installs:
 - **GTA Access:** an NVDA-integrated screen-reader project for GTA V Legacy with spoken menus, phone, shops, subtitles, mission instructions, object scanning and navigation assistance. The author's page labels version 1.0.128 a tester build and specifies Legacy 1.0.3889 or later, NVDA, Windows OCR and Script Hook V. It must remain an explicitly opted-in accessibility tool; its installer must never be silently run by the Hub. [Author documentation](https://madnessinnsmouth.com/gta-access/)
 
 These candidates demonstrate that the project can target more than graphics: playable side content, persistent gameplay systems, subtitle readability and screen-reader accessibility are all part of the catalogue strategy. Their presence does not mean they have passed the Hub's own install, save, compatibility or rollback tests.
+
+## In-game UI/UX transformation (expanded)
+
+The UI/UX track includes the title/Story Mode entry, pause/home navigation, map, settings, HUD, phone, weapon/radial menus, loading/transition screens and accessibility overlays. It is distinct from the desktop Transformation Hub dashboard. Each surface requires a verified GTA V implementation path, preservation of native actions, keyboard/controller support, accessibility evidence, build compatibility, performance measurement and rollback. See [UI/UX transformation specification](UI_UX_TRANSFORMATION_SPEC.md).
