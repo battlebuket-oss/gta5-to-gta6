@@ -53,6 +53,25 @@ public sealed class ProfileActivationServiceTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_gameRoot, "mods", "b.dat")));
     }
 
+
+    [Fact]
+    public async Task ActivateNewVersion_RemovesOnlyThePreviouslyInstalledVersion()
+    {
+        var version1 = await ImportPackageAsync(
+            "package-a", "Package A", "mods/a.dat", "alpha", version: "1.0.0");
+        var version2 = await ImportPackageAsync(
+            "package-a", "Package A", "mods/a.dat", "bravo", version: "2.0.0");
+        var library = new[] { version1, version2 };
+        var (activation, _) = CreateServices();
+
+        await activation.ActivateAsync(CreateInstallation(), library, new[] { version1 });
+        var result = await activation.ActivateAsync(CreateInstallation(), library, new[] { version2 });
+
+        Assert.Equal(1, result.FilesRemoved);
+        Assert.Equal(1, result.FilesApplied);
+        Assert.Equal("bravo", await File.ReadAllTextAsync(Path.Combine(_gameRoot, "mods", "a.dat")));
+    }
+
     [Fact]
     public async Task ActivateEmptyProfile_RemovesAllActiveManagedPackages()
     {
@@ -131,7 +150,8 @@ public sealed class ProfileActivationServiceTests : IDisposable
         string name,
         string destination,
         string contents,
-        string minimumBuild = "1.0.1000.0")
+        string minimumBuild = "1.0.1000.0",
+        string version = "1.0.0")
     {
         var bytes = Encoding.UTF8.GetBytes(contents);
         var hash = Convert.ToHexString(SHA256.HashData(bytes));
@@ -143,7 +163,7 @@ public sealed class ProfileActivationServiceTests : IDisposable
             "Test Author",
             "https://example.com/" + id,
             "Test-only fixture licence",
-            "1.0.0",
+            version,
             "GTA V Legacy",
             minimumBuild,
             "1.0.9999.0",
