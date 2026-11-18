@@ -40,7 +40,9 @@ Categories:
 - Vehicles, handling, damage and sound.
 - Pedestrians, traffic, police and world reactivity.
 - Animation, movement, weapons and interaction.
-- Story expansions, missions and side activities.
+- Story Mode campaigns, mission packs, character arcs and side activities.
+- Accessibility and comfort features for both the game experience and the Hub.
+- Audio, wildlife, economy, UI/HUD, combat and interaction systems.
 - Optional experimental AI-assisted features.
 Exit gate: each shipped entry passes compatibility, licensing, security and performance review.
 
@@ -52,7 +54,17 @@ Deliverables:
 - Conflict explanations and actionable repair guidance.
 Exit gate: benchmark on documented hardware and publish known limitations.
 
-## Phase 5 — Production hardening
+## Phase 5 — Story Mode, accessibility and content validation
+Deliverables:
+- Original campaign preservation and save-game backup/restore workflows.
+- Story-pack taxonomy, mission prerequisites, load-order/conflict rules and completion metadata.
+- Clean-save and disposable-save integration tests for mission packs.
+- Accessibility-first Hub UX: keyboard navigation, Narrator labels, high contrast, scalable text and reduced motion.
+- Per-feature game accessibility assessment; no unsupported or fake toggles.
+- Accessibility regression checks as part of UI CI.
+Exit gate: original campaign remains intact; each enabled story pack passes mission and save lifecycle tests; Hub passes keyboard-only and Windows Narrator checks.
+
+## Phase 6 — Production hardening
 Deliverables:
 - Automated unit, integration and end-to-end tests.
 - Signed installer and update channel.
@@ -64,3 +76,8 @@ Exit gate: release checklist, clean-machine install tests, upgrade/downgrade tes
 
 ## Release policy
 No release is called production-ready until all applicable exit gates pass. The current repository is an early engineering foundation, not a finished product. Work proceeds in phases toward the production release.
+
+
+## Experience coverage reference
+
+The [GTA VI-inspired experience coverage matrix](GTA6_EXPERIENCE_COVERAGE_MATRIX.md) is the master feature checklist. Story Mode and accessibility are mandatory product tracks, not optional stretch goals. "Closest possible" means systematically covering each player-facing domain and honestly recording what the GTA V engine or available mod ecosystem cannot reproduce.
