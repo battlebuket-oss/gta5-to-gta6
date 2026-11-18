@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private readonly StorySaveBackupService _storySaveBackupService = new();
     private readonly RageCliToolchainService _rageCliToolchainService = new();
     private readonly RageCliMetadataDiscoveryService _rageCliMetadataDiscoveryService;
+    private readonly RageCliMetadataPayloadService _rageCliMetadataPayloadService;
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -44,6 +45,7 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _rageCliMetadataDiscoveryService = new RageCliMetadataDiscoveryService(_rageCliToolchainService);
+        _rageCliMetadataPayloadService = new RageCliMetadataPayloadService(_rageCliToolchainService);
         _gameInstallationService = new GameInstallationService(_processMonitor);
         _deploymentCoordinator = new PackageDeploymentCoordinator(_deploymentService);
         _profileActivationService = new ProfileActivationService(
@@ -639,6 +641,90 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void DumpEcologyMetadataButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null ||
+            string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select a metadata discovery report for this GTA V build",
+            Filter = "GTA Hub metadata discovery report (metadata-discovery-*.json)|metadata-discovery-*.json",
+            InitialDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "GtaTransformationHub", "rage-cli", "catalogue"),
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var confirmation = MessageBox.Show(
+            "The Hub will re-verify the discovery report against the selected GTA5.exe and pinned rage-cli binary, extract only the nested RPF layers required for up to " +
+            RageCliMetadataPayloadService.MaximumCandidatesToDump +
+            " supported metadata candidates, and dump those resources as JSON into the Hub's local metadata-dumps folder. It will not modify the game installation. Nested archive extraction is capped at 512 MB per candidate and each JSON dump is capped at 128 MB. This is still not a complete or approved ecological baseline. Continue?",
+            "Extract and dump ecological metadata",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _assetCatalogueCancellation?.Dispose();
+        _assetCatalogueCancellation = new CancellationTokenSource();
+        _operationInProgress = true;
+        RefreshSessionState();
+        RageCliStatusText.Text = "Verifying the discovery report and extracting selected metadata resources from nested RPF archives...";
+        StatusText.Text = "Dumping metadata payloads. Game files remain read only.";
+
+        try
+        {
+            var result = await _rageCliMetadataPayloadService.DumpCandidatesAsync(
+                _verifiedRageCliExecutablePath,
+                _installation,
+                dialog.FileName,
+                _assetCatalogueCancellation.Token);
+
+            var status = result.Complete
+                ? "All selected candidates were dumped and the discovery search had no known limits/errors."
+                : "Metadata payload extraction is INCOMPLETE. Review the index errors and candidate cap.";
+
+            RageCliStatusText.Text =
+                "Metadata JSON dump index created." + Environment.NewLine +
+                "Candidates selected: " + result.CandidateCount + Environment.NewLine +
+                "JSON payloads dumped: " + result.DumpedCount + Environment.NewLine +
+                "Index report: " + result.IndexReportPath + Environment.NewLine +
+                "Index SHA-256: " + result.IndexReportSha256 + Environment.NewLine +
+                "Duration: " + result.Duration.ToString(@"hh\:mm\:ss") + Environment.NewLine +
+                status +
+                (result.Errors.Count == 0
+                    ? string.Empty
+                    : Environment.NewLine + "Errors: " + string.Join(" | ", result.Errors.Take(4)));
+
+            StatusText.Text = "Metadata payload JSON saved. Semantic species/water analysis and package approval remain blocked.";
+        }
+        catch (OperationCanceledException)
+        {
+            RageCliStatusText.Text =
+                "Metadata payload dumping was cancelled. Any JSON files already written remain local but the incomplete index must not be treated as complete.";
+            StatusText.Text = "Metadata payload dumping cancelled.";
+        }
+        catch (Exception exception)
+        {
+            RageCliStatusText.Text = "Metadata payload dumping failed: " + exception.Message;
+            StatusText.Text = "No complete metadata payload index was accepted.";
+        }
+        finally
+        {
+            _assetCatalogueCancellation?.Dispose();
+            _assetCatalogueCancellation = null;
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private void CancelAssetCatalogueButton_Click(object sender, RoutedEventArgs e)
     {
         if (_assetCatalogueCancellation is null)
@@ -1151,6 +1237,9 @@ public partial class MainWindow : Window
         DiscoverEcologyMetadataButton.IsEnabled = canConfigure &&
                                                   _installation is not null &&
                                                   !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
+        DumpEcologyMetadataButton.IsEnabled = canConfigure &&
+                                              _installation is not null &&
+                                              !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
         CancelAssetCatalogueButton.IsEnabled = _operationInProgress &&
                                                _assetCatalogueCancellation is not null;
 
