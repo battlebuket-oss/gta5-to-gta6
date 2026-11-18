@@ -108,10 +108,9 @@ public sealed class TransactionalDeploymentServiceTests : IDisposable
         return name;
     }
 
-    private static DeploymentFile Entry(string destination, string sourceRelativePath)
+    private DeploymentFile Entry(string destination, string sourceRelativePath)
     {
-        var bytes = File.ReadAllBytes(Path.Combine(
-            Path.GetDirectoryName(sourceRelativePath) ?? string.Empty, sourceRelativePath));
+        var bytes = File.ReadAllBytes(Path.Combine(_packageRoot, sourceRelativePath));
         return new DeploymentFile(
             "test.package",
             sourceRelativePath,
