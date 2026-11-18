@@ -14,6 +14,9 @@ public sealed class RageCliToolchainServiceTests : IDisposable
     public void PinnedReleaseMetadata_IsAValidSha256AndPublicReleaseReference()
     {
         Assert.Equal(64, RageCliToolchainService.PinnedSha256.Length);
+        Assert.Equal(
+            "B7A9AA1D6196632544889CDC97481DB001936DADC8E046784EADEB38ACD3B1AC",
+            RageCliToolchainService.PinnedSha256);
         Assert.All(RageCliToolchainService.PinnedSha256, character =>
             Assert.True(Uri.IsHexDigit(character)));
         Assert.Equal("0.28.1", RageCliToolchainService.PinnedVersion);
@@ -43,7 +46,7 @@ public sealed class RageCliToolchainServiceTests : IDisposable
     {
         Directory.CreateDirectory(_root);
         var path = Path.Combine(_root, "hash-fixture.txt");
-        await File.WriteAllTextAsync(path, "abc", Encoding.UTF8);
+        await File.WriteAllBytesAsync(path, Encoding.UTF8.GetBytes("abc"));
 
         var digest = await RageCliToolchainService.ComputeSha256Async(path);
 
