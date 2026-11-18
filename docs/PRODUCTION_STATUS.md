@@ -1,6 +1,6 @@
 # Production readiness status
 
-Last reviewed: 2026-11-18
+Last reviewed: 2026-11-19
 
 This document distinguishes implemented development-branch functions from release requirements that have not yet been verified. The product is not yet a production release.
 
@@ -13,6 +13,12 @@ This document distinguishes implemented development-branch functions from releas
 | GTA V Legacy executable selection | Implemented with file identity and numeric version checks; real-edition identification still needs testing |
 | Process lock | Implemented; fails closed on process-inspection errors and checks Legacy/Enhanced process names |
 | Local ZIP package import | Implemented |
+| Direct HTTPS package acquisition | Implemented for user-supplied direct URLs; bounded streaming, redirect validation and DNS validation at socket connection |
+| OIV 2.2 import | Implemented for direct loose-file add operations only; RPF/patch/script operations rejected and compatibility-unverified packages blocked |
+| Ecology preservation contract | Implemented in package manifest and preflight; conservative asset-extension classifier blocks unreviewed game model/texture/map/metadata/animation assets |
+| Shared mutation lock and protected destinations | Implemented for deployment, removal and rollback; executable, RPF and save/profile paths blocked |
+| Story Mode save backup | Implemented as read-only ZIP archive backup of a user-selected Profiles folder |
+| Hardware/performance guidance | Implemented as conservative recommendation only; no game settings are modified |
 | ZIP path traversal, link, duplicate, undeclared-entry and size checks | Implemented |
 | Bounded ZIP decompression | Implemented for manifest and payload extraction |
 | Manifest-declared SHA-256 and size verification | Implemented |
@@ -34,9 +40,9 @@ This document distinguishes implemented development-branch functions from releas
 | Area | Remaining work |
 |---|---|
 | Trusted publisher management | Add and revoke trusted RSA keys in the UI; signed central catalogue and update channel remain outstanding |
-| Automatic package downloads | Not implemented; users download archives from author pages and import local ZIPs |
-| Mod-host-specific installers | No OpenIV OIV/XML/GFX, RPF mutation, or other host-specific installation adapters |
-| Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation |
+| Automatic package downloads | Direct user-supplied HTTPS URL downloads implemented; no HTML scraping, host API crawling or signed catalogue feed |
+| Mod-host-specific installers | Restricted OIV 2.2 loose-file add import implemented; no RPF mutation, XML/GFX, ASI-specific or other host-specific deployment adapters |
+| Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation. Ecology contract exists, but species baseline inventory and semantic asset diff remain outstanding |
 | Build compatibility | Numeric executable version detection exists, but supported builds have not been exhaustively tested against real mod releases |
 | Game launch integration | Direct GTA5.exe launch can require Steam or Rockstar Games Launcher and needs real-world verification |
 | Performance and stability | No repeatable in-game benchmark matrix or extended gameplay soak tests |

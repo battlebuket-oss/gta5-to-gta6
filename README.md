@@ -10,6 +10,11 @@ The current development branch includes:
 - Manual GTA5.exe selection, executable metadata identity checks and numeric build detection.
 - Fail-closed process monitoring for GTA V Legacy and Enhanced process names.
 - Local ZIP package import with a root-level gta-hub-manifest.json.
+- Direct user-supplied HTTPS ZIP/OIV downloads with redirect validation, DNS checks at socket-connect time, bounded streaming and SHA-256 calculation.
+- Restricted OpenIV OIV 2.2 import for direct loose-file add operations only; RPF edits, patch operations and other commands are rejected.
+- Ecology preservation contracts and fail-closed preflight for animal, plant, vegetation, model, texture, map, animation and metadata assets.
+- Shared mutation serialization across deployment, removal and rollback, plus protected paths for executables, RPF archives and save/profile folders.
+- Story Mode save-folder archive backups and conservative hardware/performance guidance.
 - Archive path, duplicate, link, undeclared-file and expansion-size checks.
 - SHA-256 and file-size verification for every manifest-declared file.
 - A local package library and persistent user profiles with exact package-version pins.
@@ -40,11 +45,11 @@ Direct executable launch may require Steam or Rockstar Games Launcher. The launc
 
 - SHA-256 values declared by a package detect corruption but do not authenticate an author by themselves. Optional RSA-SHA256 package signatures are verified only when the public key has been independently verified and trusted locally.
 - Unsigned and unknown-publisher packages remain importable but warn during preflight; an invalid signature from a trusted key is rejected. There is not yet a signed central catalogue or signed application-update channel.
-- The Hub imports local ZIP files. It does not automatically download packages from Nexus, GTA5-Mods or other hosting providers.
+- The Hub downloads only when the user supplies a direct HTTPS ZIP/OIV URL. It does not scrape HTML pages, bypass host-controlled download flows or crawl mod-host APIs.
 - The Hub does not sandbox DLL, ASI or script files when the game loads them. Only install files from sources you trust.
 - The Hub does not execute third-party installers, modify a running game, inject into a process, bypass DRM/anti-cheat or support GTA Online.
-- Current catalogue entries are research-only. No third-party mod is approved for one-click installation.
-- OIV/OpenIV, ASI-specific, XML/GFX and other host-specific adapters are not implemented.
+- Current catalogue entries are research-only. No third-party mod is approved for one-click installation. Ecology-sensitive packages require an approved preservation contract; a complete species inventory and automated semantic asset diff are still outstanding.
+- OIV support is intentionally limited to direct loose-file add operations. RPF editing, XML/GFX, ASI-specific and other host-specific adapters are not implemented. OIV packages remain blocked until exact-build compatibility is independently verified.
 
 Do not use the development build on your only game installation. Test against a disposable copy and back up your game files and saves first.
 
@@ -52,7 +57,11 @@ Do not use the development build on your only game installation. Test against a 
 
 See [Production readiness status](docs/PRODUCTION_STATUS.md) for implemented functions, outstanding engineering work and mandatory release gates.
 
-Outstanding work includes trusted package signatures, automatic downloads, host-specific installation adapters, a tested mod compatibility matrix, in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
+Outstanding work includes a signed central catalogue/update channel, full OIV/RPF and game-specific adapters, a verified GTA V Legacy species/model baseline with automated semantic diffing, a tested mod compatibility matrix, the actual in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
+
+## Ecological fidelity requirement
+
+Preserve the same GTA V animal, plant and vegetation species and model identities. Improve rendering, textures, lighting, geometry and animation without replacing species, removing the original roster or changing species spawn tables. Ecology-sensitive assets are blocked unless their package includes an approved preservation contract backed by exact-build review evidence. See [Ecology preservation policy](docs/ECOLOGY_PRESERVATION_POLICY.md).
 
 ## Product experience priorities
 
