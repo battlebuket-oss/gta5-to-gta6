@@ -45,8 +45,13 @@ public sealed class PackageDeploymentCoordinator
         foreach (var imported in selectedPackages ?? Array.Empty<ImportedPackage>())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var manifest = imported.Manifest;
+            if (imported?.Manifest is null)
+            {
+                errors.Add("The package library contains an empty package entry.");
+                continue;
+            }
 
+            var manifest = imported.Manifest;
             if (!PackageIdValidator.IsValid(manifest.Id))
             {
                 errors.Add("An imported package has an invalid ID.");
@@ -59,18 +64,53 @@ public sealed class PackageDeploymentCoordinator
                 continue;
             }
 
+            if (string.IsNullOrWhiteSpace(manifest.Name) ||
+                string.IsNullOrWhiteSpace(manifest.Author))
+                errors.Add(manifest.Id + " is missing its package name or author.");
+
+            if (!Uri.TryCreate(manifest.SourceUri, UriKind.Absolute, out var sourceUri) ||
+                sourceUri.Scheme != Uri.UriSchemeHttps)
+                errors.Add(manifest.Name + " does not declare a valid HTTPS author/source page.");
+
+            if (string.IsNullOrWhiteSpace(manifest.Licence))
+                errors.Add(manifest.Name + " is missing its licence/permission statement.");
+
+            if (!Version.TryParse(manifest.Version, out _))
+                errors.Add(manifest.Name + " has an invalid numeric package version.");
+
             if (!string.Equals(manifest.GameTarget, "GTA V Legacy", StringComparison.Ordinal))
                 errors.Add(manifest.Name + " does not target GTA V Legacy.");
 
             if (!Version.TryParse(manifest.MinimumGameBuild, out var minimum) ||
                 !Version.TryParse(manifest.MaximumGameBuild, out var maximum) ||
-                !Version.TryParse(installation.BuildVersion, out var current))
+                !Version.TryParse(installation.BuildVersion, out var current) ||
+                minimum > maximum)
             {
                 errors.Add(manifest.Name + " has an invalid game-build compatibility range.");
             }
             else if (current < minimum || current > maximum)
             {
                 errors.Add(manifest.Name + " is not compatible with GTA V build " + installation.BuildVersion + ".");
+            }
+
+            if (manifest.Dependencies is null || manifest.Conflicts is null || manifest.Files is null)
+            {
+                errors.Add(manifest.Name + " has incomplete dependency, conflict or file declarations.");
+                continue;
+            }
+
+            foreach (var dependency in manifest.Dependencies)
+            {
+                if (!PackageIdValidator.IsValid(dependency) ||
+                    dependency.Equals(manifest.Id, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " contains an invalid dependency ID.");
+            }
+
+            foreach (var conflict in manifest.Conflicts)
+            {
+                if (!PackageIdValidator.IsValid(conflict) ||
+                    conflict.Equals(manifest.Id, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " contains an invalid conflict ID.");
             }
 
             foreach (var file in manifest.Files)
@@ -96,10 +136,12 @@ public sealed class PackageDeploymentCoordinator
                     Path.GetExtension(relativeDestination).Equals(".exe", StringComparison.OrdinalIgnoreCase))
                     errors.Add(manifest.Name + " attempts to replace an executable. Executable replacement is blocked.");
 
-                if (string.IsNullOrWhiteSpace(file.Sha256) ||
-                    file.Sha256.Length != 64 || !file.Sha256.All(Uri.IsHexDigit))
+                if (file.SizeBytes < 0 ||
+                    string.IsNullOrWhiteSpace(file.Sha256) ||
+                    file.Sha256.Length != 64 ||
+                    !file.Sha256.All(Uri.IsHexDigit))
                 {
-                    errors.Add(manifest.Name + " contains a file with an invalid SHA-256 digest.");
+                    errors.Add(manifest.Name + " contains a file with invalid size or SHA-256 metadata.");
                     continue;
                 }
 
@@ -112,9 +154,9 @@ public sealed class PackageDeploymentCoordinator
                     continue;
                 }
 
-                if (!File.Exists(sourcePath))
+                if (HasReparsePointBetween(packageRoot, sourcePath) || !File.Exists(sourcePath))
                 {
-                    errors.Add(manifest.Name + " is missing an imported file: " + relativeSource);
+                    errors.Add(manifest.Name + " contains a missing file or reparse-point path: " + relativeSource);
                     continue;
                 }
 
@@ -133,9 +175,14 @@ public sealed class PackageDeploymentCoordinator
                     filesToDeploy++;
             }
 
-            if (string.IsNullOrWhiteSpace(manifest.Licence) ||
-                manifest.Licence.Contains("unknown", StringComparison.OrdinalIgnoreCase))
-                warnings.Add(manifest.Name + " has an unclear licence statement. Confirm permission before installation.");
+            if (manifest.Licence.Contains("unknown", StringComparison.OrdinalIgnoreCase) ||
+                manifest.Licence.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
+                manifest.Licence.Contains("review", StringComparison.OrdinalIgnoreCase) ||
+                manifest.Licence.Contains("prohibit", StringComparison.OrdinalIgnoreCase))
+                warnings.Add(manifest.Name + " has licence terms requiring manual review.");
+
+            if (manifest.Files.Count == 0)
+                errors.Add(manifest.Name + " declares no deployable files.");
         }
 
         foreach (var imported in packageMap.Values)
@@ -151,8 +198,19 @@ public sealed class PackageDeploymentCoordinator
             {
                 if (packageMap.ContainsKey(conflict))
                     errors.Add(manifest.Name + " conflicts with package " + conflict + ".");
+                else if (packageMap.Values.Any(candidate =>
+                             !string.IsNullOrWhiteSpace(candidate.Manifest.ExclusiveGroup) &&
+                             candidate.Manifest.ExclusiveGroup.Equals(conflict, StringComparison.OrdinalIgnoreCase)))
+                    errors.Add(manifest.Name + " conflicts with the selected exclusive group " + conflict + ".");
             }
         }
+
+        var duplicateGroups = packageMap.Values
+            .Where(imported => !string.IsNullOrWhiteSpace(imported.Manifest.ExclusiveGroup))
+            .GroupBy(imported => imported.Manifest.ExclusiveGroup!, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1);
+        foreach (var group in duplicateGroups)
+            errors.Add("Only one package may be selected in the '" + group.Key + "' group.");
 
         if (filesToDeploy == 0)
             errors.Add("The validated selection contains no deployable files.");
@@ -186,7 +244,8 @@ public sealed class PackageDeploymentCoordinator
                     var sourceRoot = Path.GetFullPath(imported.PackageRoot);
                     var sourcePath = Path.GetFullPath(Path.Combine(sourceRoot, sourceRelative));
                     var packagePrefix = Path.TrimEndingDirectorySeparator(sourceRoot) + Path.DirectorySeparatorChar;
-                    if (!sourcePath.StartsWith(packagePrefix, StringComparison.OrdinalIgnoreCase))
+                    if (!sourcePath.StartsWith(packagePrefix, StringComparison.OrdinalIgnoreCase) ||
+                        HasReparsePointBetween(sourceRoot, sourcePath))
                         throw new InvalidDataException("A package source path escaped its import directory.");
 
                     var stagedRelative = Path.Combine(imported.Manifest.Id, sourceRelative);
@@ -217,5 +276,30 @@ public sealed class PackageDeploymentCoordinator
             if (Directory.Exists(stagePath))
                 Directory.Delete(stagePath, recursive: true);
         }
+    }
+
+    private static bool HasReparsePointBetween(string root, string path)
+    {
+        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        var currentPath = Path.GetFullPath(path);
+
+        while (currentPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            if (Directory.Exists(currentPath) &&
+                (File.GetAttributes(currentPath) & FileAttributes.ReparsePoint) != 0)
+                return true;
+
+            if (currentPath.Equals(rootPath, StringComparison.OrdinalIgnoreCase))
+                return File.Exists(currentPath) &&
+                       (File.GetAttributes(currentPath) & FileAttributes.ReparsePoint) != 0;
+
+            var parent = Path.GetDirectoryName(currentPath);
+            if (string.IsNullOrEmpty(parent))
+                return true;
+
+            currentPath = parent;
+        }
+
+        return true;
     }
 }
