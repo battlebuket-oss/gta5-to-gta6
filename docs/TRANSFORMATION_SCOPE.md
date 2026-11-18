@@ -38,13 +38,34 @@ Deliver the closest technically and legally feasible GTA VI-inspired single-play
 - Ambient interaction and animation improvements.
 - These remain authored/scripted game systems unless a specific mod genuinely adds another capability.
 
-### P4 — Story and activities
-- Curated single-player mission/story expansions.
-- Side activities, encounters, interiors and world events.
-- Mission packs must be reviewed for quality, compatibility, save-game impact, dependencies, and licensing.
-- The manager may organize and enable mission packs; it cannot create professional voiced/cinematic content automatically just by toggling a setting.
+### P4 — Story Mode and campaign expansion (primary product track)
+- Preserve the complete original GTA V campaign and user saves.
+- Curate new single-player campaigns, mission packs, protagonist-specific arcs, side missions, stranger encounters, jobs, races, hobbies, businesses and repeatable world events.
+- Classify every content pack by type, protagonist, prerequisites, start location, language/voice coverage, completion behaviour and save compatibility.
+- Provide separate Original Campaign, Story Expansion and Activities profiles, with conflict/load-order checks.
+- Back up relevant save data before any story-package operation; never silently modify or delete saves.
+- Test mission start, checkpoints, failure/retry, completion, save/reload and uninstall.
+- Prefer coherent, high-quality story arcs over raw mod count. Clearly label fan-made content; never present it as official Rockstar content.
+- The hub can manage and integrate authored content; it cannot create professional voiced/cinematic missions merely by enabling a toggle.
 
-### P5 — Optional experimental AI companion systems
+### P5 — Accessibility and comfort (first-class product track)
+Game-side features to research and verify:
+- Subtitle readability, size/contrast/background and speaker identification where supported.
+- Color-vision-friendly HUD/map presets, contrast, interface scaling and reduced clutter.
+- Control remapping and clear keyboard/controller prompts.
+- Camera shake, motion blur and other motion-comfort controls where supported.
+- Dialogue/music/effects balance, audio clarity and sound captions where technically possible.
+- Aim assistance and difficulty options where supported.
+- Explicitly label unsupported or untested options; never display a fake toggle.
+
+Hub-side requirements:
+- Keyboard-first navigation and visible focus.
+- Windows Narrator-compatible accessible names, roles and state announcements.
+- High-contrast mode, scalable text, reduced motion and no color-only status communication.
+- Plain-language validation errors and accessible recovery flows.
+- Accessible installer, update and rollback experiences.
+
+### P6 — Optional experimental AI companion systems
 - Optional local AI-assisted dialogue or ambient NPC experiments only if a compatible GTA V mod/plugin exists and can be safely integrated.
 - Keep inference outside the game process where possible, with explicit opt-in, local model/API configuration, privacy controls, and performance budgets.
 - Never represent an external chatbot overlay as native GTA VI NPC intelligence.
@@ -74,3 +95,10 @@ Do not describe GTA VI NPCs as confirmed ChatGPT-like generative agents. Public 
 6. If the game crashes or the manager closes, next startup reconciles the session and offers safe recovery.
 7. After GTA5.exe exits, the manager unlocks and permits the next profile change.
 8. Every catalogue entry links to its original author/source and states compatibility and licence details.
+
+
+## Comprehensive experience target
+
+The project now uses [the GTA VI-inspired experience coverage matrix](GTA6_EXPERIENCE_COVERAGE_MATRIX.md) as the feature acceptance reference. It covers visual fidelity, world/map/interiors, ambient life, traffic, police, vehicles, movement, combat, Story Mode, side activities, economy, wildlife, audio, UI, accessibility, stability, performance, privacy and security.
+
+The goal is the closest feasible overall player experience, not a misleading claim that every GTA VI system can be reproduced inside GTA V. Each feature must be labelled as native, verified mod, hub feature, experimental, unavailable or blocked.
