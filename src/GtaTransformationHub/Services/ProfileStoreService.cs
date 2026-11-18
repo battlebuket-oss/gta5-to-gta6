@@ -6,7 +6,12 @@ namespace GtaTransformationHub.Services;
 public sealed class ProfileStoreService
 {
     private sealed record ProfileStoreDocument(int SchemaVersion, IReadOnlyList<StoredProfile> Profiles);
-    private sealed record StoredProfile(string Id, string Name, IReadOnlyList<string> EnabledPackageIds, DateTimeOffset UpdatedAt);
+    private sealed record StoredProfile(
+        string Id,
+        string Name,
+        IReadOnlyList<string> EnabledPackageIds,
+        DateTimeOffset UpdatedAt,
+        IReadOnlyDictionary<string, string>? PackageVersions = null);
 
     private readonly string _storePath;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -42,16 +47,38 @@ public sealed class ProfileStoreService
             throw new InvalidDataException("A profile must have a valid ID, name and package list.");
 
         var packageIds = profile.EnabledPackageIds.ToArray();
+        var packageIdSet = packageIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (packageIds.Any(id => !PackageIdValidator.IsValid(id)) ||
             packageIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != packageIds.Length)
             throw new InvalidDataException("A profile contains invalid or duplicate package IDs.");
+
+        Dictionary<string, string>? packageVersions = null;
+        if (profile.PackageVersions is not null)
+        {
+            packageVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in profile.PackageVersions)
+            {
+                if (!PackageIdValidator.IsValid(pair.Key) ||
+                    !packageIdSet.Contains(pair.Key) ||
+                    !Version.TryParse(pair.Value, out _) ||
+                    !packageVersions.TryAdd(pair.Key, pair.Value))
+                    throw new InvalidDataException("A profile contains an invalid or unselected package version.");
+            }
+
+            if (packageVersions.Count != packageIdSet.Count)
+                throw new InvalidDataException("A version-pinned profile must specify a version for every selected package.");
+        }
 
         await _gate.WaitAsync(cancellationToken);
         try
         {
             var existing = (await LoadWithoutLockAsync(cancellationToken)).ToList();
             existing.RemoveAll(item => item.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase));
-            existing.Add(profile with { UpdatedAt = DateTimeOffset.UtcNow });
+            existing.Add(profile with
+            {
+                UpdatedAt = DateTimeOffset.UtcNow,
+                PackageVersions = packageVersions
+            });
             await WriteWithoutLockAsync(existing, cancellationToken);
         }
         finally
@@ -114,7 +141,29 @@ public sealed class ProfileStoreService
                     throw new InvalidDataException("A saved profile contains an invalid or duplicate package ID.");
             }
 
-            profiles.Add(new ModProfile(stored.Id, stored.Name, packageIds, stored.UpdatedAt));
+            Dictionary<string, string>? packageVersions = null;
+            if (stored.PackageVersions is not null)
+            {
+                packageVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in stored.PackageVersions)
+                {
+                    if (!PackageIdValidator.IsValid(pair.Key) ||
+                        !packageIds.Contains(pair.Key) ||
+                        !Version.TryParse(pair.Value, out _) ||
+                        !packageVersions.TryAdd(pair.Key, pair.Value))
+                        throw new InvalidDataException("A saved profile contains invalid package-version metadata.");
+                }
+
+                if (packageVersions.Count != packageIds.Count)
+                    throw new InvalidDataException("A saved version-pinned profile is missing a selected package version.");
+            }
+
+            profiles.Add(new ModProfile(
+                stored.Id,
+                stored.Name,
+                packageIds,
+                stored.UpdatedAt,
+                packageVersions));
         }
 
         return profiles;
@@ -131,7 +180,13 @@ public sealed class ProfileStoreService
             profile.Id,
             profile.Name,
             profile.EnabledPackageIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToArray(),
-            profile.UpdatedAt)).ToArray();
+            profile.UpdatedAt,
+            profile.PackageVersions is null
+                ? null
+                : profile.PackageVersions
+                    .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase)
+        )).ToArray();
 
         var tempPath = _storePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
