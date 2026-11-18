@@ -48,7 +48,7 @@ public sealed class ProfileStoreService
 
         var packageIds = profile.EnabledPackageIds.ToArray();
         var packageIdSet = packageIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (packageIds.Any(id => !PackageIdValidator.IsValid(id)) ||
+        if (packageIds.Any(id => !IsValidPackageReference(id)) ||
             packageIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != packageIds.Length)
             throw new InvalidDataException("A profile contains invalid or duplicate package IDs.");
 
@@ -137,7 +137,7 @@ public sealed class ProfileStoreService
             var packageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var packageId in stored.EnabledPackageIds)
             {
-                if (!PackageIdValidator.IsValid(packageId) || !packageIds.Add(packageId))
+                if (!IsValidPackageReference(packageId) || !packageIds.Add(packageId))
                     throw new InvalidDataException("A saved profile contains an invalid or duplicate package ID.");
             }
 
@@ -167,6 +167,18 @@ public sealed class ProfileStoreService
         }
 
         return profiles;
+    }
+
+    private static bool IsValidPackageReference(string value)
+    {
+        if (PackageIdValidator.IsValid(value))
+            return true;
+
+        var separator = value.LastIndexOf('@');
+        return separator > 0 &&
+               separator < value.Length - 1 &&
+               PackageIdValidator.IsValid(value[..separator]) &&
+               Version.TryParse(value[(separator + 1)..], out _);
     }
 
     private async Task WriteWithoutLockAsync(
