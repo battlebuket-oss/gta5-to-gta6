@@ -237,6 +237,26 @@ public partial class MainWindow : Window
         RefreshSessionState();
     }
 
+    private void OpenPackageSourceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string sourceText ||
+            !Uri.TryCreate(sourceText, UriKind.Absolute, out var sourceUri) ||
+            sourceUri.Scheme != Uri.UriSchemeHttps)
+        {
+            StatusText.Text = "The package source is not a valid HTTPS URL.";
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(sourceUri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Could not open the package source page: " + exception.Message;
+        }
+    }
+
     private async void ValidateButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration() || _installation is null)
