@@ -261,7 +261,8 @@ public sealed class PackageDeploymentCoordinator
                         imported.Manifest.Id,
                         stagedRelative,
                         file.DestinationPath,
-                        file.Sha256));
+                        file.Sha256,
+                        imported.Manifest.Version));
                 }
             }
 
