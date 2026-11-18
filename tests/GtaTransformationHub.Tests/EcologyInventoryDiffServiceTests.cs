@@ -172,6 +172,18 @@ public sealed class EcologyInventoryDiffServiceTests
     }
 
     [Fact]
+    public void Compare_RejectsDifferentGameExecutableFingerprint()
+    {
+        var baseline = CreateBaseline();
+        var candidate = baseline with { GameExecutableSha256 = HashB };
+
+        var result = EcologyInventoryDiffService.Compare(baseline, candidate);
+
+        Assert.False(result.VanillaPreserved);
+        Assert.Contains(result.Errors, error => error.Contains("GTA5.exe fingerprint does not match"));
+    }
+
+    [Fact]
     public void Compare_RejectsMalformedPopulationReferencesWithoutThrowing()
     {
         var baseline = CreateBaseline();
