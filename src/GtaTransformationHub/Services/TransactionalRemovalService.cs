@@ -5,12 +5,17 @@ using GtaTransformationHub.Models;
 namespace GtaTransformationHub.Services;
 
 /// <summary>
-/// Removes only files previously installed by this Hub, identified through a successful
-/// deployment journal and a matching package hash. Every removal has a rollback journal.
+/// Removes only files previously installed by this Hub, identified through active
+/// deployment-journal ownership and matching hashes. Every removal has a rollback journal.
 /// </summary>
 public sealed class TransactionalRemovalService
 {
-    private sealed record RemovalCandidate(string PackageId, string RelativePath, string ExpectedSha256, string FullPath);
+    private sealed record RemovalCandidate(
+        string PackageId,
+        string RelativePath,
+        string ExpectedSha256,
+        string FullPath,
+        IReadOnlyList<string> OwnerTransactionIds);
 
     private static readonly SemaphoreSlim RemovalLock = new(1, 1);
     private readonly string _transactionsRoot;
@@ -81,15 +86,15 @@ public sealed class TransactionalRemovalService
                         throw new IOException(
                             "The game file no longer matches the selected package and was not removed: " + relativePath);
 
-                    var owned = await HasSuccessfulDeploymentRecordAsync(
+                    var owners = await GetActiveDeploymentOwnersAsync(
                         package.Manifest.Id, relativePath, file.Sha256, cancellationToken);
-                    if (!owned)
+                    if (owners.Count == 0)
                         throw new InvalidOperationException(
-                            "The Hub has no successful deployment record for " + relativePath +
-                            ". It will not remove a file it cannot prove it installed.");
+                            "The Hub has no active deployment record for " + relativePath +
+                            ". It will not remove a file it cannot prove it currently manages.");
 
                     candidates.Add(new RemovalCandidate(
-                        package.Manifest.Id, relativePath, file.Sha256, destination));
+                        package.Manifest.Id, relativePath, file.Sha256, destination, owners));
                 }
             }
 
@@ -132,8 +137,10 @@ public sealed class TransactionalRemovalService
                     if (!backupHash.Equals(candidate.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
                         throw new InvalidDataException("A removal backup failed SHA-256 verification.");
 
+                    var removalMarker = "removed:" + candidate.PackageId + ":" +
+                                        string.Join(",", candidate.OwnerTransactionIds);
                     var entry = new DeploymentJournalEntry(
-                        "removed:" + candidate.PackageId,
+                        removalMarker,
                         candidate.RelativePath,
                         true,
                         backupRelative,
@@ -172,19 +179,21 @@ public sealed class TransactionalRemovalService
         }
     }
 
-    private async Task<bool> HasSuccessfulDeploymentRecordAsync(
+    private async Task<IReadOnlyList<string>> GetActiveDeploymentOwnersAsync(
         string packageId,
         string relativePath,
         string expectedHash,
         CancellationToken cancellationToken)
     {
         if (!Directory.Exists(_transactionsRoot))
-            return false;
+            return Array.Empty<string>();
 
+        var activeOwners = new List<string>();
         foreach (var transactionRoot in Directory.EnumerateDirectories(_transactionsRoot)
                      .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var transactionId = Path.GetFileName(transactionRoot);
             var journalPath = Path.Combine(transactionRoot, "journal.json");
             if (!File.Exists(journalPath))
                 continue;
@@ -200,17 +209,53 @@ public sealed class TransactionalRemovalService
                 continue;
             }
 
-            if (journal is null || !string.Equals(journal.State, "Applied", StringComparison.Ordinal))
+            if (journal is null ||
+                !string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
                 continue;
 
-            if (journal.Entries.Any(entry =>
-                    entry.PackageId.Equals(packageId, StringComparison.OrdinalIgnoreCase) &&
-                    entry.DestinationRelativePath.Equals(relativePath, StringComparison.OrdinalIgnoreCase) &&
-                    entry.DeployedSha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase)))
-                return true;
+            foreach (var entry in journal.Entries.Where(entry =>
+                         entry.DestinationRelativePath.Equals(relativePath, StringComparison.OrdinalIgnoreCase) &&
+                         entry.DeployedSha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (entry.PackageId.StartsWith("removed:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var marker = entry.PackageId.Split(':', 3);
+                    if (marker.Length != 3 ||
+                        !marker[1].Equals(packageId, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var owners = marker[2].Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    if (journal.State.Equals("Applied", StringComparison.Ordinal))
+                    {
+                        foreach (var owner in owners)
+                            activeOwners.RemoveAll(value => value.Equals(owner, StringComparison.Ordinal));
+                    }
+                    else if (journal.State.Equals("RolledBack", StringComparison.Ordinal))
+                    {
+                        foreach (var owner in owners)
+                        {
+                            if (!activeOwners.Contains(owner, StringComparer.Ordinal))
+                                activeOwners.Add(owner);
+                        }
+                    }
+                }
+                else if (entry.PackageId.Equals(packageId, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (journal.State.Equals("Applied", StringComparison.Ordinal))
+                    {
+                        if (!activeOwners.Contains(journal.TransactionId, StringComparer.Ordinal))
+                            activeOwners.Add(journal.TransactionId);
+                    }
+                    else if (journal.State.Equals("RolledBack", StringComparison.Ordinal))
+                    {
+                        activeOwners.RemoveAll(value =>
+                            value.Equals(journal.TransactionId, StringComparison.Ordinal));
+                    }
+                }
+            }
         }
 
-        return false;
+        return activeOwners;
     }
 
     private static string ValidateGameRoot(string gameRoot)
