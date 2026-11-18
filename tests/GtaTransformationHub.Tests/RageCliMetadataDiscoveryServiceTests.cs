@@ -140,7 +140,7 @@ public sealed class RageCliMetadataDiscoveryServiceTests
     [Fact]
     public void ParseSearchJson_RejectsMalformedOrIncompleteResults()
     {
-        Assert.Throws<JsonException>(() =>
+        Assert.ThrowsAny<JsonException>(() =>
             RageCliMetadataDiscoveryService.ParseSearchJson("{not-json}"));
         Assert.Throws<InvalidDataException>(() =>
             RageCliMetadataDiscoveryService.ParseSearchJson("{}"));
