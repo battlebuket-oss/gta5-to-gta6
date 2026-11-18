@@ -102,3 +102,14 @@ Do not describe GTA VI NPCs as confirmed ChatGPT-like generative agents. Public 
 The project now uses [the GTA VI-inspired experience coverage matrix](GTA6_EXPERIENCE_COVERAGE_MATRIX.md) as the feature acceptance reference. It covers visual fidelity, world/map/interiors, ambient life, traffic, police, vehicles, movement, combat, Story Mode, side activities, economy, wildlife, audio, UI, accessibility, stability, performance, privacy and security.
 
 The goal is the closest feasible overall player experience, not a misleading claim that every GTA VI system can be reproduced inside GTA V. Each feature must be labelled as native, verified mod, hub feature, experimental, unavailable or blocked.
+
+## P7 — In-game UI/UX transformation (first-class track)
+
+- Rework the actual GTA V frontend/title entry, pause navigation, map, settings, HUD, phone, weapon/radial menus and loading/transition screens toward a cohesive modern GTA VI-inspired experience.
+- Implement only through verified GTA V frontend/Scaleform, game-script or asset-replacement extension points; a companion interface is not represented as an in-game replacement.
+- Preserve all native actions, keyboard/controller navigation, mission prompts, subtitles, save behaviour and accessibility layers.
+- Use one compatible UI stack per surface, detect replacement conflicts, and deploy/rollback through the same transactional engine.
+- Expose only settings with a tested real read/write path; never display fake controls.
+- Validate each screen across supported game builds, resolutions, input devices, accessibility settings, missions and cutscenes.
+
+The detailed screen inventory, architecture, UX rules and acceptance tests are defined in [the UI/UX transformation specification](UI_UX_TRANSFORMATION_SPEC.md).
