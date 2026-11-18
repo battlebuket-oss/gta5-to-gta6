@@ -210,8 +210,9 @@ public static class EcologyInventoryDiffService
         string label,
         List<string> errors)
     {
-        var speciesIds = species.Where(item => item is not null)
-            .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var speciesById = species.Where(item => item is not null)
+            .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         var habitatIds = habitats.Where(item => item is not null)
             .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var waterIds = waterBodies.Where(item => item is not null)
@@ -239,8 +240,15 @@ public static class EcologyInventoryDiffService
 
         foreach (var entry in populationEntries.Where(item => item is not null))
         {
-            if (!speciesIds.Contains(entry.SpeciesId))
+            if (!speciesById.TryGetValue(entry.SpeciesId, out var ownerSpecies))
+            {
                 errors.Add($"{label} population entry '{entry.Id}' references missing species '{entry.SpeciesId}'.");
+            }
+            else if (ownerSpecies.HabitatIds is null ||
+                     !ownerSpecies.HabitatIds.Contains(entry.HabitatId, StringComparer.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} population entry '{entry.Id}' is assigned to a habitat not declared by species '{entry.SpeciesId}'.");
+            }
             if (!habitatIds.Contains(entry.HabitatId))
                 errors.Add($"{label} population entry '{entry.Id}' references missing habitat '{entry.HabitatId}'.");
             if (!IsSha256(entry.DefinitionSha256))
