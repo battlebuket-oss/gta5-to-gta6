@@ -35,6 +35,13 @@ See:
 - [Delivery roadmap](docs/DELIVERY_ROADMAP.md)
 - [Mod catalogue policy](docs/MOD_CATALOGUE_POLICY.md)
 - [Initial mod research shortlist](docs/MOD_RESEARCH_SHORTLIST.md)
+- [GTA VI-inspired experience coverage matrix](docs/GTA6_EXPERIENCE_COVERAGE_MATRIX.md)
+
+## Product experience priorities
+
+Story Mode is the primary experience: preserve the original campaign and saves, then add compatible mission packs, character arcs, side activities and world events where the mod ecosystem supports them. Accessibility is a first-class track, including subtitle readability, screen-reader support research, control flexibility, readable UI and comfort settings. The catalogue currently includes research-only candidates such as GTA V New Game+, Lowriders DLC in Single Player, Subtitles Enhanced (Legacy) and GTA Access. None is approved for one-click installation yet.
+
+The target is the closest feasible overall GTA VI-inspired experience across visuals, world systems, traffic, police, vehicles, combat, story, activities, audio, accessibility, stability and performance. GTA V's engine and available community content impose hard limits; the app will show honest coverage rather than claim exact GTA VI parity.
 
 ## Initial target
 
