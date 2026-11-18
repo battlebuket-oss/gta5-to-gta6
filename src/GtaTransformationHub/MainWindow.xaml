@@ -59,6 +59,7 @@
             <Button x:Name="ImportPackageButton" Content="Import package ZIP" Padding="14,9" Margin="0,0,8,0" Click="ImportPackageButton_Click"/>
             <Button x:Name="ValidateButton" Content="Validate selection" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="ValidateButton_Click"/>
             <Button x:Name="ApplyButton" Content="Apply selected" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Background="{StaticResource AccentBrush}" Foreground="White" Click="ApplyButton_Click"/>
+            <Button x:Name="RemoveSelectedButton" Content="Remove selected" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="RemoveSelectedButton_Click"/>
             <Button x:Name="RollbackButton" Content="Rollback latest" Padding="14,9" IsEnabled="False" Click="RollbackButton_Click"/>
           </WrapPanel>
 
