@@ -81,3 +81,15 @@ No release is called production-ready until all applicable exit gates pass. The 
 ## Experience coverage reference
 
 The [GTA VI-inspired experience coverage matrix](GTA6_EXPERIENCE_COVERAGE_MATRIX.md) is the master feature checklist. Story Mode and accessibility are mandatory product tracks, not optional stretch goals. "Closest possible" means systematically covering each player-facing domain and honestly recording what the GTA V engine or available mod ecosystem cannot reproduce.
+
+## Phase 5A — In-game UI/UX transformation
+
+Deliverables:
+- Inventory GTA V Legacy frontend, Scaleform, HUD and script extension points.
+- Research and verify individual title, pause, map, settings, HUD, phone, radial and loading-screen implementations.
+- Add UI-surface metadata, mutually exclusive stack resolution and per-surface compatibility rules.
+- Implement one low-risk screen component end-to-end, including keyboard/controller behaviour, accessibility checks, backup and rollback.
+- Expand surface-by-surface only after native-action and mission-transition tests pass.
+Exit gate: no fake settings or dead controls; every shipped screen preserves native actions and passes supported-build, input, accessibility, performance and rollback tests.
+
+See [UI/UX transformation specification](UI_UX_TRANSFORMATION_SPEC.md).
