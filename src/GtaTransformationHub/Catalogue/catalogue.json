@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.1-research",
+  "catalogueVersion": "0.4.2-research",
   "categories": [
     {
       "id": "graphics",
@@ -312,6 +312,190 @@
         "ScriptHookVDotNet",
         "Enable MP Maps"
       ]
+    },
+    {
+      "id": "gta-vi-hud-legacy",
+      "name": "GTA VI HUD [Legacy / Enhanced]",
+      "category": "interface",
+      "author": "fbicat",
+      "sourceUri": "https://www.gta5-mods.com/uk/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705",
+      "licence": "Author distribution and asset permissions require review; do not bundle or redistribute.",
+      "version": "1.3 FIXED (source listing, 18 November 2026)",
+      "minimumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-hud-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "ScriptHookVDotNet scripts-folder adapter (not implemented)",
+      "restoreStrategy": "Manifest-based per-file backup after archive inspection; test script data persistence and rollback",
+      "performanceTier": "Unknown; benchmark on the target 1080p/6 GB VRAM hardware",
+      "notes": "The author's current listing describes separate Legacy and Enhanced folders; this catalogue targets Legacy only. The mod advertises a GTA VI-inspired status/HUD layout, weapon wheel, vehicle card, world markers, cash rings, weapons-on-back, stamina, vehicle storage, bounty, fuel and configurable chase music. Requirements list Script Hook V, ScriptHookVDotNet 3 and LemonUI SHVDN3. Version 1.3 FIXED was listed as current on 18 November 2026. Exact supported Legacy build, archive contents, licence, script conflicts, cutscene behaviour and rollback remain unverified. Do not install the Enhanced folder.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3",
+        "LemonUI SHVDN3"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "gta-vi-styled-minimap-hud-legacy",
+      "name": "GTA VI Styled Minimap & HUD (Legacy)",
+      "category": "interface",
+      "author": "sej0bec",
+      "sourceUri": "https://www.gta5-mods.com/scripts/gta-vi-styled-minimap-legacy",
+      "licence": "Author distribution and asset permissions require review; do not bundle or redistribute.",
+      "version": "2.0",
+      "minimumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-hud-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV plus managed script-folder adapter (not implemented)",
+      "restoreStrategy": "OpenIV mods-folder backups and per-script transaction backup; OIV archive edits are not supported by the Hub yet",
+      "performanceTier": "Unknown; archive is listed around 157 MB; benchmark texture/VRAM and script overhead",
+      "notes": "The author listing describes a GTA VI-inspired minimap and redesigned HUD, including context-sensitive health and special-ability bars. Installation requires an OIV through OpenIV plus separately copied script files. No binaries are bundled. Inspect the exact OIV commands, script dependencies, supported build, licence, archive conflicts and rollback before approval.",
+      "externalRequirements": [
+        "OpenIV Package Installer",
+        "Author-specified script framework requirements must be confirmed from the downloaded archive"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "gta-vi-minimap-3d-buildings",
+      "name": "GTA VI MiniMap (3D Buildings) (Legacy & Enhanced)",
+      "category": "interface",
+      "author": "loneeps",
+      "sourceUri": "https://www.gta5-mods.com/scripts/gtavi-minimap-3d-buildings-legacy-enhanced",
+      "licence": "Author prohibits re-uploading; do not bundle or redistribute.",
+      "version": "1.0 (Beta)",
+      "minimumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-hud-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "ASI plus managed scripts-folder adapter (not implemented)",
+      "restoreStrategy": "Back up MiniMap.asi, MiniMap.dll and font assets; verify rollback against user-modified files",
+      "performanceTier": "Unknown; beta release requires frame-time and map-streaming tests",
+      "notes": "The author's page describes a GTA VI-inspired minimap with custom waypoints, coloured sea/sand and 3D buildings, plus an F11 menu. The archive contains MiniMap.asi and scripts-folder assets. Author notes a fullscreen naming workaround and labels the mod beta, so it must not be enabled by default. Use only the Legacy files.",
+      "externalRequirements": [
+        "ASI Loader and script framework requirements must be verified from the archive"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "pause-menu-library",
+      "name": "Pause Menu Library",
+      "category": "interface",
+      "author": "SloRey",
+      "sourceUri": "https://www.gta5-mods.com/fi/tools/pause-menu-library",
+      "licence": "Free for personal, non-commercial GTA V single-player use; author prohibits modifying, re-uploading, decompiling, reverse engineering or use in GTA Online. Redistribution permission not granted.",
+      "version": "1.0.1",
+      "minimumGameBuild": "Latest supported GTA V Legacy version stated by author; exact build pending",
+      "maximumGameBuild": "Latest supported GTA V Legacy version stated by author; exact build pending",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ASI library adapter (not implemented); author says players install PauseMenuLibrary.asi into game root",
+      "restoreStrategy": "Per-file backup for the library ASI and any dependent mod settings; test menu state and keybind persistence",
+      "performanceTier": "Unknown; library-only overhead must be measured",
+      "notes": "This is a mod-author API, not a visual pause-menu replacement by itself. It lets compatible mods add in-game pause-menu pages, tabs, toggles, sliders, option lists, text boxes and keyboard/controller binding pages. It is a potential foundation for a future GTA VI-inspired settings page. The author states it works with Legacy and Enhanced and requires Script Hook V.",
+      "externalRequirements": [
+        "Script Hook V"
+      ]
+    },
+    {
+      "id": "minimap-radar-editor-vi-daynightoverlay",
+      "name": "MinimapRadarEditor VI_DayNightOverlay",
+      "category": "interface",
+      "author": "Tamerktb",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/2213",
+      "licence": "Nexus permissions prohibit re-uploading and modification without author permission; third-party assets also require permission.",
+      "version": "1",
+      "minimumGameBuild": "GTA V Legacy v1.73 stated as tested; confirm exact executable build before approval",
+      "maximumGameBuild": "GTA V Legacy v1.73 stated as tested; confirm exact executable build before approval",
+      "sha256": null,
+      "dependencies": [
+        "gta-vi-styled-minimap-hud-legacy"
+      ],
+      "conflicts": [
+        "minimap-editor-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual external script package; no automated installer adapter",
+      "restoreStrategy": "Documented manual removal and manifest-based backup required before any Hub-managed deployment",
+      "performanceTier": "Unknown; test radar rendering and ultrawide layouts",
+      "notes": "Adds live minimap and big-map position/size editing, zoom and a VI-style day/night tint. The author lists Script Hook V, ScriptHookVDotNet, LemonUI SHVDN3 and a compatible GTA VI HUD/radar mod. The Nexus page says it was tested on GTA V Legacy v1.73; do not assume compatibility with other builds. This is an optional companion, not a standalone HUD.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3",
+        "LemonUI SHVDN3",
+        "A compatible GTA VI HUD/radar mod"
+      ],
+      "exclusiveGroup": "minimap-editor-exclusive"
+    },
+    {
+      "id": "jaxon-ui-overhaul-legacy",
+      "name": "Jaxon UI Overhaul",
+      "category": "interface",
+      "author": "Jaxon G (jaxon-hash)",
+      "sourceUri": "https://www.gta5-mods.com/gl/scripts/ui-overhaul-v1",
+      "licence": "Author redistribution terms require review; do not bundle or re-upload without permission.",
+      "version": "1.0",
+      "minimumGameBuild": "Not specified; author says GTA V Legacy and tests at 1920x1080",
+      "maximumGameBuild": "Not specified; author says GTA V Legacy and tests at 1920x1080",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-hud-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV adapter (not implemented)",
+      "restoreStrategy": "Back up conflicting minimap/graphics assets in the mods folder and verify rollback",
+      "performanceTier": "Unknown; author reports 1920x1080 16:9 testing",
+      "notes": "Modern Legacy HUD candidate with circular minimap, health/armour rings, vehicle speedometer and redesigned weapon/ammunition display. The author says custom HUD hides during cutscenes and supported menus. Installation uses an OIV through OpenIV. The page warns that replacements for graphics.ytd, minimap.gfx and minimap_main_map.gfx may conflict with other HUD/minimap mods.",
+      "externalRequirements": [
+        "OpenIV",
+        "OpenIV.ASI",
+        "ASI Loader",
+        "Script Hook V",
+        "ScriptHookVDotNet 3"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "gta-6-style-loading-screen-music-icon",
+      "name": "GTA 6 Style Loading Screen, Music & Icon",
+      "category": "interface",
+      "author": "sa3ydov",
+      "sourceUri": "https://www.gta5-mods.com/misc/gta-6-style-loading-screen-music-icon",
+      "licence": "Author prohibits redistribution without permission; music rights and usage terms require separate review.",
+      "version": "1.0",
+      "minimumGameBuild": "Not specified; build compatibility test required",
+      "maximumGameBuild": "Not specified; build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "loading-screen-overhaul-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV asset adapter (not implemented)",
+      "restoreStrategy": "Back up original loading assets in the mods folder; verify restore on clean launch",
+      "performanceTier": "Low expected asset footprint; launch-time impact unmeasured",
+      "notes": "GTA VI-inspired startup/loading-screen artwork, intro music and desktop icon. The author says to install through OpenIV using the mods folder and explicitly prohibits re-uploading without permission. Music licensing must be checked before bundling or redistribution.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "loading-screen-overhaul-exclusive"
     }
   ],
   "profiles": [
