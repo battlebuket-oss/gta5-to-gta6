@@ -34,11 +34,25 @@ The catalog is stored under the current user's Local AppData folder:
 
 The generated SQLite database and JSON scan report are hashed and their paths are shown in the Hub. Catalogues are stored in a subfolder keyed by the SHA-256 of the selected GTA5.exe, preventing a scan from one executable build from silently reusing another build's database. No GTA V game file is modified by this scan.
 
+## Ecology metadata discovery
+
+The Hub also has an optional bounded metadata-discovery pass. It runs rage-cli's nested-RPF `search` command for a focused set of candidate patterns:
+
+- Generic metadata/container types: `.ymt`, `.meta`, `.ytyp`, `.ymap` and `.ymf`.
+- Population/model-set names: `popgroups`, `popcycle` and `pedmodelsets`.
+- Ecology and water-related names: `water`, `animal`, `fish`, `vegetation`, `flora` and `fauna`.
+
+Each pattern is capped at 200 hits to bound memory and output. The JSON report records the pattern, nested archive path, resource name/type/size and JOAAT hashes, the selected GTA5.exe SHA-256, the rage-cli version and SHA-256, and SHA-256 fingerprints for each referenced source RPF. Repeated hits from overlapping patterns are grouped.
+
+A search that reaches a hit cap, has truncated output, cannot parse JSON, or reports unreadable/skipped archives is marked incomplete. The report is stored under the same executable-fingerprint-specific catalogue directory. The search does not extract or modify game files.
+
+**This is candidate discovery only.** It does not parse the metadata payloads, prove that the pattern list found every species or habitat, or establish a complete population/water baseline. Generic `.ymap` and `.ymt` searches may reach the cap. A completed pattern scan must not be labelled a complete ecological inventory.
+
 ## What this scan covers — and what it does not
 
 Upstream rage-cli's `catalog build` indexes supported drawables, fragments, drawable dictionaries, dictionary entries, texture dictionaries and textures in game load order. It can inspect nested RPF archives and read retail archive keys using the user's own GTA5.exe.
 
-The current Hub integration does **not** yet turn that catalogue into a complete ecological inventory. It does not yet enumerate and semantically verify every terrestrial animal, fish, marine animal, terrestrial plant, tree, aquatic plant, spawn/population record, habitat, animation behaviour or water-simulation definition. The current catalogue also does not establish that a package preserves those identities.
+The current Hub integration does **not** yet turn the drawable/texture catalogue or metadata-discovery references into a complete ecological inventory. The search stage does not dump/parse the contents of every candidate `.ymt`, `.meta`, `.ytyp`, `.ymap` or `.ymf`. It does not yet enumerate and semantically verify every terrestrial animal, fish, marine animal, terrestrial plant, tree, aquatic plant, spawn/population record, habitat, animation behaviour or water-simulation definition. The current output does not establish that a package preserves those identities.
 
 In particular, a successful asset catalogue build is not permission to install any animal, vegetation, water or population-data package. The ecological preflight remains fail-closed.
 
