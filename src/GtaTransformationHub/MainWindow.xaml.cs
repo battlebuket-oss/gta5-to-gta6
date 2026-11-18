@@ -182,6 +182,16 @@ public partial class MainWindow : Window
         RefreshSessionState();
     }
 
+    private void ManagePublishersButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        var dialog = new ManagePublishersWindow(_trustedPublisherStore) { Owner = this };
+        dialog.ShowDialog();
+        StatusText.Text = "Publisher trust changes will be applied during the next package preflight.";
+    }
+
     private async void TrustPublisherButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration())
