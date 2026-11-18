@@ -14,7 +14,8 @@ The current development branch includes:
 - SHA-256 and file-size verification for every manifest-declared file.
 - A local package library and persistent user profiles with exact package-version pins.
 - Desired-profile reconciliation using version-aware deployment journals: stale packages are removed, intact active packages are preserved, and missing/repair-needed packages are deployed.
-- Package preflight for build compatibility, dependencies, conflicts, exclusive groups, destination collisions and file hashes.
+- Package preflight for build compatibility, dependencies, conflicts, exclusive groups, destination collisions, file hashes and publisher signatures.
+- Local RSA publisher-key trust store with fingerprint verification, trust/revocation UI and signature-aware preflight.
 - Copy-only staged deployment with per-file backups and transaction journals.
 - Recovery of interrupted transactions, guarded rollback and package removal based on active deployment records and matching file hashes.
 - Explicit third-party trust acknowledgement and confirmation before applying packages.
@@ -37,8 +38,8 @@ Direct executable launch may require Steam or Rockstar Games Launcher. The launc
 
 ## Important security limitations
 
-- Package SHA-256 values are self-declared by the archive. They detect corruption but do not authenticate an author or prove a package is safe.
-- There is no trusted publisher-signing infrastructure or signed catalogue yet.
+- SHA-256 values declared by a package detect corruption but do not authenticate an author by themselves. Optional RSA-SHA256 package signatures are verified only when the public key has been independently verified and trusted locally.
+- Unsigned and unknown-publisher packages remain importable but warn during preflight; an invalid signature from a trusted key is rejected. There is not yet a signed central catalogue or signed application-update channel.
 - The Hub imports local ZIP files. It does not automatically download packages from Nexus, GTA5-Mods or other hosting providers.
 - The Hub does not sandbox DLL, ASI or script files when the game loads them. Only install files from sources you trust.
 - The Hub does not execute third-party installers, modify a running game, inject into a process, bypass DRM/anti-cheat or support GTA Online.
