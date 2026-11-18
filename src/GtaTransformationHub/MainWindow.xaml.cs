@@ -500,7 +500,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        var profile = new ModProfile(id, name, selectedIds, DateTimeOffset.UtcNow);
+        var selectedVersions = selectedPackages.ToDictionary(
+            package => package.Manifest.Id,
+            package => package.Manifest.Version,
+            StringComparer.OrdinalIgnoreCase);
+        var profile = new ModProfile(
+            id, name, selectedIds, DateTimeOffset.UtcNow, selectedVersions);
         _operationInProgress = true;
         RefreshSessionState();
         try
@@ -550,23 +555,52 @@ public partial class MainWindow : Window
         {
             PackageList.SelectedItems.Clear();
             var missing = new List<string>();
+            var ambiguous = new List<string>();
 
             foreach (var packageId in profile.EnabledPackageIds)
             {
-                var package = _packages
+                var matchingPackages = _packages
                     .Where(item => item.Manifest.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(item => item.ImportedAt)
-                    .FirstOrDefault();
+                    .ToArray();
 
-                if (package is null)
+                if (profile.PackageVersions is not null &&
+                    profile.PackageVersions.TryGetValue(packageId, out var pinnedVersion))
+                {
+                    var pinnedPackage = matchingPackages.FirstOrDefault(item =>
+                        item.Manifest.Version.Equals(pinnedVersion, StringComparison.OrdinalIgnoreCase));
+
+                    if (pinnedPackage is null)
+                        missing.Add(packageId + "@" + pinnedVersion);
+                    else
+                        PackageList.SelectedItems.Add(pinnedPackage);
+
+                    continue;
+                }
+
+                if (matchingPackages.Length == 0)
+                {
                     missing.Add(packageId);
+                }
+                else if (matchingPackages.Length == 1)
+                {
+                    PackageList.SelectedItems.Add(matchingPackages[0]);
+                }
                 else
-                    PackageList.SelectedItems.Add(package);
+                {
+                    ambiguous.Add(packageId);
+                }
             }
 
-            ProfileWarningText.Text = missing.Count == 0
-                ? "The profile selects the most recently imported version of each listed package ID."
-                : "Missing imported packages: " + string.Join(", ", missing);
+            var warnings = new List<string>();
+            if (missing.Count > 0)
+                warnings.Add("Missing imported packages: " + string.Join(", ", missing));
+            if (ambiguous.Count > 0)
+                warnings.Add("Choose an exact version for these legacy profile entries before saving: " +
+                             string.Join(", ", ambiguous));
+
+            ProfileWarningText.Text = warnings.Count == 0
+                ? "Package versions are pinned for this profile."
+                : string.Join(Environment.NewLine, warnings);
             ProfileNameText.Text = profile.Name;
         }
         finally
