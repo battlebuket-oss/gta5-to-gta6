@@ -16,10 +16,16 @@ public sealed record PackagePreflightReport(
 public sealed class PackageDeploymentCoordinator
 {
     private readonly TransactionalDeploymentService _deploymentService;
+    private readonly string _stagingRoot;
 
-    public PackageDeploymentCoordinator(TransactionalDeploymentService? deploymentService = null)
+    public PackageDeploymentCoordinator(
+        TransactionalDeploymentService? deploymentService = null,
+        string? stagingRoot = null)
     {
         _deploymentService = deploymentService ?? new TransactionalDeploymentService();
+        _stagingRoot = Path.GetFullPath(stagingRoot ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GtaTransformationHub", "deployment-staging"));
     }
 
     public async Task<PackagePreflightReport> ValidateAsync(
@@ -90,7 +96,8 @@ public sealed class PackageDeploymentCoordinator
                     Path.GetExtension(relativeDestination).Equals(".exe", StringComparison.OrdinalIgnoreCase))
                     errors.Add(manifest.Name + " attempts to replace an executable. Executable replacement is blocked.");
 
-                if (file.Sha256.Length != 64 || !file.Sha256.All(Uri.IsHexDigit))
+                if (string.IsNullOrWhiteSpace(file.Sha256) ||
+                    file.Sha256.Length != 64 || !file.Sha256.All(Uri.IsHexDigit))
                 {
                     errors.Add(manifest.Name + " contains a file with an invalid SHA-256 digest.");
                     continue;
@@ -163,17 +170,52 @@ public sealed class PackageDeploymentCoordinator
             throw new InvalidOperationException(
                 "Package preflight failed: " + string.Join(" ", report.Errors));
 
-        var files = selectedPackages.SelectMany(imported => imported.Manifest.Files.Select(file =>
-            new DeploymentFile(
-                imported.Manifest.Id,
-                file.SourcePath,
-                file.DestinationPath,
-                file.Sha256))).ToArray();
+        var stagePath = Path.Combine(_stagingRoot, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stagePath);
 
-        return await _deploymentService.ApplyAsync(
-            installation.RootPath,
-            selectedPackages.First().PackageRoot,
-            Array.Empty<DeploymentFile>(),
-            cancellationToken);
+        try
+        {
+            var deploymentFiles = new List<DeploymentFile>();
+            foreach (var imported in selectedPackages)
+            {
+                foreach (var file in imported.Manifest.Files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var sourceRelative = PackageArchiveService.ValidateArchivePath(
+                        file.SourcePath, isDirectory: false);
+                    var sourceRoot = Path.GetFullPath(imported.PackageRoot);
+                    var sourcePath = Path.GetFullPath(Path.Combine(sourceRoot, sourceRelative));
+                    var packagePrefix = Path.TrimEndingDirectorySeparator(sourceRoot) + Path.DirectorySeparatorChar;
+                    if (!sourcePath.StartsWith(packagePrefix, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("A package source path escaped its import directory.");
+
+                    var stagedRelative = Path.Combine(imported.Manifest.Id, sourceRelative);
+                    var stagedPath = Path.GetFullPath(Path.Combine(stagePath, stagedRelative));
+                    var stagingPrefix = Path.TrimEndingDirectorySeparator(stagePath) + Path.DirectorySeparatorChar;
+                    if (!stagedPath.StartsWith(stagingPrefix, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("A package source path escaped the deployment staging directory.");
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(stagedPath)!);
+                    File.Copy(sourcePath, stagedPath, overwrite: false);
+
+                    deploymentFiles.Add(new DeploymentFile(
+                        imported.Manifest.Id,
+                        stagedRelative,
+                        file.DestinationPath,
+                        file.Sha256));
+                }
+            }
+
+            return await _deploymentService.ApplyAsync(
+                installation.RootPath,
+                stagePath,
+                deploymentFiles,
+                cancellationToken);
+        }
+        finally
+        {
+            if (Directory.Exists(stagePath))
+                Directory.Delete(stagePath, recursive: true);
+        }
     }
 }
