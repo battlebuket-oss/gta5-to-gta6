@@ -72,11 +72,16 @@ public sealed class TransactionalDeploymentService
                     var existed = File.Exists(destination);
                     var backupRelative = index.ToString("D6") + ".bak";
                     var backup = Path.Combine(backupRoot, backupRelative);
+                    string? originalSha256 = null;
                     if (existed)
+                    {
+                        originalSha256 = await ComputeSha256Async(destination, cancellationToken);
                         File.Copy(destination, backup, overwrite: false);
+                    }
 
                     var record = new DeploymentJournalEntry(
-                        item.PackageId, item.DestinationRelativePath, existed, backupRelative, item.ExpectedSha256);
+                        item.PackageId, item.DestinationRelativePath, existed, backupRelative,
+                        item.ExpectedSha256, originalSha256);
                     journal = journal with { Entries = journal.Entries.Append(record).ToArray() };
                     await SaveJournalAsync(journalPath, journal, cancellationToken);
 
@@ -224,7 +229,14 @@ public sealed class TransactionalDeploymentService
             {
                 var currentHash = await ComputeSha256Async(destination, cancellationToken);
                 if (!currentHash.Equals(entry.DeployedSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (entry.ExistedBefore &&
+                        entry.OriginalSha256 is not null &&
+                        currentHash.Equals(entry.OriginalSha256, StringComparison.OrdinalIgnoreCase))
+                        continue; // The transaction journal was written, but replacement never occurred.
+
                     throw new IOException("A deployed file changed after installation; rollback stopped to protect user changes: " + entry.DestinationRelativePath);
+                }
             }
 
             if (entry.ExistedBefore)
@@ -341,4 +353,5 @@ public sealed record DeploymentJournalEntry(
     string DestinationRelativePath,
     bool ExistedBefore,
     string BackupFile,
-    string DeployedSha256);
+    string DeployedSha256,
+    string? OriginalSha256);
