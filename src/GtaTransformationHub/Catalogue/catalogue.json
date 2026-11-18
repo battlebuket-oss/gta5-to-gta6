@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.0-research",
+  "catalogueVersion": "0.4.1-research",
   "categories": [
     {
       "id": "graphics",
@@ -168,7 +168,7 @@
     {
       "id": "gta-v-new-game-plus",
       "name": "GTA V New Game+ — Story Mode Expansion",
-      "category": "story",
+      "category": "gameplay",
       "author": "Canon Labz",
       "sourceUri": "https://www.nexusmods.com/gta5/mods/2610",
       "licence": "Nexus asset permissions restrict reuse; redistribution and derivative permissions require author review",
@@ -188,8 +188,7 @@
         "ScriptHookVDotNet 3",
         "Microsoft .NET Framework 4.8+",
         "Microsoft Visual C++ x64 Redistributable"
-      ],
-      "exclusiveGroup": "story-gameplay-framework"
+      ]
     },
     {
       "id": "subtitles-enhanced-legacy",
@@ -262,6 +261,56 @@
       "externalRequirements": [
         "Script Hook V",
         "ScriptHookVDotNet Nightly"
+      ]
+    },
+    {
+      "id": "big-bank-heists",
+      "name": "Big Bank Heists",
+      "category": "story",
+      "author": "M8T",
+      "sourceUri": "https://www.gta5-mods.com/scripts/big-bank-heists",
+      "licence": "All rights reserved; author explicitly prohibits redistribution without consent",
+      "version": "0.1",
+      "minimumGameBuild": "Not specified",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "interior-overhaul-conflicts"
+      ],
+      "status": "Researching",
+      "installAdapter": "ScriptHookVDotNet script and interior dependency adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup; verify MP map/interior dependencies and save state",
+      "performanceTier": "Medium; interior streaming and mission performance untested",
+      "notes": "Adds six bank locations, configurable NPC crew roles and reused Pacific Standard cutscenes. Source requires Script Hook V, ScriptHookVDotNet Nightly and Enable MP Maps. Author explicitly prohibits redistribution. Community reports include interior/vault conflicts, so compatibility testing is mandatory.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet Nightly",
+        "Enable MP Maps"
+      ]
+    },
+    {
+      "id": "golden-train-heist",
+      "name": "The Golden Train Heist",
+      "category": "story",
+      "author": "M8T",
+      "sourceUri": "https://www.gta5-mods.com/scripts/the-golden-train-heist",
+      "licence": "All rights reserved; author explicitly prohibits redistribution without consent",
+      "version": "1.0",
+      "minimumGameBuild": "Not specified",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ScriptHookVDotNet script adapter (not implemented)",
+      "restoreStrategy": "Per-file transaction backup; verify mission state and save behaviour",
+      "performanceTier": "Low to medium; not benchmarked",
+      "notes": "Adds a Merryweather train ambush/heist. Source lists Script Hook V, ScriptHookVDotNet and Enable MP Maps. Release is older; current Legacy build compatibility must be proven. Author explicitly prohibits redistribution.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet",
+        "Enable MP Maps"
       ]
     }
   ],
