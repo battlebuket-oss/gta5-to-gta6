@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private readonly PackageAcquisitionService _acquisitionService = new();
     private readonly StorySaveBackupService _storySaveBackupService = new();
     private readonly RageCliToolchainService _rageCliToolchainService = new();
+    private readonly RageCliMetadataDiscoveryService _rageCliMetadataDiscoveryService;
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -42,6 +43,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        _rageCliMetadataDiscoveryService = new RageCliMetadataDiscoveryService(_rageCliToolchainService);
         _gameInstallationService = new GameInstallationService(_processMonitor);
         _deploymentCoordinator = new PackageDeploymentCoordinator(_deploymentService);
         _profileActivationService = new ProfileActivationService(
@@ -569,6 +571,74 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void DiscoverEcologyMetadataButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null ||
+            string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
+            return;
+
+        var confirmation = MessageBox.Show(
+            "rage-cli will search the selected GTA V installation's nested RPF archives for metadata candidates related to population groups, model sets, animals, fish, plants, vegetation, water and maps. Source archive hashes and the exact GTA5.exe fingerprint will be recorded. This is a bounded discovery report, not a complete semantic inventory. It can take several minutes and reads game archives without modifying them. Continue?",
+            "Discover GTA V ecology metadata",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _assetCatalogueCancellation?.Dispose();
+        _assetCatalogueCancellation = new CancellationTokenSource();
+        _operationInProgress = true;
+        RefreshSessionState();
+        RageCliStatusText.Text = "Searching nested GTA V archives for population, habitat, water and flora/fauna metadata candidates...";
+        StatusText.Text = "Discovering metadata candidates. Ecology packages remain blocked.";
+
+        try
+        {
+            var result = await _rageCliMetadataDiscoveryService.DiscoverAsync(
+                _verifiedRageCliExecutablePath,
+                _installation,
+                _assetCatalogueCancellation.Token);
+
+            var completeness = result.PatternDiscoveryComplete
+                ? "Selected-pattern discovery completed without output caps or archive errors. This is not proof that every ecological resource was found."
+                : "Discovery is INCOMPLETE. One or more search limits, parser/archive errors or truncated outputs were detected.";
+
+            RageCliStatusText.Text =
+                "Metadata discovery report saved." + Environment.NewLine +
+                "Unique candidate references: " + result.UniqueMetadataCandidates + Environment.NewLine +
+                "Source archives fingerprinted: " + result.SourceArchivesHashed + Environment.NewLine +
+                "Report: " + result.ReportPath + Environment.NewLine +
+                "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
+                "GTA5.exe SHA-256: " + result.GameExecutableSha256 + Environment.NewLine +
+                "Duration: " + result.Duration.ToString(@"hh\:mm\:ss") + Environment.NewLine +
+                completeness +
+                (result.Errors.Count == 0
+                    ? string.Empty
+                    : Environment.NewLine + "Warnings: " + string.Join(" | ", result.Errors.Take(4)));
+
+            StatusText.Text = "Metadata discovery report created. Semantic extraction and ecological package approval are still blocked.";
+        }
+        catch (OperationCanceledException)
+        {
+            RageCliStatusText.Text =
+                "Metadata discovery was cancelled. The partial report, if any, must not be treated as complete.";
+            StatusText.Text = "Ecology metadata discovery cancelled.";
+        }
+        catch (Exception exception)
+        {
+            RageCliStatusText.Text = "Ecology metadata discovery failed: " + exception.Message;
+            StatusText.Text = "No metadata discovery report was accepted.";
+        }
+        finally
+        {
+            _assetCatalogueCancellation?.Dispose();
+            _assetCatalogueCancellation = null;
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private void CancelAssetCatalogueButton_Click(object sender, RoutedEventArgs e)
     {
         if (_assetCatalogueCancellation is null)
@@ -1078,6 +1148,9 @@ public partial class MainWindow : Window
         BuildAssetCatalogueButton.IsEnabled = canConfigure &&
                                               _installation is not null &&
                                               !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
+        DiscoverEcologyMetadataButton.IsEnabled = canConfigure &&
+                                                  _installation is not null &&
+                                                  !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
         CancelAssetCatalogueButton.IsEnabled = _operationInProgress &&
                                                _assetCatalogueCancellation is not null;
 
