@@ -1,4 +1,3 @@
-using System.Net.Http;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -8,8 +7,8 @@ namespace GtaTransformationHub.Services;
 public sealed record AcquiredPackage(string FilePath, Uri SourceUri, string Sha256, long SizeBytes);
 
 /// <summary>
-/// Downloads a user-supplied direct package URL. HTTPS, public DNS addresses,
-/// bounded redirects, bounded size and an optional expected digest are required.
+/// Downloads a user-supplied direct package URL. DNS is revalidated at socket-connect
+/// time to prevent a DNS-rebinding response from redirecting the connection to a private host.
 /// </summary>
 public sealed class PackageAcquisitionService : IDisposable
 {
@@ -26,7 +25,12 @@ public sealed class PackageAcquisitionService : IDisposable
             "GtaTransformationHub", "downloads"));
         if (httpClient is null)
         {
-            var handler = new HttpClientHandler { AllowAutoRedirect = false, AutomaticDecompression = DecompressionMethods.None };
+            var handler = new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.None,
+                ConnectCallback = ConnectToPublicAddressAsync
+            };
             _httpClient = new HttpClient(handler, disposeHandler: true) { Timeout = TimeSpan.FromMinutes(30) };
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("GtaTransformationHub/1.0");
             _ownsClient = true;
@@ -98,6 +102,32 @@ public sealed class PackageAcquisitionService : IDisposable
         throw new InvalidOperationException("The package download could not be completed.");
     }
 
+    private static async ValueTask<Stream> ConnectToPublicAddressAsync(
+        SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+    {
+        var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, cancellationToken);
+        if (addresses.Length == 0 || addresses.Any(address => !IsPublicAddress(address)))
+            throw new InvalidDataException("The package source resolved to a private or reserved network address.");
+
+        Exception? lastError = null;
+        foreach (var address in addresses)
+        {
+            var client = new TcpClient(address.AddressFamily);
+            try
+            {
+                await client.ConnectAsync(address, context.DnsEndPoint.Port, cancellationToken);
+                return client.GetStream();
+            }
+            catch (Exception exception) when (exception is SocketException or OperationCanceledException)
+            {
+                client.Dispose();
+                lastError = exception;
+                if (exception is OperationCanceledException) throw;
+            }
+        }
+        throw new IOException("Could not connect to the public package source.", lastError);
+    }
+
     private static async Task ValidatePublicHttpsUriAsync(Uri uri, CancellationToken cancellationToken)
     {
         if (!uri.IsAbsoluteUri || uri.Scheme != Uri.UriSchemeHttps || string.IsNullOrWhiteSpace(uri.Host) ||
@@ -107,11 +137,7 @@ public sealed class PackageAcquisitionService : IDisposable
             uri.Host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase) ||
             uri.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Local network and localhost package sources are not allowed.");
-
-        IPAddress[] addresses;
-        try { addresses = await Dns.GetHostAddressesAsync(uri.DnsSafeHost, cancellationToken); }
-        catch (Exception exception) when (exception is SocketException or ArgumentException)
-        { throw new InvalidDataException("The package source host could not be resolved.", exception); }
+        var addresses = await Dns.GetHostAddressesAsync(uri.DnsSafeHost, cancellationToken);
         if (addresses.Length == 0 || addresses.Any(address => !IsPublicAddress(address)))
             throw new InvalidDataException("The package source must resolve exclusively to public internet addresses.");
     }
@@ -120,17 +146,20 @@ public sealed class PackageAcquisitionService : IDisposable
     {
         if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
         var bytes = address.GetAddressBytes();
-        if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+        if (address.AddressFamily == AddressFamily.InterNetwork)
         {
             var a = bytes[0]; var b = bytes[1]; var c = bytes[2];
             return !(a == 0 || a == 10 || a == 127 || (a == 169 && b == 254) ||
                 (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168) ||
-                (a == 100 && b >= 64 && b <= 127) || (a == 192 && b == 0 && c == 0) ||
-                (a == 192 && b == 0 && c == 2) || (a == 198 && b == 51 && c == 100) ||
+                (a == 100 && b >= 64 && b <= 127) || (a == 192 && b == 0) ||
+                (a == 198 && (b == 18 || b == 19 || b == 51 && c == 100)) ||
                 (a == 203 && b == 0 && c == 113) || a >= 224);
         }
-        return address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 &&
-               bytes.Length == 16 && (bytes[0] & 0xE0) == 0x20;
+        if (address.AddressFamily != AddressFamily.InterNetworkV6 || bytes.Length != 16 ||
+            (bytes[0] & 0xE0) != 0x20)
+            return false;
+        // Exclude documentation-only 2001:db8::/32.
+        return !(bytes[0] == 0x20 && bytes[1] == 0x01 && bytes[2] == 0x0D && bytes[3] == 0xB8);
     }
 
     private static string? GetPackageExtension(string? value)

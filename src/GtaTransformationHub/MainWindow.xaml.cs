@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly PackageArchiveService _archiveService = new();
     private readonly OivPackageImportService _oivImportService = new();
     private readonly PackageAcquisitionService _acquisitionService = new();
+    private readonly StorySaveBackupService _storySaveBackupService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -341,6 +342,91 @@ public partial class MainWindow : Window
         }
 
         RefreshSessionState();
+    }
+
+    private void DetectPerformanceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        try
+        {
+            var hardware = PerformanceProfileService.CaptureHardware();
+            var recommended = PerformanceProfileService.Recommend(hardware);
+            var totalRam = hardware.TotalPhysicalMemoryMb / 1024.0;
+            var availableRam = hardware.AvailablePhysicalMemoryMb / 1024.0;
+            PerformanceGuidanceText.Text =
+                "Recommended: " + recommended.Name + " — " + recommended.Target + Environment.NewLine +
+                "CPU threads: " + hardware.LogicalProcessorCount +
+                " | RAM: " + totalRam.ToString("0.0") + " GB total, " +
+                availableRam.ToString("0.0") + " GB available." + Environment.NewLine +
+                recommended.Guidance + Environment.NewLine +
+                "Guidance only: no game settings were changed and no FPS result is guaranteed. GPU VRAM must be checked separately.";
+        }
+        catch (Exception exception)
+        {
+            PerformanceGuidanceText.Text = "Hardware detection failed: " + exception.Message;
+        }
+    }
+
+    private async void BackupStorySavesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select any save file inside GTA V's Profiles folder",
+            Filter = "All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var profilesDirectory = FindProfilesDirectory(Path.GetDirectoryName(dialog.FileName));
+        if (profilesDirectory is null)
+        {
+            MessageBox.Show(
+                "The selected file is not inside a directory named Profiles. No backup was created.",
+                "Select GTA V save files",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            var backup = await _storySaveBackupService.CreateBackupAsync(profilesDirectory);
+            StorySaveBackupText.Text =
+                "Backup created: " + backup.FileCount + " file(s), " +
+                (backup.UncompressedBytes / (1024.0 * 1024.0)).ToString("0.0") +
+                " MB. SHA-256: " + backup.Sha256 + Environment.NewLine +
+                backup.ArchivePath;
+        }
+        catch (Exception exception)
+        {
+            StorySaveBackupText.Text = "Save backup failed: " + exception.Message;
+        }
+        finally
+        {
+            _operationInProgress = false;
+        }
+        RefreshSessionState();
+    }
+
+    private static string? FindProfilesDirectory(string? startDirectory)
+    {
+        for (var current = string.IsNullOrWhiteSpace(startDirectory) ? null : new DirectoryInfo(startDirectory);
+             current is not null;
+             current = current.Parent)
+        {
+            if (current.Name.Equals("Profiles", StringComparison.OrdinalIgnoreCase))
+                return current.FullName;
+        }
+        return null;
     }
 
     private void OpenCatalogueSourceButton_Click(object sender, RoutedEventArgs e)

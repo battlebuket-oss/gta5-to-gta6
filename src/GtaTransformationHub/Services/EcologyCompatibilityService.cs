@@ -15,11 +15,11 @@ public static class EcologyCompatibilityService
     {
         if (manifest.ImpactAreas?.Any(IsEcologyArea) == true)
             return true;
-        return manifest.Files.Any(file =>
+        return manifest.Files?.Any(file =>
         {
             var destination = (file.DestinationPath ?? string.Empty).Replace('\\', '/');
             return SensitivePathTokens.Any(token => destination.Contains(token, StringComparison.OrdinalIgnoreCase));
-        });
+        }) == true;
     }
 
     public static IReadOnlyList<string> Validate(PackageManifest manifest)

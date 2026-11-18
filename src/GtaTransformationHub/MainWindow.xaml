@@ -171,6 +171,24 @@
 
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
+            <TextBlock Text="PERFORMANCE GUIDANCE" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Detect basic hardware resources and receive a conservative profile recommendation. This does not change game settings." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="DetectPerformanceButton" Content="Detect hardware and recommend profile" Padding="10,7" HorizontalAlignment="Left" Click="DetectPerformanceButton_Click"/>
+            <TextBlock x:Name="PerformanceGuidanceText" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="STORY SAVE PROTECTION" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Create a read-only archive backup of the GTA V Profiles folder before experimenting with story or mission packages." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="BackupStorySavesButton" Content="Back up Story Mode saves" Padding="10,7" HorizontalAlignment="Left" Click="BackupStorySavesButton_Click"/>
+            <TextBlock x:Name="StorySaveBackupText" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
             <TextBlock Text="ACCESSIBILITY" FontSize="15" FontWeight="SemiBold"/>
             <TextBlock Text="The Hub uses standard Windows controls and keyboard navigation. Game-side subtitle, screen-reader, HUD and comfort features are shown only when an actual compatible implementation is verified." TextWrapping="Wrap" Margin="0,8,0,0"/>
           </StackPanel>
