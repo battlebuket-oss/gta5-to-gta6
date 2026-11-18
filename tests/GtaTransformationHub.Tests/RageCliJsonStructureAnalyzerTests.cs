@@ -49,20 +49,20 @@ public sealed class RageCliJsonStructureAnalyzerTests
         Assert.True(result.PropertyNameLimitReached);
     }
 
-
     [Fact]
     public void Analyze_TruncatesExtremelyLongPropertyNames()
     {
         var propertyName = new string('x', 1024);
         using var document = JsonDocument.Parse(
-            "{\\\"" + propertyName + "\\\": 1}");
+            "{\"" + propertyName + "\": 1}");
 
         var result = RageCliJsonStructureAnalyzer.Analyze(document.RootElement);
 
         Assert.Equal(1, result.TruncatedPropertyNameCount);
         Assert.Contains("...[truncated]", Assert.Single(result.PropertyNameFrequency.Keys));
     }
-\n    [Fact]
+
+    [Fact]
     public void Analyze_RejectsJsonBeyondMaximumDepth()
     {
         using var document = JsonDocument.Parse(
