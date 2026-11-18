@@ -33,8 +33,16 @@ public sealed class RageCliMetadataPayloadServiceTests
         Assert.Equal("common/data/popgroups.ymt", plan.ResourcePath);
     }
 
+    [Fact]
+    public void BuildNestedArchiveExtractionPlan_RejectsMissingPathArguments()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            RageCliMetadataPayloadService.BuildNestedArchiveExtractionPlan("", "x64v.rpf"));
+        Assert.Throws<ArgumentException>(() =>
+            RageCliMetadataPayloadService.BuildNestedArchiveExtractionPlan("x64v.rpf/file.ymt", ""));
+    }
+
     [Theory]
-    [InlineData("")]
     [InlineData("../outside.rpf/popgroups.ymt")]
     [InlineData("x64v.rpf/../outside.ymt")]
     [InlineData("x64v.rpf/C:/outside.ymt")]
