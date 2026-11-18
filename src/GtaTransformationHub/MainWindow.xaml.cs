@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace GtaTransformationHub;
@@ -8,7 +9,6 @@ namespace GtaTransformationHub;
 public partial class MainWindow : Window
 {
     private string? _gameExecutable;
-    private Process? _gameProcess;
     private readonly DispatcherTimer _processTimer;
 
     public MainWindow()
@@ -49,7 +49,7 @@ public partial class MainWindow : Window
     {
         RefreshSessionState();
         StatusText.Text = IsGameRunning()
-            ? "GTA V is running. Configuration is locked."
+            ? "GTA V is running or process state is uncertain. Configuration is locked."
             : "No GTA V process detected. Configuration is unlocked.";
     }
 
@@ -68,17 +68,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Deliberately do not deploy files yet. A verified transactional installer
-        // and per-mod manifests must exist before the app can alter the game folder.
+        // Deployment remains disabled until the transactional installer is implemented.
         try
         {
-            _gameProcess = Process.Start(new ProcessStartInfo
+            Process.Start(new ProcessStartInfo
             {
                 FileName = _gameExecutable,
                 WorkingDirectory = Path.GetDirectoryName(_gameExecutable)!,
                 UseShellExecute = true
             });
-            StatusText.Text = "GTA V launch requested. Configuration will lock while GTA5.exe is running.";
+            StatusText.Text = "GTA V launch requested. Configuration is locked as soon as its process is detected.";
             RefreshSessionState();
         }
         catch (Exception ex)
@@ -91,15 +90,32 @@ public partial class MainWindow : Window
     {
         try
         {
-            return Process.GetProcessesByName("GTA5").Any(p =>
+            foreach (var process in Process.GetProcessesByName("GTA5"))
             {
-                try { return !p.HasExited; }
-                catch { return false; }
-            });
+                using (process)
+                {
+                    try
+                    {
+                        if (!process.HasExited) return true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // The process exited during inspection; continue checking.
+                    }
+                    catch (System.ComponentModel.Win32Exception)
+                    {
+                        // Fail closed when process state cannot be inspected.
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
         catch
         {
-            return false;
+            // Fail closed: uncertain process state must never permit deployment.
+            return true;
         }
     }
 
@@ -112,18 +128,10 @@ public partial class MainWindow : Window
 
         SessionStateText.Text = running ? "GAME RUNNING · LOCKED" : "CONFIGURATION UNLOCKED";
         LockExplanationText.Text = running
-            ? "GTA5.exe is active. Mod changes and deployment are disabled until the process exits."
+            ? "GTA5.exe is active or its state cannot be verified. Mod changes and deployment are disabled."
             : "Game not running — configuration is available.";
 
-        if (running)
-        {
-            ModList.IsEnabled = false;
-            LaunchButton.IsEnabled = false;
-        }
-        else
-        {
-            ModList.IsEnabled = true;
-        }
+        ModList.IsEnabled = !running;
     }
 
     protected override void OnClosed(EventArgs e)
