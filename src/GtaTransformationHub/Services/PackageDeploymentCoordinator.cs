@@ -218,9 +218,16 @@ public sealed class PackageDeploymentCoordinator
         return new PackagePreflightReport(errors.Count == 0, errors, warnings, filesToDeploy);
     }
 
+    public Task<DeploymentResult> ApplyAsync(
+        GameInstallation installation,
+        IReadOnlyCollection<ImportedPackage> selectedPackages,
+        CancellationToken cancellationToken = default) =>
+        ApplyAsync(installation, selectedPackages, selectedPackages, cancellationToken);
+
     public async Task<DeploymentResult> ApplyAsync(
         GameInstallation installation,
         IReadOnlyCollection<ImportedPackage> selectedPackages,
+        IReadOnlyCollection<ImportedPackage> packagesToDeploy,
         CancellationToken cancellationToken = default)
     {
         var report = await ValidateAsync(installation, selectedPackages, cancellationToken);
@@ -228,13 +235,22 @@ public sealed class PackageDeploymentCoordinator
             throw new InvalidOperationException(
                 "Package preflight failed: " + string.Join(" ", report.Errors));
 
+        if (packagesToDeploy.Count == 0)
+            return new DeploymentResult(string.Empty, 0, string.Empty);
+
+        var selectedKeys = selectedPackages
+            .Select(GetPackageKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (packagesToDeploy.Any(package => !selectedKeys.Contains(GetPackageKey(package))))
+            throw new InvalidOperationException("The deployment subset contains a package outside the validated profile.");
+
         var stagePath = Path.Combine(_stagingRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(stagePath);
 
         try
         {
             var deploymentFiles = new List<DeploymentFile>();
-            foreach (var imported in selectedPackages)
+            foreach (var imported in packagesToDeploy)
             {
                 foreach (var file in imported.Manifest.Files)
                 {
@@ -278,6 +294,10 @@ public sealed class PackageDeploymentCoordinator
                 Directory.Delete(stagePath, recursive: true);
         }
     }
+
+    private static string GetPackageKey(ImportedPackage package) =>
+        package.Manifest.Id + "\u001f" + package.Manifest.Version + "\u001f" +
+        Path.GetFullPath(package.PackageRoot);
 
     private static bool HasReparsePointBetween(string root, string path)
     {
