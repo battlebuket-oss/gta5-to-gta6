@@ -172,7 +172,7 @@ public sealed class ProfileActivationService
         return new ProfileActivationResult(
             removalResult?.FilesApplied ?? 0,
             deploymentResult?.FilesApplied ?? 0,
-            desiredAlreadyActive.Length - packagesToDeploy.Keys.Count(key => desiredKeys.Contains(key)),
+            desiredAlreadyActive.Count(package => !packagesToDeploy.ContainsKey(GetPackageKey(package))),
             transactions);
     }
 
