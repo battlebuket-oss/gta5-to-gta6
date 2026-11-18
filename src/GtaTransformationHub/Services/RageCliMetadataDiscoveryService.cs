@@ -45,7 +45,6 @@ public sealed class RageCliMetadataDiscoveryService
     public const int MaximumHitsPerPattern = 200;
 
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(4);
-    private static readonly TimeSpan OverallExpectedMaximum = TimeSpan.FromMinutes(52);
     private const long MaximumReportBytes = 64L * 1024 * 1024;
 
     public static readonly IReadOnlyList<string> EcologyMetadataPatterns = new[]
