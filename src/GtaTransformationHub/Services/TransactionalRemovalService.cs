@@ -181,6 +181,47 @@ public sealed class TransactionalRemovalService
         }
     }
 
+    public async Task<bool> IsPackageInstalledAndIntactAsync(
+        GameInstallation installation,
+        ImportedPackage package,
+        CancellationToken cancellationToken = default)
+    {
+        _processMonitor.EnsureConfigurationUnlocked();
+        var gameRoot = ValidateGameRoot(installation.RootPath);
+        var allFilesPresentAndManaged = package.Manifest.Files.Count > 0;
+
+        foreach (var file in package.Manifest.Files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var relativePath = PackageArchiveService.ValidateArchivePath(
+                file.DestinationPath, isDirectory: false);
+            var destination = ResolveContainedPath(gameRoot, relativePath);
+            EnsureNoReparsePoints(gameRoot, destination);
+
+            if (!File.Exists(destination))
+            {
+                allFilesPresentAndManaged = false;
+                continue;
+            }
+
+            var actualHash = await ComputeSha256Async(destination, cancellationToken);
+            if (!actualHash.Equals(file.Sha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException(
+                    "A previously installed package file has been modified outside the Hub: " + relativePath);
+
+            var owners = await GetActiveDeploymentOwnersAsync(
+                package.Manifest.Id,
+                package.Manifest.Version,
+                relativePath,
+                file.Sha256,
+                cancellationToken);
+            if (owners.Count == 0)
+                allFilesPresentAndManaged = false;
+        }
+
+        return allFilesPresentAndManaged;
+    }
+
     public async Task<IReadOnlySet<string>> GetActivePackageIdentitiesAsync(
         CancellationToken cancellationToken = default)
     {
