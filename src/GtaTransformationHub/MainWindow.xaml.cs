@@ -14,6 +14,7 @@ public partial class MainWindow : Window
 {
     private readonly GameProcessMonitor _processMonitor = new();
     private readonly TransactionalDeploymentService _deploymentService = new();
+    private readonly TransactionalRemovalService _removalService = new();
     private readonly GameInstallationService _gameInstallationService;
     private readonly PackageArchiveService _archiveService = new();
     private readonly PackageLibraryService _packageLibrary = new();
@@ -27,6 +28,7 @@ public partial class MainWindow : Window
     private bool _recoveryCompleted;
     private bool _deploymentReady;
     private bool _loading;
+    private bool _operationInProgress;
     private string? _lastDeploymentTransactionId;
 
     public MainWindow()
@@ -57,14 +59,23 @@ public partial class MainWindow : Window
             var recovered = await _deploymentService.RecoverInterruptedTransactionsAsync();
             _recoveryCompleted = true;
 
-            foreach (var imported in _packageLibrary.ListImported())
-                _packages.Add(imported);
+            try
+            {
+                foreach (var imported in _packageLibrary.ListImported())
+                    _packages.Add(imported);
+            }
+            catch (Exception exception)
+            {
+                StatusText.Text = "Recovery passed, but the local package library could not be fully read: " + exception.Message;
+            }
 
             await LoadProfilesAsync();
 
-            StatusText.Text = recovered.Count == 0
-                ? "Recovery passed. No interrupted deployments were found."
-                : "Recovered " + recovered.Count + " interrupted deployment transaction(s).";
+            if (recovered.Count == 0)
+                StatusText.Text = "Recovery passed. No interrupted deployments were found.";
+            else
+                StatusText.Text = "Recovered " + recovered.Count + " interrupted deployment transaction(s).";
+
             DetectionText.Text = "Locate GTA5.exe to verify the installed game build.";
         }
         catch (Exception exception)
@@ -188,6 +199,8 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true)
             return;
 
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
             StatusText.Text = "Inspecting archive and verifying manifest-declared files...";
@@ -205,7 +218,7 @@ public partial class MainWindow : Window
             PackageList.SelectedItems.Clear();
             PackageList.SelectedItem = duplicate ?? imported;
             StatusText.Text = "Imported " + imported.Manifest.Name +
-                              ". Import verifies file integrity, not author identity or package safety.";
+                              ". File hashes verify integrity, not publisher identity or package safety.";
         }
         catch (Exception exception)
         {
@@ -215,6 +228,10 @@ public partial class MainWindow : Window
                 "Package import failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+        finally
+        {
+            _operationInProgress = false;
         }
 
         RefreshSessionState();
@@ -226,6 +243,8 @@ public partial class MainWindow : Window
             return;
 
         var selected = GetSelectedPackages();
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
             StatusText.Text = "Checking build compatibility, dependencies, conflicts, paths and file hashes...";
@@ -244,7 +263,8 @@ public partial class MainWindow : Window
             var warningText = report.Warnings.Count == 0
                 ? "No metadata warnings were found."
                 : string.Join(Environment.NewLine, report.Warnings);
-            StatusText.Text = "Preflight passed for " + report.FilesToDeploy + " file(s). Review and acknowledge package trust before applying.";
+            StatusText.Text = "Preflight passed for " + report.FilesToDeploy +
+                              " file(s). Review and acknowledge package trust before applying.";
             MessageBox.Show(
                 "Preflight passed for " + report.FilesToDeploy + " file(s)." +
                 Environment.NewLine + Environment.NewLine + warningText,
@@ -256,6 +276,10 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Preflight failed.";
             MessageBox.Show(exception.Message, "Preflight failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _operationInProgress = false;
         }
 
         RefreshSessionState();
@@ -273,33 +297,12 @@ public partial class MainWindow : Window
         }
 
         var selected = GetSelectedPackages();
-        PackagePreflightReport report;
-        try
-        {
-            StatusText.Text = "Running final preflight checks...";
-            report = await _deploymentCoordinator.ValidateAsync(_installation, selected);
-        }
-        catch (Exception exception)
-        {
-            StatusText.Text = "Preflight failed.";
-            MessageBox.Show(exception.Message, "Preflight failed", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        if (!report.IsValid)
-        {
-            StatusText.Text = "Preflight rejected the selected packages.";
-            MessageBox.Show(string.Join(Environment.NewLine, report.Errors),
-                "Preflight failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         var confirmation = MessageBox.Show(
             "You are about to copy third-party mod files into this GTA V installation." +
             Environment.NewLine + Environment.NewLine +
             "Some mod files, including ASI or DLL plugins, may execute when GTA V starts. The Hub does not sandbox those files or verify the publisher's identity. Continue only if you obtained and trust these packages." +
             Environment.NewLine + Environment.NewLine +
-            "A transaction journal and backups will be created. Apply " + report.FilesToDeploy + " file(s)?",
+            "A transaction journal and backups will be created. Continue with final preflight and deployment?",
             "Confirm third-party package installation",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -307,9 +310,20 @@ public partial class MainWindow : Window
         if (confirmation != MessageBoxResult.Yes)
             return;
 
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
-            ApplyButton.IsEnabled = false;
+            StatusText.Text = "Running final preflight checks...";
+            var report = await _deploymentCoordinator.ValidateAsync(_installation, selected);
+            if (!report.IsValid)
+            {
+                StatusText.Text = "Preflight rejected the selected packages.";
+                MessageBox.Show(string.Join(Environment.NewLine, report.Errors),
+                    "Preflight failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             StatusText.Text = "Applying verified files through the transactional deployment engine...";
             var result = await _deploymentCoordinator.ApplyAsync(_installation, selected);
             _lastDeploymentTransactionId = result.TransactionId;
@@ -326,6 +340,65 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
+        finally
+        {
+            _operationInProgress = false;
+        }
+
+        RefreshSessionState();
+    }
+
+    private async void RemoveSelectedButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null)
+            return;
+
+        var selected = GetSelectedPackages();
+        if (selected.Count == 0)
+            return;
+
+        var confirmation = MessageBox.Show(
+            "Remove the selected packages only where the Hub can verify a prior deployment record and the installed file still matches the package hash?",
+            "Confirm managed package removal",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _removalService.RemovePackagesAsync(_installation, selected);
+            _deploymentReady = false;
+            TrustPackagesCheckBox.IsChecked = false;
+
+            if (result.FilesApplied == 0)
+            {
+                StatusText.Text = "No matching Hub-managed files were found to remove.";
+                _lastDeploymentTransactionId = null;
+            }
+            else
+            {
+                _lastDeploymentTransactionId = result.TransactionId;
+                StatusText.Text = "Removed " + result.FilesApplied +
+                                  " managed file(s). Rollback is available for this removal transaction.";
+            }
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Package removal stopped. User-modified or unmanaged files were preserved.";
+            MessageBox.Show(
+                exception.Message,
+                "Package removal stopped",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+        }
 
         RefreshSessionState();
     }
@@ -336,7 +409,7 @@ public partial class MainWindow : Window
             return;
 
         var confirmation = MessageBox.Show(
-            "Restore files from the latest deployment transaction? Files changed after installation will be protected and may cause rollback to stop.",
+            "Restore files from the latest deployment or removal transaction? Files changed after the operation will be protected and may cause rollback to stop.",
             "Confirm rollback",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -344,10 +417,12 @@ public partial class MainWindow : Window
         if (confirmation != MessageBoxResult.Yes)
             return;
 
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
             await _deploymentService.RollbackLatestAsync(_lastDeploymentTransactionId);
-            StatusText.Text = "The latest deployment transaction was rolled back.";
+            StatusText.Text = "The latest transaction was rolled back.";
             _lastDeploymentTransactionId = null;
             _deploymentReady = false;
         }
@@ -355,6 +430,10 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Rollback did not complete. Preserve the transaction journal for recovery.";
             MessageBox.Show(exception.Message, "Rollback stopped", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _operationInProgress = false;
         }
 
         RefreshSessionState();
@@ -383,6 +462,8 @@ public partial class MainWindow : Window
         }
 
         var profile = new ModProfile(id, name, selectedIds, DateTimeOffset.UtcNow);
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
             await _profileStore.SaveAsync(profile);
@@ -400,17 +481,22 @@ public partial class MainWindow : Window
             StatusText.Text = "Profile could not be saved.";
             MessageBox.Show(exception.Message, "Profile save failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        finally
+        {
+            _operationInProgress = false;
+        }
 
         RefreshSessionState();
     }
 
     private void ProfileSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading)
+        if (_loading || _operationInProgress)
             return;
 
         ApplySelectedProfile();
         _deploymentReady = false;
+        TrustPackagesCheckBox.IsChecked = false;
         RefreshSessionState();
     }
 
@@ -419,6 +505,7 @@ public partial class MainWindow : Window
         if (ProfileSelector.SelectedItem is not ModProfile profile)
             return;
 
+        var wasLoading = _loading;
         _loading = true;
         try
         {
@@ -441,13 +528,13 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _loading = false;
+            _loading = wasLoading;
         }
     }
 
     private void PackageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading)
+        if (_loading || _operationInProgress)
             return;
 
         _deploymentReady = false;
@@ -457,7 +544,7 @@ public partial class MainWindow : Window
 
     private void TrustAcknowledgement_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_loading)
+        if (!_loading && !_operationInProgress)
             RefreshSessionState();
     }
 
@@ -498,12 +585,14 @@ public partial class MainWindow : Window
         PackageList.SelectedItems.Cast<ImportedPackage>().ToArray();
 
     private bool CanChangeConfiguration() =>
-        _recoveryCompleted && !_processMonitor.IsStoryModeProcessRunning();
+        _recoveryCompleted &&
+        !_operationInProgress &&
+        !_processMonitor.IsStoryModeProcessRunning();
 
     private void RefreshSessionState()
     {
         var running = _processMonitor.IsStoryModeProcessRunning();
-        var canConfigure = _recoveryCompleted && !running;
+        var canConfigure = _recoveryCompleted && !_operationInProgress && !running;
         LocateButton.IsEnabled = canConfigure;
         RefreshButton.IsEnabled = canConfigure;
         ImportPackageButton.IsEnabled = canConfigure;
@@ -516,16 +605,21 @@ public partial class MainWindow : Window
         ApplyButton.IsEnabled = canConfigure && _installation is not null &&
                                 PackageList.SelectedItems.Count > 0 &&
                                 TrustPackagesCheckBox.IsChecked == true;
+        RemoveSelectedButton.IsEnabled = canConfigure && _installation is not null &&
+                                         PackageList.SelectedItems.Count > 0;
         RollbackButton.IsEnabled = canConfigure && !string.IsNullOrWhiteSpace(_lastDeploymentTransactionId);
         LaunchButton.IsEnabled = canConfigure && _installation is not null && _deploymentReady;
 
         SessionStateText.Text = running ? "GAME RUNNING · LOCKED" :
+            _operationInProgress ? "OPERATION IN PROGRESS" :
             !_recoveryCompleted ? "RECOVERY REQUIRED · LOCKED" : "CONFIGURATION READY";
         LockExplanationText.Text = running
             ? "GTA5.exe is active or its state cannot be verified. All configuration and deployment controls are disabled."
-            : !_recoveryCompleted
-                ? "Startup recovery has not completed successfully. Restart after resolving the transaction journal."
-                : "The game is stopped. Package actions require a validated installation and explicit package trust acknowledgement.";
+            : _operationInProgress
+                ? "A package or profile operation is running. Other configuration controls are temporarily locked."
+                : !_recoveryCompleted
+                    ? "Startup recovery has not completed successfully. Restart after resolving the transaction journal."
+                    : "The game is stopped. Package actions require a validated installation and explicit package trust acknowledgement.";
     }
 
     private static string CreateProfileId(string name)
