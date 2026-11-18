@@ -76,8 +76,15 @@ public sealed class StorySaveBackupService
                 await output.FlushAsync(cancellationToken);
             }
 
-            await using var verify = new FileStream(temporaryPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var hash = Convert.ToHexString(await SHA256.HashDataAsync(verify, cancellationToken));
+            string hash;
+            await using (var verify = new FileStream(
+                temporaryPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                hash = Convert.ToHexString(await SHA256.HashDataAsync(verify, cancellationToken));
+            }
+
+            // Close the verification handle before renaming. Windows does not allow
+            // moving the archive while the verification stream is still open.
             File.Move(temporaryPath, archivePath, overwrite: false);
             return new StorySaveBackup(archivePath, files.Count, totalBytes, hash);
         }
