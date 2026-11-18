@@ -24,37 +24,7 @@ public sealed class ProfileStoreService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (!File.Exists(_storePath))
-                return Array.Empty<ModProfile>();
-
-            await using var stream = new FileStream(_storePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var document = await JsonSerializer.DeserializeAsync<ProfileStoreDocument>(
-                stream, JsonOptions, cancellationToken)
-                ?? throw new InvalidDataException("The saved profile store is empty or invalid.");
-
-            if (document.SchemaVersion != 1 || document.Profiles is null)
-                throw new InvalidDataException("The saved profile store has an unsupported schema.");
-
-            var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var profiles = new List<ModProfile>();
-            foreach (var profile in document.Profiles)
-            {
-                if (!PackageIdValidator.IsValid(profile.Id) ||
-                    string.IsNullOrWhiteSpace(profile.Name) ||
-                    !ids.Add(profile.Id))
-                    throw new InvalidDataException("The saved profile store contains an invalid or duplicate profile.");
-
-                var packageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var packageId in profile.EnabledPackageIds)
-                {
-                    if (!PackageIdValidator.IsValid(packageId) || !packageIds.Add(packageId))
-                        throw new InvalidDataException("A saved profile contains an invalid or duplicate package ID.");
-                }
-
-                profiles.Add(new ModProfile(profile.Id, profile.Name, packageIds, profile.UpdatedAt));
-            }
-
-            return profiles;
+            return await LoadWithoutLockAsync(cancellationToken);
         }
         finally
         {
@@ -64,8 +34,12 @@ public sealed class ProfileStoreService
 
     public async Task SaveAsync(ModProfile profile, CancellationToken cancellationToken = default)
     {
-        if (!PackageIdValidator.IsValid(profile.Id) || string.IsNullOrWhiteSpace(profile.Name))
-            throw new InvalidDataException("A profile must have a valid ID and a name.");
+        ArgumentNullException.ThrowIfNull(profile);
+        if (!PackageIdValidator.IsValid(profile.Id) ||
+            string.IsNullOrWhiteSpace(profile.Name) ||
+            profile.Name.Length > 100 ||
+            profile.EnabledPackageIds is null)
+            throw new InvalidDataException("A profile must have a valid ID, name and package list.");
 
         var packageIds = profile.EnabledPackageIds.ToArray();
         if (packageIds.Any(id => !PackageIdValidator.IsValid(id)) ||
@@ -75,9 +49,7 @@ public sealed class ProfileStoreService
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var existing = File.Exists(_storePath)
-                ? (await LoadWithoutLockAsync(cancellationToken)).ToList()
-                : new List<ModProfile>();
+            var existing = (await LoadWithoutLockAsync(cancellationToken)).ToList();
             existing.RemoveAll(item => item.Id.Equals(profile.Id, StringComparison.OrdinalIgnoreCase));
             existing.Add(profile with { UpdatedAt = DateTimeOffset.UtcNow });
             await WriteWithoutLockAsync(existing, cancellationToken);
@@ -120,14 +92,32 @@ public sealed class ProfileStoreService
             stream, JsonOptions, cancellationToken)
             ?? throw new InvalidDataException("The saved profile store is empty or invalid.");
 
-        if (document.SchemaVersion != 1)
+        if (document.SchemaVersion != 1 || document.Profiles is null)
             throw new InvalidDataException("The saved profile store has an unsupported schema.");
 
-        return document.Profiles.Select(profile => new ModProfile(
-            profile.Id,
-            profile.Name,
-            new HashSet<string>(profile.EnabledPackageIds, StringComparer.OrdinalIgnoreCase),
-            profile.UpdatedAt)).ToArray();
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var profiles = new List<ModProfile>();
+        foreach (var stored in document.Profiles)
+        {
+            if (stored is null ||
+                !PackageIdValidator.IsValid(stored.Id) ||
+                string.IsNullOrWhiteSpace(stored.Name) ||
+                stored.Name.Length > 100 ||
+                stored.EnabledPackageIds is null ||
+                !ids.Add(stored.Id))
+                throw new InvalidDataException("The saved profile store contains an invalid or duplicate profile.");
+
+            var packageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var packageId in stored.EnabledPackageIds)
+            {
+                if (!PackageIdValidator.IsValid(packageId) || !packageIds.Add(packageId))
+                    throw new InvalidDataException("A saved profile contains an invalid or duplicate package ID.");
+            }
+
+            profiles.Add(new ModProfile(stored.Id, stored.Name, packageIds, stored.UpdatedAt));
+        }
+
+        return profiles;
     }
 
     private async Task WriteWithoutLockAsync(
