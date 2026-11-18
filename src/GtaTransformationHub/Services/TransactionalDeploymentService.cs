@@ -13,7 +13,7 @@ namespace GtaTransformationHub.Services;
 /// Conservative, copy-only deployment transaction. It never executes package code
 /// or modifies a running game process. Rollback removes only files created by its own journal.
 /// </summary>
-public sealed class TransactionalDeploymentService
+public sealed partial class TransactionalDeploymentService
 {
     private static readonly SemaphoreSlim RecoveryLock = new(1, 1);
     private readonly GameProcessMonitor _processMonitor;
