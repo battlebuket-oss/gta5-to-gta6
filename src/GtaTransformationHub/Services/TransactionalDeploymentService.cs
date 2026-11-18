@@ -139,7 +139,7 @@ public sealed class TransactionalDeploymentService
     public async Task<IReadOnlyList<string>> RecoverInterruptedTransactionsAsync(
         CancellationToken cancellationToken = default)
     {
-        await DeploymentLock.WaitAsync(cancellationToken);
+        await RecoveryLock.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -182,7 +182,7 @@ public sealed class TransactionalDeploymentService
         }
         finally
         {
-            DeploymentLock.Release();
+            RecoveryLock.Release();
         }
     }
 
@@ -190,7 +190,7 @@ public sealed class TransactionalDeploymentService
         string transactionId,
         CancellationToken cancellationToken = default)
     {
-        await DeploymentLock.WaitAsync(cancellationToken);
+        await GameMutationGate.Gate.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -217,7 +217,7 @@ public sealed class TransactionalDeploymentService
         }
         finally
         {
-            DeploymentLock.Release();
+            GameMutationGate.Gate.Release();
         }
     }
 
