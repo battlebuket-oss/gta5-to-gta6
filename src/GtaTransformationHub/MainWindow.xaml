@@ -5,7 +5,8 @@
         Width="1180" Height="760" MinWidth="980" MinHeight="640"
         Background="{StaticResource WindowBackground}"
         Foreground="{StaticResource PrimaryText}"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded">
   <Grid Margin="24">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
