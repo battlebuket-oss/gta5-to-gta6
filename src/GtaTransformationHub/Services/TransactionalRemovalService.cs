@@ -246,15 +246,18 @@ public sealed class TransactionalRemovalService
                 journal = JsonSerializer.Deserialize<DeploymentJournal>(
                     await File.ReadAllTextAsync(journalPath, cancellationToken));
             }
-            catch (JsonException)
+            catch (JsonException exception)
             {
-                continue;
+                throw new InvalidDataException(
+                    "A deployment journal is malformed. Package changes are blocked until the journal is repaired.",
+                    exception);
             }
 
             if (journal is null ||
                 !string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal) ||
                 journal.Entries is null)
-                continue;
+                throw new InvalidDataException(
+                    "A deployment journal is incomplete or does not match its transaction directory.");
 
             foreach (var entry in journal.Entries)
             {
