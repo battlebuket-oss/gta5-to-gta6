@@ -115,11 +115,12 @@ public sealed class RageCliMetadataPayloadService
             errors.Add("The metadata dump cap of " + MaximumCandidatesToDump +
                        " candidates was reached. Remaining candidates were not dumped.");
 
-        var payloadRoot = Path.Combine(_dataRoot, "metadata-dumps", buildDirectory);
         Directory.CreateDirectory(_dataRoot);
         EnsureDirectoryIsNotReparsePoint(_dataRoot);
-        Directory.CreateDirectory(Path.Combine(_dataRoot, "metadata-dumps"));
-        EnsureDirectoryIsNotReparsePoint(Path.Combine(_dataRoot, "metadata-dumps"));
+        var metadataDumpRoot = Path.Combine(_dataRoot, "metadata-dumps");
+        Directory.CreateDirectory(metadataDumpRoot);
+        EnsureDirectoryIsNotReparsePoint(metadataDumpRoot);
+        var payloadRoot = Path.Combine(metadataDumpRoot, buildDirectory);
         Directory.CreateDirectory(payloadRoot);
         EnsureDirectoryIsNotReparsePoint(payloadRoot);
 
@@ -182,6 +183,7 @@ public sealed class RageCliMetadataPayloadService
                     }
 
                     var extractedPath = ResolveContainedOutputPath(levelOutput, nestedRelativePath);
+                    EnsureNoReparsePoints(levelOutput, extractedPath);
                     EnsureRegularFile(extractedPath, "nested RPF");
                     var nestedInfo = new FileInfo(extractedPath);
                     extractedBytes += nestedInfo.Length;
@@ -388,7 +390,7 @@ public sealed class RageCliMetadataPayloadService
                 continue;
 
             nestedArchives.Add(string.Join(
-                Path.DirectorySeparatorChar,
+                '/',
                 segments.Skip(start).Take(index - start + 1)));
             start = index + 1;
         }
@@ -396,7 +398,7 @@ public sealed class RageCliMetadataPayloadService
         if (start >= segments.Length)
             throw new InvalidDataException("The metadata path does not identify a resource after the RPF chain.");
 
-        var resourcePath = string.Join(Path.DirectorySeparatorChar, segments.Skip(start));
+        var resourcePath = string.Join('/', segments.Skip(start));
         if (resourcePath.EndsWith(".rpf", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The metadata path resolves to an archive, not a metadata resource.");
 
@@ -483,13 +485,19 @@ public sealed class RageCliMetadataPayloadService
             {
                 PropertyNameCaseInsensitive = false
             });
-        if (candidates is null)
-            throw new InvalidDataException("The metadata discovery candidate array is invalid.");
+        if (candidates is null ||
+            candidates.Any(item => item is null ||
+                string.IsNullOrWhiteSpace(item.ArchivePath) ||
+                string.IsNullOrWhiteSpace(item.InternalPath) ||
+                string.IsNullOrWhiteSpace(item.Name) ||
+                string.IsNullOrWhiteSpace(item.Kind)))
+            throw new InvalidDataException("The metadata discovery candidate array contains an invalid record.");
 
         return candidates;
     }
 
     private static bool IsSupportedMetadataCandidate(RageCliMetadataHit candidate) =>
+        candidate is not null &&
         candidate.Kind.Equals("resource", StringComparison.OrdinalIgnoreCase) &&
         SupportedMetadataExtensions.Contains(Path.GetExtension(candidate.Name));
 
