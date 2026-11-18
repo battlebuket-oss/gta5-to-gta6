@@ -58,10 +58,12 @@ public static class EcologyCompatibilityService
         if (!Uri.TryCreate(contract.EvidenceUri, UriKind.Absolute, out var evidence) || evidence.Scheme != Uri.UriSchemeHttps)
             errors.Add(manifest.Name + " has no HTTPS ecological review evidence.");
 
-        // Deliberately fail closed: this build does not yet parse every supported
-        // GTA V asset format or perform a semantic species/model diff. A manifest
-        // declaration, inventory hash and evidence URL are not proof by themselves.
-        errors.Add(manifest.Name + " is blocked because exact-build semantic verification of terrestrial and aquatic animal, plant, vegetation, water and model identities is not implemented yet. Manifest claims cannot self-approve the package.");
+        // A parser-independent semantic inventory comparator now exists, but this
+        // build has no validated extractor/provenance pipeline that can populate it
+        // from every supported GTA V Legacy RPF/model/metadata format and bind the
+        // result to this package. Keep the package blocked until that pipeline exists.
+        // A manifest declaration, inventory hash and evidence URL are not proof.
+        errors.Add(manifest.Name + " is blocked because exact-build semantic verification still lacks a validated GTA V asset extractor and package-bound inventory evidence. Manifest claims cannot self-approve the package.");
         return errors;
     }
 
