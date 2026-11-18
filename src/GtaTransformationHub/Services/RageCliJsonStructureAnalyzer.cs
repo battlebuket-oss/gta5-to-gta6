@@ -11,6 +11,8 @@ public sealed record RageCliJsonStructureSummary(
     int BooleanValueCount,
     int NullValueCount,
     int MaximumDepth,
+    int TruncatedPropertyNameCount,
+    bool PropertyNameLimitReached,
     IReadOnlyDictionary<string, int> PropertyNameFrequency);
 
 /// <summary>
@@ -33,6 +35,8 @@ public static class RageCliJsonStructureAnalyzer
         var booleanCount = 0;
         var nullCount = 0;
         var maximumDepth = 0;
+        var truncatedPropertyNameCount = 0;
+        var propertyNameLimitReached = false;
         var propertyNames = new Dictionary<string, int>(StringComparer.Ordinal);
         var pending = new Stack<(JsonElement Element, int Depth)>();
         pending.Push((root, 0));
@@ -51,10 +55,19 @@ public static class RageCliJsonStructureAnalyzer
                     foreach (var property in element.EnumerateObject())
                     {
                         propertyCount++;
-                        if (propertyNames.TryGetValue(property.Name, out var count))
-                            propertyNames[property.Name] = checked(count + 1);
+                        var propertyName = property.Name;
+                        if (propertyName.Length > 256)
+                        {
+                            truncatedPropertyNameCount++;
+                            propertyName = propertyName[..256] + "...[truncated]";
+                        }
+
+                        if (propertyNames.TryGetValue(propertyName, out var count))
+                            propertyNames[propertyName] = checked(count + 1);
                         else if (propertyNames.Count < MaximumUniquePropertyNames)
-                            propertyNames.Add(property.Name, 1);
+                            propertyNames.Add(propertyName, 1);
+                        else
+                            propertyNameLimitReached = true;
 
                         pending.Push((property.Value, depth + 1));
                     }
@@ -95,6 +108,8 @@ public static class RageCliJsonStructureAnalyzer
             booleanCount,
             nullCount,
             maximumDepth,
+            truncatedPropertyNameCount,
+            propertyNameLimitReached,
             propertyNames);
     }
 }
