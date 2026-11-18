@@ -290,6 +290,15 @@ public sealed class TransactionalDeploymentService
             cancellationToken.ThrowIfCancellationRequested();
             var destination = ResolveContainedPath(root, entry.DestinationRelativePath);
             EnsureNoReparsePoints(root, destination);
+            if (entry.OwnershipOnly)
+            {
+                if (File.Exists(destination))
+                    throw new IOException(
+                        "A file appeared after an ownership-only removal record. Rollback stopped to protect that file: " +
+                        entry.DestinationRelativePath);
+                continue;
+            }
+
             if (entry.ExistedBefore)
             {
                 if (string.IsNullOrWhiteSpace(entry.OriginalSha256) || entry.OriginalSha256.Length != 64)
@@ -323,6 +332,9 @@ public sealed class TransactionalDeploymentService
             cancellationToken.ThrowIfCancellationRequested();
             _processMonitor.EnsureConfigurationUnlocked();
             var destination = ResolveContainedPath(root, entry.DestinationRelativePath);
+            if (entry.OwnershipOnly)
+                continue;
+
             if (entry.ExistedBefore)
             {
                 if (File.Exists(destination))
@@ -449,4 +461,5 @@ public sealed record DeploymentJournalEntry(
     string BackupFile,
     string DeployedSha256,
     string? OriginalSha256,
-    string PackageVersion = "");
+    string PackageVersion = "",
+    bool OwnershipOnly = false);
