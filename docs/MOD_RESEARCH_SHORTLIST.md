@@ -1,0 +1,44 @@
+# Initial mod research shortlist — GTA V Legacy
+
+**Status: research only. None of these packages is approved for automatic installation yet.** A source page, popularity, or a successful download is not proof that a package is compatible with the user's exact game build. The application must not enable a package until its exact archive, manifest, licence, dependencies, conflicts, hashes, install steps, rollback behaviour, and clean-install test have been recorded.
+
+## Candidate packages
+
+| Area | Candidate | Current evidence | Decision |
+|---|---|---|---|
+| Visuals / weather | NaturalVision Evolved (Legacy) | The creator's single-player guide targets GTA V Legacy and lists OpenIV and Script Hook V as prerequisites. The creator announced a Legacy update in November 2026 with latest-build support and optional experimental ray-traced lighting. | **Research first.** Use the creator's official distribution only. Keep experimental RT disabled in the default 1080p profile; evaluate the performance add-on and VRAM use on a 6 GB GPU. |
+| Visuals / weather | VisualV (Legacy) | A current 2026 comparison reports a separate Legacy release and an OpenIV package, but this needs confirmation against the author's own release page and exact archive. | **Alternative, not combined with NVE** until overlap and conflicts are audited. |
+| NPC reactions / physics | Better Euphoria | GTA5-Mods lists version 1.3, dated 29 March 2026, and describes it as an approved continuation with an OIV installer. | **Research first.** Confirm exact supported Legacy build, author permissions, required base files, and rollback coverage. |
+| Police / pursuit | BetterChaseRemade | The published page describes Story Mode-only behaviour but explicitly lists Legacy build 1.0.3788.0 and ScriptHookVDotNet 3 Nightly dependencies. | **Blocked pending a newer supported build** matching the target installation. Do not install on a newer game build by assumption. |
+| Population / traffic | World Of Variety Plus 2026 | The Nexus page describes restored content and expanded world events. Its permissions explicitly prohibit re-uploading the author's assets elsewhere. | **External-source-only candidate.** No bundled binaries; inspect base-mod requirements and compatibility before approval. |
+| Population / traffic | Los Angeles Traffic | The Nexus page shows an update in October 2026, but its documentation still references a tested game version 1.0.3586 and additional DLC-enabling scripts. | **Blocked pending build confirmation and dependency review.** |
+
+## Candidate profile direction
+
+- **Balanced 1080p:** one visual overhaul at most; conservative texture and post-processing choices; no experimental ray tracing by default; only tested gameplay plugins.
+- **World realism:** population, traffic, and NPC packages only after overlap analysis. Avoid installing multiple packages that replace the same population or dispatch data.
+- **Police and pursuits:** one coherent dispatch/pursuit stack, with every framework and plugin version pinned together.
+- **Experimental:** isolated opt-in profile, never part of the default profile.
+
+## Mandatory approval gate
+
+A candidate becomes installable only after all of the following are complete:
+
+1. The official author/source and licence are recorded; redistribution is explicitly permitted before any binary is bundled.
+2. The exact archive is scanned, unpacked safely, inventoried, and assigned SHA-256 hashes.
+3. The target edition and exact GTA V build are explicitly supported.
+4. Required loaders/frameworks are version-pinned; conflicts and load order are documented.
+5. Installation is expressed as declarative file operations; arbitrary executable installers and opaque scripts are not run by the hub.
+6. A clean GTA V Legacy test installation passes apply, launch, normal exit, rollback, interrupted-transaction recovery, and repeated apply/rollback tests.
+7. Performance is measured at 1920×1080 and the package receives a tested performance tier.
+
+## Sources checked on 18 November 2026
+
+- [Razed Mods — NaturalVision Evolved single-player guide](https://content.razedmods.com/readme/sp)
+- [Razed Mods — November 2026 NVE update](https://www.patreon.com/razedmods/posts/naturalvision-175019911)
+- [Better Euphoria 1.3](https://www.gta5-mods.com/misc/realistic-euphoria-physics-mod-based-on-next-gen-euphoria-by-iammrmikeman)
+- [BetterChaseRemade](https://www.gta5-mods.com/uk/scripts/betterchaseremade)
+- [World Of Variety Plus 2026](https://www.nexusmods.com/gta5/mods/1171)
+- [Los Angeles Traffic](https://www.nexusmods.com/gta5/mods/1505)
+
+Secondary comparisons were used only to identify candidates, not to approve packages. The hub's own validation process remains authoritative.
