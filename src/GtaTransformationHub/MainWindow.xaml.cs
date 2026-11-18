@@ -491,7 +491,7 @@ public partial class MainWindow : Window
         }
 
         var selectedIds = selectedPackages
-            .Select(package => package.Manifest.Id)
+            .Select(package => package.Manifest.Id + "@" + package.Manifest.Version)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var id = CreateProfileId(name);
         if (!PackageIdValidator.IsValid(id))
@@ -554,22 +554,31 @@ public partial class MainWindow : Window
         try
         {
             PackageList.SelectedItems.Clear();
-            var resolution = ProfilePackageResolver.Resolve(profile, _packages);
+            var missing = new List<string>();
 
-            foreach (var package in resolution.SelectedPackages)
-                PackageList.SelectedItems.Add(package);
+            foreach (var packageReference in profile.EnabledPackageIds)
+            {
+                var separator = packageReference.LastIndexOf('@');
+                var packageId = separator > 0 ? packageReference[..separator] : packageReference;
+                var pinnedVersion = separator > 0 ? packageReference[(separator + 1)..] : null;
 
-            var warnings = new List<string>();
-            if (resolution.MissingPackages.Count > 0)
-                warnings.Add("Missing imported packages: " +
-                             string.Join(", ", resolution.MissingPackages));
-            if (resolution.AmbiguousPackages.Count > 0)
-                warnings.Add("Choose an exact version for these legacy profile entries before saving: " +
-                             string.Join(", ", resolution.AmbiguousPackages));
+                var matches = _packages.Where(item =>
+                    item.Manifest.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase));
 
-            ProfileWarningText.Text = warnings.Count == 0
-                ? "Package versions are pinned for this profile."
-                : string.Join(Environment.NewLine, warnings);
+                var package = pinnedVersion is null
+                    ? matches.OrderByDescending(item => item.ImportedAt).FirstOrDefault()
+                    : matches.FirstOrDefault(item =>
+                        item.Manifest.Version.Equals(pinnedVersion, StringComparison.OrdinalIgnoreCase));
+
+                if (package is null)
+                    missing.Add(packageReference);
+                else
+                    PackageList.SelectedItems.Add(package);
+            }
+
+            ProfileWarningText.Text = missing.Count == 0
+                ? "Saved profiles pin the package versions selected when they were saved. Catalogue profiles without a version pin use the most recently imported version."
+                : "Missing imported package versions: " + string.Join(", ", missing);
             ProfileNameText.Text = profile.Name;
         }
         finally
