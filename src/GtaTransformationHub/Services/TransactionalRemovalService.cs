@@ -195,7 +195,10 @@ public sealed class TransactionalRemovalService
             {
                 try
                 {
-                    await _recoveryService.RecoverInterruptedTransactionsAsync(CancellationToken.None);
+                    // This method already owns GameMutationGate.Gate. Use the
+                    // lock-already-held recovery entry point to avoid a recursive wait.
+                    await _recoveryService.RecoverTransactionWhileMutationGateHeldAsync(
+                        transactionId, CancellationToken.None);
                 }
                 catch (Exception recoveryError)
                 {
