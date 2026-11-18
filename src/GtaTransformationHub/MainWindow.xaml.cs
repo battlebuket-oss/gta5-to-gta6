@@ -433,6 +433,24 @@ public partial class MainWindow : Window
         RefreshSessionState();
     }
 
+    private void OpenRageCliReleaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(RageCliToolchainService.ReleaseUrl)
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Exception exception)
+        {
+            RageCliStatusText.Text = "Could not open the official rage-cli release page: " + exception.Message;
+        }
+    }
+
     private void SelectRageCliButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration())
@@ -1052,6 +1070,7 @@ public partial class MainWindow : Window
                                          PackageList.SelectedItems.Count > 0;
         RollbackButton.IsEnabled = canConfigure && _rollbackTransactionIds.Count > 0;
         LaunchButton.IsEnabled = canConfigure && _installation is not null;
+        OpenRageCliReleaseButton.IsEnabled = canConfigure;
         SelectRageCliButton.IsEnabled = canConfigure;
         VerifyRageCliButton.IsEnabled = canConfigure &&
                                         !string.IsNullOrWhiteSpace(RageCliExecutablePathText.Text);
