@@ -15,9 +15,9 @@ This document distinguishes implemented development-branch functions from releas
 | Local ZIP package import | Implemented |
 | Direct HTTPS package acquisition | Implemented for user-supplied direct URLs; bounded streaming, redirect validation and DNS validation at socket connection |
 | OIV 2.2 import | Implemented for direct loose-file add operations only; RPF/patch/script operations rejected and compatibility-unverified packages blocked |
-| Ecology preservation contract | Fail-closed policy and conservative asset classifier implemented; ALL ecology-sensitive packages blocked until exact-build species inventory and semantic asset diff are implemented |
-| Shared mutation lock and protected destinations | Implemented for deployment, removal and rollback; executable, RPF and save/profile paths blocked |
-| Story Mode save backup | Implemented as read-only ZIP archive backup of a user-selected Profiles folder |
+| Ecology preservation and semantic comparison | Fail-closed terrestrial/aquatic classifier and parser-independent inventory comparison engine implemented; ALL ecology-sensitive packages remain blocked until trusted exact-build asset extractors, provenance and package-bound evidence are integrated |
+| Shared mutation lock and protected destinations | Implemented for deployment, removal, rollback and recovery, including a lock-already-held recovery path; executable, RPF and save/profile paths blocked |
+| Story Mode save backup | Implemented as read-only ZIP archive backup of a user-selected Profiles folder; verification handles are closed before final archive rename |
 | Hardware/performance guidance | Implemented as conservative recommendation only; no game settings are modified |
 | ZIP path traversal, link, duplicate, undeclared-entry and size checks | Implemented |
 | Bounded ZIP decompression | Implemented for manifest and payload extraction |
@@ -33,7 +33,7 @@ This document distinguishes implemented development-branch functions from releas
 | RSA publisher signatures | Implemented for package manifests using RSA-2048+, SHA-256 and PKCS#1 v1.5 |
 | Local trusted-publisher key store | Implemented with independent fingerprint matching and an add-key dialog |
 | Signature-aware package preflight | Implemented; unsigned and unknown-publisher packages warn, invalid trusted-key signatures reject |
-| Windows x64 CI build, test and publish workflow | Configured; the latest checks must pass before release |
+| Windows x64 CI build, test and publish workflow | Configured; one earlier full run passed build, tests and self-contained publish; every later head must pass independently before release |
 
 ## Not yet production-ready
 
@@ -42,7 +42,7 @@ This document distinguishes implemented development-branch functions from releas
 | Trusted publisher management | Add and revoke trusted RSA keys in the UI; signed central catalogue and update channel remain outstanding |
 | Automatic package downloads | Direct user-supplied HTTPS URL downloads implemented; no HTML scraping, host API crawling or signed catalogue feed |
 | Mod-host-specific installers | Restricted OIV 2.2 loose-file add import implemented; no RPF mutation, XML/GFX, ASI-specific or other host-specific deployment adapters |
-| Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation. All ecology-sensitive packages are blocked; species baseline inventory and semantic asset diff remain outstanding |
+| Tested package catalogue | Current mod candidates remain research-only; no third-party mod is approved for one-click installation. All ecology-sensitive packages are blocked; exact-build extraction, inventory provenance and package-preflight integration remain outstanding |
 | Build compatibility | Numeric executable version detection exists, but supported builds have not been exhaustively tested against real mod releases |
 | Game launch integration | Direct GTA5.exe launch can require Steam or Rockstar Games Launcher and needs real-world verification |
 | Performance and stability | No repeatable in-game benchmark matrix or extended gameplay soak tests |
