@@ -6,6 +6,6 @@ namespace GtaTransformationHub.Services;
 /// </summary>
 public sealed record DeploymentFile(
     string PackageId,
-    string SourcePath,
+    string SourcePath, // Relative to the package root
     string DestinationRelativePath,
     string ExpectedSha256);
