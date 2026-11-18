@@ -61,7 +61,7 @@ public sealed class RageCliMetadataDiscoveryServiceTests
     [InlineData("")]
     [InlineData("*.ymt\n--version")]
     [InlineData("*popgroups*\r--version")]
-    [InlineData("*".ymt")]
+    [InlineData("*\\\".ymt")]
     public void BuildSearchArguments_RejectsCommandInjectionPatterns(string pattern)
     {
         Assert.ThrowsAny<ArgumentException>(() =>
