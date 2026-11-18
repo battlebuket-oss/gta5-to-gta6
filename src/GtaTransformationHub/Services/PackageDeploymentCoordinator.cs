@@ -16,13 +16,16 @@ public sealed record PackagePreflightReport(
 public sealed class PackageDeploymentCoordinator
 {
     private readonly TransactionalDeploymentService _deploymentService;
+    private readonly PackageSignatureService _signatureService;
     private readonly string _stagingRoot;
 
     public PackageDeploymentCoordinator(
         TransactionalDeploymentService? deploymentService = null,
-        string? stagingRoot = null)
+        string? stagingRoot = null,
+        PackageSignatureService? signatureService = null)
     {
         _deploymentService = deploymentService ?? new TransactionalDeploymentService();
+        _signatureService = signatureService ?? new PackageSignatureService();
         _stagingRoot = Path.GetFullPath(stagingRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "GtaTransformationHub", "deployment-staging"));
@@ -52,6 +55,20 @@ public sealed class PackageDeploymentCoordinator
             }
 
             var manifest = imported.Manifest;
+            var signature = await _signatureService.VerifyAsync(manifest, cancellationToken);
+            switch (signature.Status)
+            {
+                case PackageSignatureStatus.Invalid:
+                    errors.Add(manifest.Name + " has an invalid publisher signature: " + signature.Message);
+                    break;
+                case PackageSignatureStatus.Unsigned:
+                    warnings.Add(manifest.Name + " is unsigned. Its file hashes do not authenticate the publisher.");
+                    break;
+                case PackageSignatureStatus.UnknownPublisher:
+                    warnings.Add(manifest.Name + " is signed by an untrusted publisher key. Verify the fingerprint independently before installation.");
+                    break;
+            }
+
             if (!PackageIdValidator.IsValid(manifest.Id))
             {
                 errors.Add("An imported package has an invalid ID.");
