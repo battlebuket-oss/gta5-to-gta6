@@ -24,9 +24,13 @@ public sealed class PackageArchiveService
     };
 
     private readonly string _packagesRoot;
+    private readonly PackageSignatureService _signatureService;
 
-    public PackageArchiveService(string? packagesRoot = null)
+    public PackageArchiveService(
+        string? packagesRoot = null,
+        PackageSignatureService? signatureService = null)
     {
+        _signatureService = signatureService ?? new PackageSignatureService();
         _packagesRoot = Path.GetFullPath(packagesRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "GtaTransformationHub", "packages"));
@@ -94,6 +98,10 @@ public sealed class PackageArchiveService
             ?? throw new InvalidDataException("The package manifest is empty or invalid.");
 
         ValidateManifest(manifest);
+        var signatureVerification = await _signatureService.VerifyAsync(manifest, cancellationToken);
+        if (signatureVerification.Status == PackageSignatureStatus.Invalid)
+            throw new InvalidDataException(signatureVerification.Message);
+        var signatureStatus = signatureVerification.Status.ToString();
 
         var listedFiles = new Dictionary<string, PackageManifestFile>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in manifest.Files)
@@ -127,7 +135,7 @@ public sealed class PackageArchiveService
             _packagesRoot, manifest.Id, packageVersion, packageHashKey);
 
         if (Directory.Exists(packageDestination))
-            return new ImportedPackage(manifest, packageDestination, archiveHash, DateTimeOffset.UtcNow);
+            return new ImportedPackage(manifest, packageDestination, archiveHash, DateTimeOffset.UtcNow, signatureStatus);
 
         Directory.CreateDirectory(_packagesRoot);
         var stagingPath = Path.Combine(_packagesRoot, ".staging-" + Guid.NewGuid().ToString("N"));
