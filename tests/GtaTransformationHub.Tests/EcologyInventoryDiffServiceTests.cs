@@ -24,15 +24,15 @@ public sealed class EcologyInventoryDiffServiceTests
                     new[] { "coastal-wetland" }, "plant-static-v1"),
                 new EcologySpeciesIdentity(
                     "wild-orchid", "TerrestrialPlant", new[] { "prop_wild_orchid_01" },
-                    new[] { "sandy-hills" }, "plant-static-v1"),
+                    new[] { "marsh-edge" }, "plant-static-v1"),
                 new EcologySpeciesIdentity(
                     "scrub-fox", "TerrestrialAnimal", new[] { "a_scrub_fox_01" },
-                    new[] { "sandy-hills" }, "fox-walk-v1")
+                    new[] { "marsh-edge" }, "fox-walk-v1")
             }).ToArray(),
             Habitats = baseline.Habitats.Concat(new[]
             {
                 new EcologyHabitatIdentity("coastal-wetland", "Wetland", "pacific-ocean"),
-                new EcologyHabitatIdentity("sandy-hills", "Terrestrial", "")
+                new EcologyHabitatIdentity("marsh-edge", "Terrestrial", "")
             }).ToArray(),
             PopulationEntries = baseline.PopulationEntries.Concat(new[]
             {
