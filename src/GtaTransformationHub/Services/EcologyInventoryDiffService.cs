@@ -132,7 +132,8 @@ public static class EcologyInventoryDiffService
         {
             if (!added.Any(item => Same(item.Id, entry.SpeciesId)))
                 errors.Add($"New population entry '{entry.Id}' modifies or adds population data for a vanilla species.");
-            if (!candidateHabitats.ContainsKey(entry.HabitatId))
+            if (string.IsNullOrWhiteSpace(entry.HabitatId) ||
+                !candidateHabitats.ContainsKey(entry.HabitatId))
                 errors.Add($"Population entry '{entry.Id}' references missing habitat '{entry.HabitatId}'.");
         }
 
@@ -210,12 +211,12 @@ public static class EcologyInventoryDiffService
         string label,
         List<string> errors)
     {
-        var speciesById = species.Where(item => item is not null)
+        var speciesById = species.Where(item => item is not null && !string.IsNullOrWhiteSpace(item.Id))
             .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
-        var habitatIds = habitats.Where(item => item is not null)
+        var habitatIds = habitats.Where(item => item is not null && !string.IsNullOrWhiteSpace(item.Id))
             .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var waterIds = waterBodies.Where(item => item is not null)
+        var waterIds = waterBodies.Where(item => item is not null && !string.IsNullOrWhiteSpace(item.Id))
             .Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var item in species.Where(item => item is not null))
@@ -245,7 +246,8 @@ public static class EcologyInventoryDiffService
 
         foreach (var entry in populationEntries.Where(item => item is not null))
         {
-            if (!speciesById.TryGetValue(entry.SpeciesId, out var ownerSpecies))
+            if (string.IsNullOrWhiteSpace(entry.SpeciesId) ||
+                !speciesById.TryGetValue(entry.SpeciesId, out var ownerSpecies))
             {
                 errors.Add($"{label} population entry '{entry.Id}' references missing species '{entry.SpeciesId}'.");
             }
