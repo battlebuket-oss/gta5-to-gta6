@@ -43,7 +43,8 @@ public sealed class EcologyInventoryDiffServiceTests
             }).ToArray(),
             WaterBodies = baseline.WaterBodies.Select(water => water with
             {
-                RenderingProfileId = "water-rendering-higher-fidelity-v2"
+                RenderingProfileId = "water-rendering-higher-fidelity-v2",
+                RenderingDefinitionSha256 = HashB
             }).ToArray()
         };
 
@@ -91,6 +92,22 @@ public sealed class EcologyInventoryDiffServiceTests
         {
             WaterBodies = baseline.WaterBodies.Select(water =>
                 water with { SimulationProfileId = "replacement-wave-simulation" }).ToArray()
+        };
+
+        var result = EcologyInventoryDiffService.Compare(baseline, candidate);
+
+        Assert.False(result.VanillaPreserved);
+        Assert.Contains(result.Errors, error => error.Contains("simulation or interaction identity"));
+    }
+
+    [Fact]
+    public void Compare_RejectsWaterSimulationDataChangedUnderTheSameProfileName()
+    {
+        var baseline = CreateBaseline();
+        var candidate = baseline with
+        {
+            WaterBodies = baseline.WaterBodies.Select(water =>
+                water with { SimulationDefinitionSha256 = HashB }).ToArray()
         };
 
         var result = EcologyInventoryDiffService.Compare(baseline, candidate);
@@ -161,6 +178,6 @@ public sealed class EcologyInventoryDiffServiceTests
             {
                 new EcologyWaterBodyIdentity(
                     "pacific-ocean", "Ocean", "ocean-wave-simulation-v1",
-                    "ocean-interaction-v1", "ocean-render-v1")
+                    "ocean-interaction-v1", "ocean-render-v1", HashA, HashB, HashA)
             });
 }
