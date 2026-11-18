@@ -47,6 +47,7 @@ public sealed class EcologyAndSafetyTests : IDisposable
     [Theory]
     [InlineData("GTA5.exe")]
     [InlineData("update.rpf")]
+    [InlineData("update/update.rpf/meta/popgroups.ymt")]
     [InlineData("Profiles/SGTA50000")]
     [InlineData("mods/Launcher.exe")]
     public void ProtectedGamePaths_AreRejected(string destination) =>

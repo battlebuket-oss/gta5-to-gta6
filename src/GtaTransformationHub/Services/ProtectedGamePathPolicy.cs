@@ -29,8 +29,8 @@ public static class ProtectedGamePathPolicy
             Path.GetExtension(fileName).Equals(".exe", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Replacing executable or launcher files is blocked.");
 
-        if (Path.GetExtension(fileName).Equals(".rpf", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Replacing an entire RPF archive is blocked. Archive-internal changes require a separately audited adapter.");
+        if (segments.Any(segment => Path.GetExtension(segment).Equals(".rpf", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("RPF archive destinations and archive-internal paths are blocked. They require a separately audited archive adapter.");
 
         if (segments.Any(segment => ProtectedDirectoryNames.Contains(segment)))
             throw new InvalidDataException("Mod packages cannot write into GTA V save or user-profile directories.");
