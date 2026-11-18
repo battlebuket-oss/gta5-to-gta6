@@ -12,7 +12,8 @@ The current development branch includes:
 - Local ZIP package import with a root-level gta-hub-manifest.json.
 - Direct user-supplied HTTPS ZIP/OIV downloads with redirect validation, DNS checks at socket-connect time, bounded streaming and SHA-256 calculation.
 - Restricted OpenIV OIV 2.2 import for direct loose-file add operations only; RPF edits, patch operations and other commands are rejected.
-- Ecology preservation contracts and fail-closed preflight for terrestrial and aquatic animals, plants, underwater vegetation, water, models, textures, maps, animations and metadata.
+- Ecology preservation contracts, aquatic/underwater asset classification and fail-closed preflight for terrestrial and aquatic animals, plants, water, models, textures, maps, animations and metadata.
+- Parser-independent ecological inventory comparison for vanilla species/model identity, habitats, population entries and water-body simulation/interaction identity; it permits distinct append-only new species and water rendering-profile upgrades.
 - Aquatic-path classification for fish, marine life, seagrass, kelp, coral/reef assets, underwater assets, water bodies and shoreline vegetation.
 - Shared mutation serialization across deployment, removal and rollback, plus protected paths for executables, RPF archives and save/profile folders.
 - Story Mode save-folder archive backups and conservative hardware/performance guidance.
@@ -49,7 +50,7 @@ Direct executable launch may require Steam or Rockstar Games Launcher. The launc
 - The Hub downloads only when the user supplies a direct HTTPS ZIP/OIV URL. It does not scrape HTML pages, bypass host-controlled download flows or crawl mod-host APIs.
 - The Hub does not sandbox DLL, ASI or script files when the game loads them. Only install files from sources you trust.
 - The Hub does not execute third-party installers, modify a running game, inject into a process, bypass DRM/anti-cheat or support GTA Online.
-- Current catalogue entries are research-only. No third-party mod is approved for one-click installation. All ecology- and water-sensitive packages are currently blocked. The manifest contract is not proof: exact-build terrestrial/aquatic species inventories, water-system baselines and automated semantic asset diffing are still outstanding.
+- Current catalogue entries are research-only. No third-party mod is approved for one-click installation. All ecology- and water-sensitive packages are currently blocked. A parser-independent semantic inventory comparator now exists, but validated exact-build RPF/model/metadata extraction, trusted terrestrial/aquatic inventories, water-system baselines and package-preflight evidence integration are still outstanding.
 - OIV support is intentionally limited to direct loose-file add operations. RPF editing, XML/GFX, ASI-specific and other host-specific adapters are not implemented. OIV packages remain blocked until exact-build compatibility is independently verified.
 
 Do not use the development build on your only game installation. Test against a disposable copy and back up your game files and saves first.
@@ -58,13 +59,13 @@ Do not use the development build on your only game installation. Test against a 
 
 See [Production readiness status](docs/PRODUCTION_STATUS.md) for implemented functions, outstanding engineering work and mandatory release gates.
 
-Outstanding work includes a signed central catalogue/update channel, full OIV/RPF and game-specific adapters, a verified GTA V Legacy terrestrial/aquatic species and water-system baseline with automated semantic diffing, a tested mod compatibility matrix, the actual in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
+Outstanding work includes a signed central catalogue/update channel, full OIV/RPF and game-specific adapters, validated GTA V Legacy terrestrial/aquatic asset extractors, trusted species and water-system baselines, and package-preflight evidence integration for the semantic inventory comparator, a tested mod compatibility matrix, the actual in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
 
 ## Flora, fauna and water requirements
 
 Preserve every original GTA V terrestrial and aquatic animal species, plant and vegetation species, model identity and original population entry. New species may be added only as unique, append-only additions; they must never replace, remove or overwrite vanilla species or identities. Preserve the existing water-system identity and behaviour while improving surface realism, waves, reflections, refraction, foam, underwater lighting, caustics, depth response and weather interaction. Add underwater vegetation and aquatic animals as well as land flora and fauna, subject to exact-build verification.
 
-All ecology-sensitive packages remain blocked until the exact-build inventory and semantic verifier exist; a package manifest cannot self-approve this requirement. See [Ecology preservation policy](docs/ECOLOGY_PRESERVATION_POLICY.md) and [Flora, fauna and water implementation specification](docs/FLORA_FAUNA_AND_WATER_SPEC.md).
+All ecology-sensitive packages remain blocked until validated exact-build extraction and trusted package-bound inventory evidence exist; the semantic inventory comparator is implemented, but a package manifest cannot self-approve this requirement. See [Ecology preservation policy](docs/ECOLOGY_PRESERVATION_POLICY.md) and [Flora, fauna and water implementation specification](docs/FLORA_FAUNA_AND_WATER_SPEC.md).
 
 ## Product experience priorities
 
@@ -89,6 +90,7 @@ dotnet publish src/GtaTransformationHub/GtaTransformationHub.csproj --configurat
 - [Package authoring](docs/PACKAGE_AUTHORING.md)
 - [Production readiness status](docs/PRODUCTION_STATUS.md)
 - [Flora, fauna and water implementation specification](docs/FLORA_FAUNA_AND_WATER_SPEC.md)
+- [Ecological inventory comparison engine](src/GtaTransformationHub/Services/EcologyInventoryDiffService.cs)
 - [Initial mod research shortlist](docs/MOD_RESEARCH_SHORTLIST.md)
 - [GTA VI-inspired experience coverage matrix](docs/GTA6_EXPERIENCE_COVERAGE_MATRIX.md)
 
