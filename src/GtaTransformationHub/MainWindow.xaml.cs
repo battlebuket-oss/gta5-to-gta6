@@ -41,8 +41,8 @@ public partial class MainWindow : Window
         _gameExecutable = dialog.FileName;
         GamePathText.Text = Path.GetDirectoryName(dialog.FileName) ?? dialog.FileName;
         DetectionText.Text = "Executable selected. Edition and build validation is not yet implemented.";
-        LaunchButton.IsEnabled = true;
-        StatusText.Text = "Game path saved for this session. Mod deployment is not yet enabled.";
+        LaunchButton.IsEnabled = false;
+        StatusText.Text = "Game path saved. Launch is disabled until verified package deployment is connected.";
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -124,7 +124,9 @@ public partial class MainWindow : Window
         var running = IsGameRunning();
         LocateButton.IsEnabled = !running;
         RefreshButton.IsEnabled = !running;
-        LaunchButton.IsEnabled = !running && !string.IsNullOrWhiteSpace(_gameExecutable) && File.Exists(_gameExecutable);
+        // Never launch from the dashboard until profile validation and transactional
+        // deployment are wired into this exact path.
+        LaunchButton.IsEnabled = false;
 
         SessionStateText.Text = running ? "GAME RUNNING · LOCKED" : "CONFIGURATION UNLOCKED";
         LockExplanationText.Text = running
