@@ -34,7 +34,7 @@ This document distinguishes implemented application functions from release requi
 | Mod-host-specific installers | No OpenIV OIV/XML/GFX, ASI or other format-specific installation adapters |
 | Tested package catalogue | Current catalogue entries remain research-only; no third-party package is approved for one-click install |
 | Build compatibility | Numeric executable version detection exists, but supported builds have not been exhaustively tested against real mod releases |
-| Profile activation | Version-aware desired-state reconciliation implemented using deployment journals; profiles still store package IDs rather than pinned versions and require the matching imported archives |
+| Profile activation | Version-aware desired-state reconciliation implemented using deployment journals; saved profiles pin package ID and exact version and require the matching imported archive |
 | Game launch integration | Direct GTA5.exe launch can require Steam or Rockstar Games Launcher and needs real-world verification |
 | Performance and stability | No repeatable in-game benchmark matrix or extended gameplay soak tests |
 | Game-side interface transformation | Not implemented; current interface is the Windows management application |
