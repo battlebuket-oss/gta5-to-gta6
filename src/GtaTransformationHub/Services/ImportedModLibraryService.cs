@@ -12,8 +12,9 @@ using GtaTransformationHub.Models;
 namespace GtaTransformationHub.Services;
 
 /// <summary>
-/// Lists locally imported, research-only packages. It never loads or executes package code.
-/// File hashes are deliberately reported as unverified until a separate full verification pass runs.
+/// Lists locally imported, research-only packages and recomputes each extracted file's SHA-256.
+/// It never loads or executes package code. The source archive digest cannot be independently
+/// re-verified because the original archive is not retained in the package library.
 /// </summary>
 public sealed class ImportedModLibraryService
 {
