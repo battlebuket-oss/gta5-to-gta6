@@ -238,6 +238,20 @@
                        FontSize="10"
                        TextWrapping="Wrap"
                        Margin="0,8,0,0"/>
+            <Button x:Name="RecordCompatibilityTestEvidenceButton"
+                    AutomationProperties.Name="Record complete GTA V compatibility and performance test evidence for the selected package stack"
+                    Content="Record compatibility / performance test evidence"
+                    Padding="10,7"
+                    HorizontalAlignment="Left"
+                    Margin="0,8,0,0"
+                    IsEnabled="False"
+                    Click="RecordCompatibilityTestEvidenceButton_Click"/>
+            <TextBlock x:Name="CompatibilityTestEvidenceStatusText"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"
+                       Text="Run the full package-stack compatibility, ecology, water, input, rollback, benchmark and stability matrix after manual testing."/>
           </StackPanel>
         </Border>
 
