@@ -60,4 +60,4 @@ The inspector is a manifest reader, not an OpenIV-compatible installer. It does 
 
 ## Release status
 
-This repository is not production-ready yet. The latest Windows CI run is being checked; a Windows x64 artifact is available only if build, tests, publish and artifact upload all complete successfully. A CI artifact is not a signed installer or an in-game-validated release.
+This repository is not production-ready yet. Windows CI run 44464157015 completed successfully on commit 02d9af878d383eddf5e28e6904d588cdc19c39b3: build, automated tests, self-contained win-x64 publish and artifact upload all passed. A CI artifact is not a signed installer or an in-game-validated release.
