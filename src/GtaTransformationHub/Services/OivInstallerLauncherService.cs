@@ -52,7 +52,9 @@ public sealed class OivInstallerLauncherService
 
     public Process OpenPackageInInstaller(
         string installerExecutablePath,
+        string expectedInstallerSha256,
         string packagePath,
+        string expectedPackageSha256,
         string gameExecutablePath,
         OivManifestInspectionResult inspection,
         bool allowUnspecifiedLegacyTarget = false)
@@ -61,9 +63,12 @@ public sealed class OivInstallerLauncherService
         _processMonitor.EnsureConfigurationUnlocked();
 
         var installer = InspectInstallerExecutable(installerExecutablePath);
-        var game = new GameInstallationDetector().Inspect(gameExecutablePath);
-        ValidatePackageForLegacyTarget(packagePath, inspection, allowUnspecifiedLegacyTarget);
+        RequireSha256Match(installer.Sha256, expectedInstallerSha256, "The external OIV installer changed after it was selected.");
+        _ = new GameInstallationDetector().Inspect(gameExecutablePath);
+        ValidatePackageForLegacyTarget(
+            packagePath, expectedPackageSha256, inspection, allowUnspecifiedLegacyTarget);
 
+        _processMonitor.EnsureConfigurationUnlocked();
         var startInfo = CreateStartInfo(installer.ExecutablePath, packagePath);
         var process = Process.Start(startInfo);
         return process ?? throw new InvalidOperationException("Windows did not start the external OIV installer.");
@@ -71,6 +76,7 @@ public sealed class OivInstallerLauncherService
 
     public static void ValidatePackageForLegacyTarget(
         string packagePath,
+        string expectedPackageSha256,
         OivManifestInspectionResult inspection,
         bool allowUnspecifiedLegacyTarget = false)
     {
@@ -78,11 +84,16 @@ public sealed class OivInstallerLauncherService
 
         var fullPackagePath = Path.GetFullPath(packagePath);
         if (!File.Exists(fullPackagePath))
-            throw new FileNotFoundException("The original OIV package is no longer available.", fullPackagePath);
+            throw new FileNotFoundException("The retained OIV source archive is no longer available.", fullPackagePath);
         if (!string.Equals(Path.GetExtension(fullPackagePath), ".oiv", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Only an inspected .oiv package can be opened in the external OIV installer.");
         if ((File.GetAttributes(fullPackagePath) & FileAttributes.ReparsePoint) != 0)
             throw new InvalidDataException("OIV package files cannot be symbolic links or reparse points.");
+
+        var actualArchiveHash = ComputeSha256(fullPackagePath);
+        RequireSha256Match(
+            actualArchiveHash, expectedPackageSha256,
+            "The retained OIV source archive has changed since it was inspected.");
 
         if (!inspection.IsGtaVTarget)
             throw new InvalidDataException("This OIV package does not target Grand Theft Auto V.");
@@ -97,6 +108,22 @@ public sealed class OivInstallerLauncherService
         if (!inspection.IsExplicitlyLegacy && !inspection.IsAnyGameVersion && !allowUnspecifiedLegacyTarget)
             throw new InvalidDataException(
                 "The OIV manifest does not explicitly identify GTA V Legacy. Review the author instructions and confirm the target before opening it.");
+    }
+
+    private static string ComputeSha256(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    private static void RequireSha256Match(string actual, string expected, string message)
+    {
+        if (expected is not { Length: 64 } || !expected.All(Uri.IsHexDigit))
+            throw new InvalidDataException("The expected SHA-256 digest is missing or malformed.");
+        if (!CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(actual),
+                Convert.FromHexString(expected)))
+            throw new InvalidDataException(message);
     }
 
     public static ProcessStartInfo CreateStartInfo(string installerExecutablePath, string packagePath)
