@@ -336,7 +336,6 @@
       "notes": "Single-player project README describes a GTA VI-inspired HUD, 3D minimap, character wheel with Jason/Lucia slots, and gameplay additions. The mod does not include the Jason or Lucia character models; the README directs users to separately sourced models, and the Lucia model may be paid. Do not bundle third-party model assets. Verify current Legacy install guide, exact build, all nested licences, required loaders, package hashes, and clean rollback before approval. Does not reproduce GTA VI story missions or replace every title/pause/settings/map screen.",
       "externalRequirements": [
         "Script Hook V",
-        "ScriptHookVDotNet",
         "ScriptHookVDotNet (exact supported release to verify)"
       ],
       "exclusiveGroup": "ui-overhaul"
