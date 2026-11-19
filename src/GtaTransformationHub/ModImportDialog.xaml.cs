@@ -35,7 +35,7 @@ public partial class ModImportDialog : Window
 
         try
         {
-            _ = new ModArchiveImportService().GetType();
+            ModArchiveImportService.ValidateMetadata(Metadata);
             DialogResult = true;
         }
         catch (Exception ex)
