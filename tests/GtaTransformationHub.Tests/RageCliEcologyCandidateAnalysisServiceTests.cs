@@ -99,6 +99,27 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
     }
 
     [Fact]
+    public void ClassifyCandidateField_HandlesNullContextWithoutThrowing()
+    {
+        Assert.Null(RageCliEcologyCandidateAnalysisService.ClassifyCandidateField(
+            null, null, null, null));
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJson_RejectsMissingProvenanceAndIdentity()
+    {
+        const string json = """{"$type":"CAnimal","modelName":"a_c_deer"}""";
+        Assert.Throws<ArgumentException>(() =>
+            RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+                json, null!, "animals.ymt", @"C:\Games\GTA V\x64v.rpf",
+                new string('A', 64), new string('B', 64)));
+        Assert.Throws<ArgumentException>(() =>
+            RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+                json, "animals.ymt", "animals.ymt", @"C:\Games\GTA V\x64v.rpf",
+                "bad-hash", new string('B', 64)));
+    }
+
+    [Fact]
     public void ClassifyCandidateField_LeavesGenericFieldsUnclassified()
     {
         Assert.Null(RageCliEcologyCandidateAnalysisService.ClassifyCandidateField(
