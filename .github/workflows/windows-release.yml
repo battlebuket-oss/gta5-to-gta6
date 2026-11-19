@@ -1,6 +1,10 @@
 name: Windows release package
 
 on:
+  push:
+    branches:
+      - "feature/**"
+      - "main"
   workflow_dispatch:
     inputs:
       version:
