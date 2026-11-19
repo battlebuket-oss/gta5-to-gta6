@@ -395,7 +395,7 @@ public sealed record ModArchiveImportResult(
     string ArchiveSha256,
     IReadOnlyList<ImportedModFile> Files,
     OivManifestInspectionResult? OivInspection = null,
-    string? OriginalArchiveRelativePath = null);
+    string? OriginalArchivePath = null);
 
 public sealed record ImportedModManifest(
     int SchemaVersion,
