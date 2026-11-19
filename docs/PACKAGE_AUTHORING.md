@@ -120,9 +120,64 @@ The Hub does not sandbox third-party code loaded by GTA V. Users must obtain arc
 ## Signature versions
 
 - **Version 1** preserves the original canonical payload for legacy manifests that contain only the original package identity, dependencies, conflicts, exclusive group, publisher key fingerprint, and file manifest.
-- **Version 2** additionally signs impact areas, compatibility-verification state, package format, ecological preservation metadata, and the complete Story Mode descriptor. New publishers should use version 2.
-- A version-1 signature is rejected when version-2-only metadata is present. This prevents a signed legacy manifest from having compatibility, ecology, or Story Mode claims altered without invalidating its signature.
-- The signature version is declared as `signatureVersion` in `gta-hub-manifest.json`. It defaults to 1 when omitted for backward compatibility. Use `2` for new signed packages.
+- **Version 2** additionally signs impact areas, compatibility-verification state, package format, ecological preservation metadata, and the complete Story Mode descriptor.
+- **Version 3** preserves the v2 fields and additionally signs the complete `ui` descriptor, including tested surfaces, implementation type, keyboard/controller support, resolution targets, accessibility declarations, native-action/mission/cutscene/subtitle/campaign preservation, HTTPS compatibility/rollback evidence references, the exact tested GTA V Legacy build, and the exact GTA5.exe SHA-256.
+- A v1 signature is rejected when v2/v3 metadata is present. A v2 signature is rejected when UI metadata is present. This prevents an older signed manifest from gaining unauthenticated compatibility, ecology, Story Mode or UI claims.
+- The signature version is declared as `signatureVersion` in `gta-hub-manifest.json`. It defaults to 1 when omitted for backward compatibility. Use `2` for new signed story packages and `3` for any in-game UI replacement package.
+
+
+## In-game UI replacement package metadata
+
+An in-game title, frontend, pause, map, settings, HUD, phone, radial, loading or accessibility replacement must declare `impactAreas: ["interface"]` and a `ui` descriptor. A companion desktop overlay or a mock-up is not an in-game replacement and is not an accepted implementation type.
+
+Example descriptor (replace every illustrative value with the exact properties and evidence for the package):
+
+```json
+{
+  "signatureVersion": 3,
+  "impactAreas": ["interface"],
+  "compatibilityVerified": true,
+  "ui": {
+    "surfaces": ["hud", "radial"],
+    "implementationType": "GameScript",
+    "inputMethods": ["KeyboardMouse", "Controller"],
+    "resolutionTargets": ["1920x1080", "2560x1440"],
+    "accessibilityFeatures": [
+      "KeyboardNavigation",
+      "ControllerNavigation",
+      "VisibleFocus",
+      "HighContrast",
+      "SubtitleSafeArea"
+    ],
+    "nativeActionsPreserved": true,
+    "missionTransitionsPreserved": true,
+    "cutscenesPreserved": true,
+    "subtitlesPreserved": true,
+    "originalCampaignPreserved": true,
+    "compatibilityEvidenceUri": "https://author.example.com/exact-build-ui-test",
+    "rollbackEvidenceUri": "https://author.example.com/exact-build-ui-rollback",
+    "verifiedGameBuild": "1.0.3889.0",
+    "verifiedGta5ExeSha256": "REPLACE_WITH_64_HEX_CHARACTERS"
+  }
+}
+```
+
+The supported surface values are `title`, `frontend`, `pause`, `map`, `settings`, `hud`, `phone`, `radial`, `loading`, and `accessibility`. Implementation types are `Scaleform`, `GameScript`, and `AssetReplacement`. Input methods must include both `KeyboardMouse` and `Controller`. Resolution and accessibility capability values must match the allow-list enforced by the Hub.
+
+The Hub validates all declarations at import and deployment preflight. It rejects missing evidence URLs, non-numeric game builds, malformed executable fingerprints, unpreserved native actions or mission transitions, and multiple selected packages that replace the same UI surface. The package must set `compatibilityVerified: true`, and its publisher signature must be version 3 from a locally trusted key.
+
+The fingerprint is the SHA-256 of the exact `GTA5.exe` used for testing, not the ZIP hash or a version-range value. Compute it on the tested machine:
+
+```powershell
+(Get-FileHash -LiteralPath "C:\\Games\\Grand Theft Auto V\\GTA5.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+(Get-Item -LiteralPath "C:\\Games\\Grand Theft Auto V\\GTA5.exe").VersionInfo.ProductVersion
+```
+
+Use the numeric Legacy build reported by the Hub as `verifiedGameBuild`. Do not claim `compatibilityVerified: true` until the package has completed the documented game-side checks. The Hub independently hashes the selected GTA5.exe at deployment preflight and requires both the build and digest to match these signed fields exactly.
+
+To sign UI metadata, create the complete `PackageManifest` first, set `signatureVersion = 3`, include the `ui` descriptor, set `signingKeyId` to the public-key fingerprint and leave `signature` null. Then call `PackageSignatureService.CreateSigningPayload(manifest)`, sign the returned bytes with RSA-SHA256/PKCS#1 v1.5, and Base64-encode the result as `signature`. The private key must remain offline. Version 3 signs the exact build and executable digest along with all UI claims; changing any of those fields requires a new signature.
+
+Passing these checks proves only that the signed declarations match the locally trusted publisher key and the selected executable fingerprint. It does not prove the linked evidence is truthful, or replace a real-game visual, input, mission, accessibility, performance and rollback test. No UI package in the current research catalogue is approved solely by supplying this descriptor.
 
 ## Story Mode package metadata
 
