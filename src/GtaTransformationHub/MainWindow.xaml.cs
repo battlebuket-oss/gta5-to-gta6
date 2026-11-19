@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private readonly RageCliToolchainService _rageCliToolchainService = new();
     private readonly RageCliMetadataDiscoveryService _rageCliMetadataDiscoveryService;
     private readonly RageCliMetadataPayloadService _rageCliMetadataPayloadService;
+    private readonly RageCliNamesHarvestService _rageCliNamesHarvestService;
     private readonly EcologyInventoryEvidenceService _ecologyInventoryEvidenceService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
@@ -62,6 +63,7 @@ public partial class MainWindow : Window
 
         _rageCliMetadataDiscoveryService = new RageCliMetadataDiscoveryService(_rageCliToolchainService);
         _rageCliMetadataPayloadService = new RageCliMetadataPayloadService(_rageCliToolchainService);
+        _rageCliNamesHarvestService = new RageCliNamesHarvestService(_rageCliToolchainService);
         _gameInstallationService = new GameInstallationService(_processMonitor);
         _deploymentCoordinator = new PackageDeploymentCoordinator(_deploymentService);
         _profileActivationService = new ProfileActivationService(
@@ -887,6 +889,71 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void HarvestGtaNamesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null ||
+            string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
+            return;
+
+        var confirmation = MessageBox.Show(
+            "rage-cli will scan the selected GTA V Legacy build's own archives and harvest its JOAAT name dictionary. This can take up to 30 minutes. The game files are read only. The resulting list is pinned to the exact GTA5.exe SHA-256 and rage-cli release. It helps resolve hashed model, archetype and metadata names in later JSON dumps, but it is not a species inventory or ecological approval. Continue?",
+            "Harvest exact-build GTA V metadata names",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _assetCatalogueCancellation?.Dispose();
+        _assetCatalogueCancellation = new CancellationTokenSource();
+        _operationInProgress = true;
+        RefreshSessionState();
+        RageNamesStatusText.Text = "Harvesting the selected GTA V build's names from local archives...";
+        RageCliStatusText.Text = "Scanning the game for model, archetype, map and metadata identifiers. Original game files remain read only.";
+        StatusText.Text = "Harvesting the exact-build RAGE name dictionary...";
+
+        try
+        {
+            var result = await _rageCliNamesHarvestService.HarvestAsync(
+                _verifiedRageCliExecutablePath,
+                _installation,
+                _assetCatalogueCancellation.Token);
+
+            RageNamesStatusText.Text =
+                (result.Complete ? "Exact-build game names harvested." : "Name harvest completed with warnings; list is usable but not considered complete.") +
+                Environment.NewLine +
+                "Unique names: " + result.NameCount.ToString("N0") + Environment.NewLine +
+                "Game build: " + result.GameBuild + Environment.NewLine +
+                "GTA5.exe SHA-256: " + result.GameExecutableSha256 + Environment.NewLine +
+                "Names SHA-256: " + result.NamesFileSha256 + Environment.NewLine +
+                "Names file: " + result.NamesFilePath +
+                (result.Warnings.Count == 0
+                    ? string.Empty
+                    : Environment.NewLine + "Warnings: " + string.Join(" | ", result.Warnings.Take(3)));
+
+            StatusText.Text = result.Complete
+                ? "Exact-build game names saved. Metadata dumps can now resolve more hashed names."
+                : "Game names saved with warnings. Review the harvest output before relying on name resolution.";
+        }
+        catch (OperationCanceledException)
+        {
+            RageNamesStatusText.Text = "Name harvesting was cancelled. Partial output is not accepted as a verified names list.";
+            StatusText.Text = "GTA V name harvesting cancelled.";
+        }
+        catch (Exception exception)
+        {
+            RageNamesStatusText.Text = "Exact-build game name harvesting failed: " + exception.Message;
+            StatusText.Text = "No verified game names list was accepted.";
+        }
+        finally
+        {
+            _assetCatalogueCancellation?.Dispose();
+            _assetCatalogueCancellation = null;
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private async void DiscoverEcologyMetadataButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration() || _installation is null ||
@@ -995,11 +1062,17 @@ public partial class MainWindow : Window
 
         try
         {
+            var verifiedNamesPath = await _rageCliNamesHarvestService.GetVerifiedNamesFilePathAsync(
+                _verifiedRageCliExecutablePath,
+                _installation,
+                _assetCatalogueCancellation.Token);
+
             var result = await _rageCliMetadataPayloadService.DumpCandidatesAsync(
                 _verifiedRageCliExecutablePath,
                 _installation,
                 dialog.FileName,
-                _assetCatalogueCancellation.Token);
+                _assetCatalogueCancellation.Token,
+                verifiedNamesPath);
 
             var status = result.Complete
                 ? "All selected candidates were dumped and the discovery search had no known limits/errors."
@@ -1011,6 +1084,7 @@ public partial class MainWindow : Window
                 "JSON payloads dumped: " + result.DumpedCount + Environment.NewLine +
                 "Index report: " + result.IndexReportPath + Environment.NewLine +
                 "Index SHA-256: " + result.IndexReportSha256 + Environment.NewLine +
+                "Game name dictionary: " + (verifiedNamesPath is null ? "Not available (raw hashed names may remain unresolved)" : "Verified exact-build dictionary applied") + Environment.NewLine +
                 "Duration: " + result.Duration.ToString(@"hh\:mm\:ss") + Environment.NewLine +
                 status +
                 (result.Errors.Count == 0
@@ -1642,9 +1716,14 @@ public partial class MainWindow : Window
         DiscoverEcologyMetadataButton.IsEnabled = canConfigure &&
                                                   _installation is not null &&
                                                   !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
+        HarvestGtaNamesButton.IsEnabled = canConfigure &&
+                                          _installation is not null &&
+                                          !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath) &&
+                                          _assetCatalogueCancellation is null;
         DumpEcologyMetadataButton.IsEnabled = canConfigure &&
                                               _installation is not null &&
-                                              !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
+                                              !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath) &&
+                                              _assetCatalogueCancellation is null;
         CompareEcologyInventoryButton.IsEnabled = canConfigure && _installation is not null;
         CancelAssetCatalogueButton.IsEnabled = _operationInProgress &&
                                                _assetCatalogueCancellation is not null;
