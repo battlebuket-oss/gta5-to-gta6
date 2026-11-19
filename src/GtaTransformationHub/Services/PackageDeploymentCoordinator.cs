@@ -55,6 +55,8 @@ public sealed class PackageDeploymentCoordinator
             }
 
             var manifest = imported.Manifest;
+            foreach (var storyError in StoryContentValidationService.Validate(manifest))
+                errors.Add(storyError);
             foreach (var ecologyError in EcologyCompatibilityService.Validate(manifest))
                 errors.Add(ecologyError);
             if (string.Equals(manifest.PackageFormat, "OIV-2.2", StringComparison.OrdinalIgnoreCase) &&
