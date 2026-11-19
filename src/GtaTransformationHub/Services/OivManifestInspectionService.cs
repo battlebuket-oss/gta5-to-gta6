@@ -78,11 +78,16 @@ public static class OivManifestInspectionService
         if (!string.IsNullOrWhiteSpace(tag))
             modVersion += " " + tag;
 
-        // OpenIV OIV 2.x defines a GTA game target ("Five"), but does not standardise
-        // a Legacy/Enhanced edition field. The package version <tag> is not a game-edition
-        // declaration, so never infer edition compatibility from it.
-        var gameVersionNode = root.Elements()
-            .FirstOrDefault(element => NameIs(element, "gameversion"));
+        // The base OpenIV 2.x specification defines target="Five" but not a
+        // Legacy/Enhanced marker. CodeWalker's OIV installer extension reads an
+        // optional <gameversion>Legacy|Enhanced|Any</gameversion> under <metadata>.
+        // Never infer game edition from the package <version>/<tag>.
+        var gameVersionNodes = metadata.Elements()
+            .Where(element => NameIs(element, "gameversion"))
+            .ToArray();
+        if (gameVersionNodes.Length > 1)
+            throw new InvalidDataException("The OIV metadata contains multiple gameversion markers.");
+        var gameVersionNode = gameVersionNodes.SingleOrDefault();
         var gameVersionRequirement = gameVersionNode is null
             ? "Unspecified"
             : ClassifyGameVersionRequirement(gameVersionNode.Value.Trim());
@@ -92,8 +97,8 @@ public static class OivManifestInspectionService
         var operations = new List<OivOperationSummary>();
         var unsupported = new List<string>();
         var sourceIssues = new List<string>();
-        if (gameVersionNode is not null)
-            unsupported.Add("non-standard gameversion extension; verify game edition independently");
+        if (gameVersionNode is not null && gameVersionRequirement == "Unspecified")
+            unsupported.Add("unrecognised gameversion extension value; verify game edition independently");
 
         var contentEntries = archive.Entries
             .Where(entry => entry.FullName.StartsWith("content/", StringComparison.OrdinalIgnoreCase))
