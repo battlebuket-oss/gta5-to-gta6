@@ -52,6 +52,58 @@ public sealed class PackageSignatureServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task VerifyAsync_V2SignatureAuthenticatesStoryMetadata()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+
+        var manifest = CreateManifest() with
+        {
+            SignatureVersion = 2,
+            ImpactAreas = new[] { "story" },
+            StoryContent = CreateStoryContent()
+        };
+        var signed = Sign(manifest, rsa, fingerprint);
+        var valid = await service.VerifyAsync(signed);
+        Assert.Equal(PackageSignatureStatus.TrustedPublisher, valid.Status);
+
+        var tampered = signed with
+        {
+            StoryContent = signed.StoryContent! with
+            {
+                ProtagonistRequirements = new[] { "Trevor" }
+            }
+        };
+        var invalid = await service.VerifyAsync(tampered);
+        Assert.Equal(PackageSignatureStatus.Invalid, invalid.Status);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_LegacySignatureCannotAuthenticateNewMetadata()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+
+        var legacySigned = Sign(CreateManifest(), rsa, fingerprint);
+        var tampered = legacySigned with
+        {
+            ImpactAreas = new[] { "story" },
+            StoryContent = CreateStoryContent()
+        };
+
+        var result = await service.VerifyAsync(tampered);
+        Assert.Equal(PackageSignatureStatus.Invalid, result.Status);
+    }
+
+    [Fact]
     public async Task VerifyAsync_ReportsUnknownPublisherWithoutTrustingIt()
     {
         using var rsa = RSA.Create(2048);
@@ -61,7 +113,6 @@ public sealed class PackageSignatureServiceTests : IDisposable
         var service = new PackageSignatureService(new TrustedPublisherStore(_trustPath));
 
         var result = await service.VerifyAsync(manifest);
-
         Assert.Equal(PackageSignatureStatus.UnknownPublisher, result.Status);
     }
 
@@ -69,9 +120,7 @@ public sealed class PackageSignatureServiceTests : IDisposable
     public async Task VerifyAsync_ReportsUnsignedManifest()
     {
         var service = new PackageSignatureService(new TrustedPublisherStore(_trustPath));
-
         var result = await service.VerifyAsync(CreateManifest());
-
         Assert.Equal(PackageSignatureStatus.Unsigned, result.Status);
     }
 
@@ -84,14 +133,11 @@ public sealed class PackageSignatureServiceTests : IDisposable
         var wrong = new string('0', 64);
         var store = new TrustedPublisherStore(_trustPath);
 
-        await Assert.ThrowsAsync<CryptographicException>(() =>
-            store.AddAsync("Publisher", pem, wrong));
-
+        await Assert.ThrowsAsync<CryptographicException>(() => store.AddAsync("Publisher", pem, wrong));
         await store.AddAsync("Publisher", pem, correct);
         var publisher = Assert.Single(await store.ListAsync());
         Assert.Equal(correct, publisher.Fingerprint);
     }
-
 
     [Fact]
     public async Task RevokingPublisherKey_MakesPreviouslyTrustedSignatureUnknown()
@@ -104,14 +150,23 @@ public sealed class PackageSignatureServiceTests : IDisposable
         var service = new PackageSignatureService(store);
         var signed = Sign(CreateManifest(), rsa, fingerprint);
 
-        var trusted = await service.VerifyAsync(signed);
-        Assert.Equal(PackageSignatureStatus.TrustedPublisher, trusted.Status);
-
+        Assert.Equal(PackageSignatureStatus.TrustedPublisher, (await service.VerifyAsync(signed)).Status);
         Assert.True(await store.RemoveAsync(fingerprint));
-
-        var afterRevocation = await service.VerifyAsync(signed);
-        Assert.Equal(PackageSignatureStatus.UnknownPublisher, afterRevocation.Status);
+        Assert.Equal(PackageSignatureStatus.UnknownPublisher, (await service.VerifyAsync(signed)).Status);
     }
+
+    private static StoryContentDescriptor CreateStoryContent() => new(
+        "MissionPack",
+        new[] { "mission-01" },
+        new[] { "Any" },
+        new[] { "downtown-bank" },
+        "sample-story-progression",
+        "SeparateNamespace",
+        true,
+        true,
+        Array.Empty<string>(),
+        new[] { "en-US" },
+        "https://example.com/test-evidence");
 
     private static PackageManifest Sign(PackageManifest manifest, RSA privateKey, string fingerprint)
     {
@@ -120,32 +175,26 @@ public sealed class PackageSignatureServiceTests : IDisposable
             PackageSignatureService.CreateSigningPayload(toSign),
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
-
         return toSign with { Signature = Convert.ToBase64String(signature) };
     }
 
-    private static PackageManifest CreateManifest() =>
-        new(
-            1,
-            "sample-package",
-            "Sample Package",
-            "Test Author",
-            "https://example.com/sample",
-            "Test licence",
-            "1.0.0",
-            "GTA V Legacy",
-            "1.0.1000.0",
-            "1.0.9999.0",
-            Array.Empty<string>(),
-            Array.Empty<string>(),
-            new[]
-            {
-                new PackageManifestFile(
-                    "payload/sample.dat",
-                    "mods/sample.dat",
-                    new string('A', 64),
-                    12)
-            });
+    private static PackageManifest CreateManifest() => new(
+        1,
+        "sample-package",
+        "Sample Package",
+        "Test Author",
+        "https://example.com/sample",
+        "Test licence",
+        "1.0.0",
+        "GTA V Legacy",
+        "1.0.1000.0",
+        "1.0.9999.0",
+        Array.Empty<string>(),
+        Array.Empty<string>(),
+        new[]
+        {
+            new PackageManifestFile("payload/sample.dat", "mods/sample.dat", new string('A', 64), 12)
+        });
 
     public void Dispose()
     {
