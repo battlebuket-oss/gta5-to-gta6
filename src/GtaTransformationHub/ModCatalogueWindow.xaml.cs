@@ -452,7 +452,11 @@ public partial class ModCatalogueWindow : Window
                     "Confirm HUD runtime and compatibility",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (runtimeConsent != MessageBoxResult.Yes)
+                {
+                    _operationBusy = false;
+                    RefreshSessionButtons();
                     return;
+                }
 
                 var rootFileConsent = !preview.RequiresExecutableConsent ||
                     MessageBox.Show(
@@ -460,7 +464,11 @@ public partial class ModCatalogueWindow : Window
                         "Confirm game-root plugin operations",
                         MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
                 if (!rootFileConsent)
+                {
+                    _operationBusy = false;
+                    RefreshSessionButtons();
                     return;
+                }
 
                 var finalConfirm = MessageBox.Show(
                     "Apply the saved profile by installing this exact pinned HUD OIV through OpenRAGE?\\n\\nPackage group: " +
@@ -469,7 +477,11 @@ public partial class ModCatalogueWindow : Window
                     "Apply selected GTA V profile",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (finalConfirm != MessageBoxResult.Yes)
+                {
+                    _operationBusy = false;
+                    RefreshSessionButtons();
                     return;
+                }
 
                 var result = await _hudProfileAdapter.ApplyAsync(
                     installation, _packageLibraryRoot, _hudPackage,
