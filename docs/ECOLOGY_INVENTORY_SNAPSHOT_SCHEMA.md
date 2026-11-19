@@ -4,13 +4,13 @@ The Transformation Hub can compare two **normalized semantic inventory snapshots
 
 ## Important limitation
 
-The Hub currently does not include a validated parser that converts every rage-cli metadata dump into these normalized species, habitat, population and water records. A snapshot must be produced by a separately reviewed semantic adapter or a controlled manual curation process. Do not infer species identities from filenames, model catalogue rows, property-name frequencies, or screenshots.
+The Hub includes a provenance-checked heuristic candidate extractor for dumped metadata JSON, but it does not include a validated semantic parser that converts every resource into species, habitat, population and water records. A snapshot must still be produced by a separately reviewed semantic adapter or a controlled manual curation process. Do not treat a candidate field/path match as a verified species identity, and do not infer species identities from filenames, model catalogue rows, property-name frequencies, or screenshots.
 
 The comparison tool always records:
 - `completenessVerified = false`
 - `packageEligibilityUnlocked = false`
 
-Even if the semantic diff is clean, the app does not promote, approve or unblock ecology-sensitive packages. The bounded rage-cli discovery/dump workflow currently searches selected patterns and dumps at most 50 candidate resources; it is not a complete exact-build inventory.
+Even if the semantic diff is clean, the app does not promote, approve or unblock ecology-sensitive packages. The rage-cli discovery pass searches seven supported metadata extensions, with a 10,000-hit cap per extension. The payload dumper handles up to 50 candidates per batch with a zero-based resume cursor. The candidate-analysis action can merge multiple batch index files from the same exact discovery report, checks global candidate-index coverage, and reports heuristic candidate rows with source RPF / JSON hashes. These stages still do not constitute a complete exact-build semantic inventory.
 
 ## Required top-level fields
 
@@ -78,10 +78,12 @@ The semantic diff permits rendering-profile changes so a rendering upgrade can b
 ## Supported app workflow
 
 1. Select and validate a GTA V Legacy installation in the Hub.
-2. Produce a vanilla baseline snapshot and a candidate snapshot using the same reviewed adapter and exact game build.
-3. Use **Compare normalized ecology inventories** in the Ecological Fidelity section.
-4. Select the baseline and candidate JSON files. The Hub checks both snapshot game builds and GTA5.exe SHA-256 values against the currently selected installation.
-5. Review the saved local comparison report, added species list and all semantic errors.
+2. Build the model/texture catalogue, harvest the exact-build name dictionary, and run metadata discovery.
+3. Dump each 50-resource metadata batch. Use the next zero-based candidate offset reported by the Hub until every candidate in the discovery report has a successful JSON payload.
+4. Use **Analyze ecological metadata candidates** and select every batch index produced for the same discovery report. The Hub validates the shared game/tool/discovery provenance, merges retry batches by global candidate index and flags missing ranges.
+5. Review the heuristic candidate report. It is useful for manual parser development, but it is not a semantic inventory and does not approve species, habitats or water definitions.
+6. Produce vanilla and candidate normalized snapshots using the same separately reviewed semantic adapter and exact game build.
+7. Use **Compare normalized ecology inventories**, select both snapshot JSON files, and review the saved comparison report, added species list and all semantic errors.
 
 The report is saved under:
 
@@ -94,7 +96,7 @@ The report records both input file hashes and the exact executable fingerprint. 
 ## Release gate still outstanding
 
 Before an ecology-sensitive package can ever be considered for approval, the project still needs:
-- a validated exact-build GTA V Legacy archive parser and semantic adapter,
+- a validated exact-build GTA V Legacy archive parser and semantic adapter that converts the heuristic/raw candidates into normalized species, habitat, population, behaviour and water-system identities,
 - exhaustive accounting of all relevant nested RPF resources with no hit caps or unreadable/unsupported entries,
 - a trusted vanilla baseline covering every land/aquatic species, plant, habitat, population entry, behaviour and water system,
 - package-bound candidate inventories and reproducible evidence provenance,
