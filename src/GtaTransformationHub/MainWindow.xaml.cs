@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     private readonly PackageArchiveService _archiveService = new();
     private readonly OivPackageImportService _oivImportService = new();
     private readonly PackageAcquisitionService _acquisitionService = new();
+    private OpenRageToolchainService _openRageToolchainService = null!;
     private readonly StorySaveBackupService _storySaveBackupService = new();
     private readonly RageCliToolchainService _rageCliToolchainService = new();
     private readonly RageCliMetadataDiscoveryService _rageCliMetadataDiscoveryService;
@@ -56,6 +57,7 @@ public partial class MainWindow : Window
     private Brush? _baseWindowForeground;
     private bool _accessibilityDefaultsCaptured;
     private bool _accessibilityPreferencesLoading;
+    private bool _openRageReady;
 
     private sealed record ControlPalette(Brush? Background, Brush? Foreground, Brush? BorderBrush);
     private sealed record BorderPalette(Brush? Background, Brush? BorderBrush);
@@ -64,6 +66,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        _openRageToolchainService = new OpenRageToolchainService(_acquisitionService);
         _rageCliMetadataDiscoveryService = new RageCliMetadataDiscoveryService(_rageCliToolchainService);
         _rageCliMetadataPayloadService = new RageCliMetadataPayloadService(_rageCliToolchainService);
         _rageCliNamesHarvestService = new RageCliNamesHarvestService(_rageCliToolchainService);
@@ -135,6 +138,30 @@ public partial class MainWindow : Window
             catch (Exception toolchainException)
             {
                 RageCliStatusText.Text = "Saved rage-cli settings could not be read: " + toolchainException.Message;
+            }
+
+            try
+            {
+                var openRage = await _openRageToolchainService.ValidateInstalledAsync();
+                _openRageReady = true;
+                OpenRageToolStatusText.Text =
+                    "Verified OpenRAGE v" + openRage.Version +
+                    " from the pinned upstream Windows archive. CLI: " + openRage.ExecutablePath +
+                    Environment.NewLine + "Release archive SHA-256: " + openRage.ArchiveSha256;
+            }
+            catch (FileNotFoundException)
+            {
+                _openRageReady = false;
+                OpenRageToolStatusText.Text =
+                    "OpenRAGE is not installed. Download the official upstream v" +
+                    OpenRageToolchainService.PinnedVersion + " Windows x64 release to enable OIV installation.";
+            }
+            catch (Exception openRageException)
+            {
+                _openRageReady = false;
+                OpenRageToolStatusText.Text =
+                    "The saved OpenRAGE tool failed verification and will not be run: " +
+                    openRageException.Message;
             }
 
             if (recovered.Count == 0)
@@ -2018,6 +2045,299 @@ public partial class MainWindow : Window
         !_operationInProgress &&
         !_processMonitor.IsStoryModeProcessRunning();
 
+    private async void DownloadOpenRageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        OpenRageToolStatusText.Text = "Downloading the official OpenRAGE v" +
+            OpenRageToolchainService.PinnedVersion + " Windows x64 archive and verifying its SHA-256...";
+        try
+        {
+            var installed = await _openRageToolchainService.DownloadAndInstallAsync();
+            _openRageReady = true;
+            OpenRageToolStatusText.Text =
+                "OpenRAGE v" + installed.Version + " installed and verified." + Environment.NewLine +
+                "Release archive SHA-256: " + installed.ArchiveSha256 + Environment.NewLine +
+                "CLI executable SHA-256: " + installed.ExecutableSha256 + Environment.NewLine +
+                "The original release archive and upstream licence notices are retained locally.";
+            OpenRageStatusText.Text = "OpenRAGE is ready. Select a prebuilt OIV archive to inspect its proposed changes.";
+            App.Diagnostics.Write(
+                AuditLogLevel.Information,
+                "OpenRageToolInstalled",
+                "Installed and verified the official OpenRAGE v" + installed.Version +
+                " Windows x64 release. The upstream archive SHA-256 was checked.");
+        }
+        catch (Exception exception)
+        {
+            _openRageReady = false;
+            OpenRageToolStatusText.Text = "OpenRAGE download or verification failed: " + exception.Message;
+            App.Diagnostics.Write(
+                AuditLogLevel.Error,
+                "OpenRageToolInstallFailed",
+                "The external OpenRAGE installer could not be installed or verified.",
+                exception);
+            MessageBox.Show(
+                exception.Message,
+                "OpenRAGE setup failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private void OpenOpenRageSourceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration())
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/Two-Play/openrage",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception exception)
+        {
+            OpenRageToolStatusText.Text = "Could not open the OpenRAGE source and licence page: " + exception.Message;
+        }
+    }
+
+    private async void InstallOivButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null || !_openRageReady)
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select a prebuilt OpenIV OIV mod package",
+            Filter = "OpenIV package (*.oiv)|*.oiv",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        OpenRageStatusText.Text = "Checking the GTA V Legacy installation, deriving local archive keys and previewing every OIV operation...";
+        try
+        {
+            var inspection = await _openRageToolchainService.InspectOivAsync(
+                _installation, dialog.FileName);
+
+            OpenRageStatusText.Text =
+                "OIV preview: " + Path.GetFileName(inspection.PackagePath) + Environment.NewLine +
+                "Blockers: " + inspection.Blockers.Count + Environment.NewLine +
+                "Warnings: " + inspection.Warnings.Count + Environment.NewLine +
+                "Direct game-folder changes: " + inspection.GameFolderChanges.Count + Environment.NewLine +
+                inspection.Output;
+
+            if (!inspection.IsInstallable)
+            {
+                MessageBox.Show(
+                    "OpenRAGE rejected this package during its dry-run preview. No game files were changed." +
+                    Environment.NewLine + Environment.NewLine +
+                    string.Join(Environment.NewLine, inspection.Blockers),
+                    "OIV package blocked",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (inspection.RequiresExecutableConsent && OpenRageExecutableConsentCheckBox.IsChecked != true)
+            {
+                MessageBox.Show(
+                    "The OIV preview includes one or more files that OpenRAGE would write directly into the GTA V game folder. " +
+                    "This may include executable ASI/DLL plugins. Review the complete preview, explicitly check the additional-risk acknowledgement, and retry the install.",
+                    "Additional consent required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var warnings = inspection.Warnings.Count == 0
+                ? "No OpenRAGE warnings were reported."
+                : "Warnings:" + Environment.NewLine + string.Join(Environment.NewLine, inspection.Warnings);
+            var directChanges = inspection.GameFolderChanges.Count == 0
+                ? "No direct game-folder file writes were reported."
+                : "Direct game-folder writes (outside the mods folder):" + Environment.NewLine +
+                  string.Join(Environment.NewLine, inspection.GameFolderChanges);
+            const int previewLimit = 12_000;
+            var previewText = inspection.Output.Length <= previewLimit
+                ? inspection.Output
+                : inspection.Output[..previewLimit] + Environment.NewLine + "[Preview output truncated in this confirmation dialog; the complete output remains in the status area.]";
+
+            var confirmation = MessageBox.Show(
+                "OpenRAGE preview found no blockers. The package will be installed into the OpenIV mods folder and tracked by OpenRAGE's own journal. This is separate from the Hub's ZIP deployment manager and rollback journal." +
+                Environment.NewLine + Environment.NewLine +
+                warnings + Environment.NewLine + Environment.NewLine +
+                directChanges + Environment.NewLine + Environment.NewLine +
+                "Review the package change plan:" + Environment.NewLine + previewText +
+                Environment.NewLine + Environment.NewLine +
+                "Install this prebuilt OIV package?",
+                "Confirm OIV installation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirmation != MessageBoxResult.Yes)
+                return;
+
+            var installed = await _openRageToolchainService.InstallOivAsync(
+                _installation,
+                inspection.PackagePath,
+                userConfirmed: true,
+                allowGameFolderFiles: OpenRageExecutableConsentCheckBox.IsChecked == true);
+
+            OpenRageStatusText.Text =
+                "OpenRAGE installed the OIV package." + Environment.NewLine +
+                installed.StandardOutput + Environment.NewLine +
+                installed.StandardError +
+                Environment.NewLine +
+                "Use 'List OpenRAGE-installed packages' to get the exact package group name for uninstall.";
+            App.Diagnostics.Write(
+                AuditLogLevel.Information,
+                "OpenRageOivInstalled",
+                "OpenRAGE installed an OIV package into the OpenIV mods folder. OpenRAGE owns its separate undo journal.");
+        }
+        catch (Exception exception)
+        {
+            OpenRageStatusText.Text = "OIV install failed or was rejected: " + exception.Message;
+            App.Diagnostics.Write(
+                AuditLogLevel.Error,
+                "OpenRageOivInstallFailed",
+                "An OpenRAGE OIV operation failed.",
+                exception);
+            MessageBox.Show(
+                exception.Message,
+                "OIV installation failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            OpenRageExecutableConsentCheckBox.IsChecked = false;
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void ListOpenRagePackagesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null || !_openRageReady)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _openRageToolchainService.ListInstalledOivPackagesAsync(_installation);
+            OpenRageStatusText.Text =
+                "OpenRAGE-installed OIV packages (use the exact name and version in the uninstall box):" +
+                Environment.NewLine + result.StandardOutput +
+                (string.IsNullOrWhiteSpace(result.StandardError) ? string.Empty : Environment.NewLine + result.StandardError);
+        }
+        catch (Exception exception)
+        {
+            OpenRageStatusText.Text = "Could not list OpenRAGE-installed packages: " + exception.Message;
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void UninstallOpenRagePackageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null || !_openRageReady)
+            return;
+
+        var groupName = OpenRageUninstallGroupText.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            OpenRageStatusText.Text = "Enter the exact package group name and version shown by the OpenRAGE package list.";
+            return;
+        }
+
+        var confirmation = MessageBox.Show(
+            "OpenRAGE will undo the file changes recorded for this OIV package:" +
+            Environment.NewLine + groupName + Environment.NewLine + Environment.NewLine +
+            "This uses OpenRAGE's journal, not the Hub's rollback journal. Continue?",
+            "Confirm OpenRAGE package uninstall",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _openRageToolchainService.UninstallOivPackageAsync(
+                _installation, groupName, userConfirmed: true);
+            OpenRageStatusText.Text =
+                "OpenRAGE uninstalled the package:" + Environment.NewLine + groupName +
+                Environment.NewLine + result.StandardOutput + Environment.NewLine + result.StandardError;
+            OpenRageUninstallGroupText.Clear();
+        }
+        catch (Exception exception)
+        {
+            OpenRageStatusText.Text = "OpenRAGE package uninstall failed: " + exception.Message;
+            MessageBox.Show(exception.Message, "OpenRAGE uninstall failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void UndoOpenRageLastChangeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null || !_openRageReady)
+            return;
+
+        var confirmation = MessageBox.Show(
+            "OpenRAGE will undo its newest journaled change to the OpenIV mods folder. " +
+            "This does not undo Hub-managed ZIP deployment transactions. Continue?",
+            "Confirm OpenRAGE undo",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _openRageToolchainService.UndoLatestOpenRageChangeAsync(
+                _installation, userConfirmed: true);
+            OpenRageStatusText.Text = "OpenRAGE undid its latest recorded change." +
+                Environment.NewLine + result.StandardOutput + Environment.NewLine + result.StandardError;
+        }
+        catch (Exception exception)
+        {
+            OpenRageStatusText.Text = "OpenRAGE undo failed: " + exception.Message;
+            MessageBox.Show(exception.Message, "OpenRAGE undo failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private void RefreshSessionState()
     {
         var running = _processMonitor.IsStoryModeProcessRunning();
@@ -2026,6 +2346,14 @@ public partial class MainWindow : Window
         RefreshButton.IsEnabled = canConfigure;
         ImportPackageButton.IsEnabled = canConfigure;
         DownloadPackageButton.IsEnabled = canConfigure;
+        DownloadOpenRageButton.IsEnabled = canConfigure;
+        OpenOpenRageSourceButton.IsEnabled = canConfigure;
+        InstallOivButton.IsEnabled = canConfigure && _installation is not null && _openRageReady;
+        ListOpenRagePackagesButton.IsEnabled = canConfigure && _installation is not null && _openRageReady;
+        OpenRageUninstallGroupText.IsEnabled = canConfigure && _openRageReady;
+        UninstallOpenRagePackageButton.IsEnabled = canConfigure && _installation is not null && _openRageReady;
+        UndoOpenRageLastChangeButton.IsEnabled = canConfigure && _installation is not null && _openRageReady;
+        OpenRageExecutableConsentCheckBox.IsEnabled = canConfigure && _openRageReady;
         DetectPerformanceButton.IsEnabled = canConfigure;
         BackupStorySavesButton.IsEnabled = canConfigure;
         TrustPublisherButton.IsEnabled = canConfigure;
