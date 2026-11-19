@@ -92,7 +92,7 @@ public sealed class CodeWalkerInstallHistoryServiceTests : IDisposable
         var package = Assert.Single(report.Packages);
         Assert.Equal("Known Package", package.PackageName);
         Assert.Contains(report.Warnings, warning =>
-            warning.Contains("Invalid Package", StringComparison.OrdinalIgnoreCase));
+            warning.Contains("Invalid_Package", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
