@@ -175,6 +175,7 @@ public sealed class ImportedModLibraryService
                 }
             }
 
+            errors.AddRange(FindUntrackedFileWarnings(directory, paths, cancellationToken));
             return new ImportedModVerificationResult(errors.Count == 0, checkedFiles, errors);
         }
         catch (Exception exception) when (
@@ -321,6 +322,8 @@ public sealed class ImportedModLibraryService
                 }
             }
 
+            warnings.AddRange(FindUntrackedFileWarnings(fullDirectory, checkedPaths, cancellationToken));
+
             var metadata = manifest.Metadata;
             var packageName = metadata?.Name;
             if (string.IsNullOrWhiteSpace(packageName))
@@ -345,6 +348,54 @@ public sealed class ImportedModLibraryService
         {
             return Invalid(fallbackName, directory, "Package could not be read: " + exception.Message);
         }
+    }
+
+    private static IReadOnlyList<string> FindUntrackedFileWarnings(
+        string packageDirectory,
+        HashSet<string> inventoryPaths,
+        CancellationToken cancellationToken)
+    {
+        var warnings = new List<string>();
+        var pendingDirectories = new Stack<string>();
+        pendingDirectories.Push(packageDirectory);
+        var inspectedEntries = 0;
+
+        while (pendingDirectories.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var currentDirectory = pendingDirectories.Pop();
+            foreach (var entryPath in Directory.EnumerateFileSystemEntries(currentDirectory))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                inspectedEntries++;
+                if (inspectedEntries > 10000)
+                    throw new InvalidDataException("The package directory exceeds the 10,000-entry verification limit.");
+
+                var attributes = File.GetAttributes(entryPath);
+                var relativePath = Path.GetRelativePath(packageDirectory, entryPath)
+                    .Replace(Path.DirectorySeparatorChar, '/');
+
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    warnings.Add("A reparse-point file or directory is present in the package: " + relativePath);
+                    continue;
+                }
+
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    pendingDirectories.Push(entryPath);
+                    continue;
+                }
+
+                if (string.Equals(relativePath, "package-manifest.json", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!inventoryPaths.Contains(relativePath))
+                    warnings.Add("An untracked file is present outside the import manifest: " + relativePath);
+            }
+        }
+
+        return warnings;
     }
 
     private static ImportedModLibraryEntry Invalid(string name, string directory, string warning) =>
