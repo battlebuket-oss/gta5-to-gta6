@@ -151,12 +151,13 @@ public sealed class CompatibilityTestEvidenceService
     {
         ArgumentNullException.ThrowIfNull(record);
         var scenarios = record.Scenarios ?? Array.Empty<CompatibilityTestScenarioResult>();
-        var passed = scenarios.Count(item => item.Outcome == CompatibilityTestOutcome.Passed);
-        var failed = scenarios.Count(item => item.Outcome == CompatibilityTestOutcome.Failed);
-        var blocked = scenarios.Count(item => item.Outcome == CompatibilityTestOutcome.Blocked);
-        var notRun = scenarios.Count(item => item.Outcome == CompatibilityTestOutcome.NotRun);
+        var validScenarios = scenarios.Where(item => item is not null).ToArray();
+        var passed = validScenarios.Count(item => item.Outcome == CompatibilityTestOutcome.Passed);
+        var failed = validScenarios.Count(item => item.Outcome == CompatibilityTestOutcome.Failed);
+        var blocked = validScenarios.Count(item => item.Outcome == CompatibilityTestOutcome.Blocked);
+        var notRun = validScenarios.Count(item => item.Outcome == CompatibilityTestOutcome.NotRun);
         var expected = RequiredScenarios.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
-        var seen = scenarios.Where(item => item is not null)
+        var seen = validScenarios
             .Select(item => item.ScenarioId)
             .ToHashSet(StringComparer.Ordinal);
         var completePass = Validate(record).Count == 0 &&
