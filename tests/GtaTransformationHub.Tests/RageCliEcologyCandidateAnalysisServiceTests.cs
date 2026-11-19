@@ -5,6 +5,63 @@ namespace GtaTransformationHub.Tests;
 
 public sealed class RageCliEcologyCandidateAnalysisServiceTests
 {
+    [Fact]
+    public void ValidateDumpBatchContract_AcceptsFirstBatchWhenMoreCandidatesRemain()
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 0, 50, 50, true, true,
+            Enumerable.Range(0, 50).ToArray(),
+            Array.Empty<string>());
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_AcceptsFinalPartialBatch()
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 100, 135, 35, false, true,
+            Enumerable.Range(100, 35).ToArray(),
+            Array.Empty<string>());
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_AllowsPartialFailedBatchAndKeepsFirstMissingOffset()
+    {
+        var dumped = Enumerable.Range(50, 50).Where(index => index != 52 && index != 88).ToArray();
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 50, 52, 50, true, false,
+            dumped,
+            new[] { "Two metadata resources could not be dumped." });
+
+        Assert.Empty(errors);
+    }
+
+    [Theory]
+    [InlineData(1, 135, 0, 50, 50, true, true)]
+    [InlineData(3, 135, 0, 50, 50, false, true)]
+    [InlineData(3, 135, 0, 40, 50, true, true)]
+    [InlineData(3, 135, 0, 50, 50, true, true)]
+    [InlineData(3, 135, 50, 100, 50, true, false)]
+    public void ValidateDumpBatchContract_RejectsInconsistentBatchMetadata(
+        int schemaVersion,
+        int total,
+        int start,
+        int next,
+        int selected,
+        bool more,
+        bool complete)
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            schemaVersion, total, start, next, selected, more, complete,
+            Enumerable.Range(start, Math.Max(0, selected)).ToArray(),
+            Array.Empty<string>());
+
+        Assert.NotEmpty(errors);
+    }
+
     [Theory]
     [InlineData("popgroups.ymt", "CPopulationGroup", "$/pedModels/0/modelName", "modelName", "Population")]
     [InlineData("water.xml", "CWaterConfig", "$/water/waveHeight", "waveHeight", "Water")]
