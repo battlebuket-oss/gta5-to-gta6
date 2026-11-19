@@ -217,7 +217,7 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
         const string json = """
         {
           "animalModels": [
-            { "modelName": "a_c_deer" }
+            { "modelName": "a_c_deer", "modelHash": "0x12345678" }
           ]
         }
         """;
@@ -229,10 +229,10 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
             @"C:\Games\GTA V\x64v.rpf",
             new string('A', 64),
             new string('B', 64),
-            maximumNodesPerPayload: 2);
+            maximumNodesPerPayload: 4);
 
         Assert.False(result.TraversalComplete);
-        Assert.Equal(2, result.NodesVisited);
+        Assert.Equal(4, result.NodesVisited);
         Assert.Contains(result.Candidates, item => item.Category == "ModelIdentifier");
     }
 
