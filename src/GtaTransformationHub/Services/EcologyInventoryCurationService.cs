@@ -360,6 +360,69 @@ public sealed class EcologyInventoryCurationService
         };
     }
 
+    public async Task<EcologyInventoryCurationWorkspace> LoadDraftAsync(
+        GameInstallation installation,
+        string draftPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(installation);
+        var (gameExecutable, gameRoot) = ValidateInstallation(installation);
+        var currentGameHash = await GameExecutableFingerprintService.ComputeSha256Async(
+            gameExecutable, cancellationToken);
+        var safeDraftPath = ValidateOwnedFile(
+            _draftRoot, draftPath, MaximumWorkspaceBytes, "ecology curation draft");
+        var workspace = await ReadJsonAsync<EcologyInventoryCurationWorkspace>(
+            safeDraftPath, cancellationToken);
+        ValidateWorkspaceIdentity(workspace);
+
+        if (!string.Equals(workspace.GameBuild, installation.BuildVersion, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(workspace.GameExecutableSha256, currentGameHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The saved curation draft belongs to a different GTA5.exe build or fingerprint.");
+
+        var candidateReportPath = ValidateOwnedFile(
+            _evidenceRoot,
+            Path.Combine(_evidenceRoot, workspace.CandidateAnalysisReportFileName),
+            MaximumAnalysisReportBytes,
+            "source candidate analysis report");
+        var candidateReportHash = await ComputeSha256Async(candidateReportPath, cancellationToken);
+        if (!candidateReportHash.Equals(
+                workspace.CandidateAnalysisReportSha256, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The candidate analysis report changed after this curation draft was created.");
+
+        var metadataDirectory = Path.Combine(
+            _dataRoot, "metadata-dumps",
+            RageCliToolchainService.BuildDirectoryNameFromExecutableHash(currentGameHash));
+        var verifiedArchives = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var candidate in workspace.Candidates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var archive = ValidateSourceArchive(gameRoot, candidate.SourceArchivePath);
+            if (!verifiedArchives.TryGetValue(archive, out var archiveHash))
+            {
+                archiveHash = await ComputeSha256Async(archive, cancellationToken);
+                verifiedArchives.Add(archive, archiveHash);
+            }
+            if (!archiveHash.Equals(candidate.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("A source RPF changed since the curation draft was created: " + candidate.InternalArchivePath);
+
+            var dumpPath = ValidateOwnedFile(
+                metadataDirectory,
+                candidate.DumpJsonFilePath,
+                RageCliMetadataPayloadService.MaximumDumpJsonBytes,
+                "source metadata JSON payload");
+            var dumpHash = await ComputeSha256Async(dumpPath, cancellationToken);
+            if (!dumpHash.Equals(candidate.DumpJsonSha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("A source metadata JSON payload changed since curation: " + candidate.InternalArchivePath);
+        }
+
+        var verifiedSourceHashes = verifiedArchives.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!workspace.SourceArchiveSha256.ToHashSet(StringComparer.OrdinalIgnoreCase)
+                .SetEquals(verifiedSourceHashes))
+            throw new InvalidDataException("The curation draft's source archive hash set no longer matches its candidate evidence.");
+
+        return workspace;
+    }
+
     public async Task<string> SaveDraftAsync(
         EcologyInventoryCurationWorkspace workspace,
         CancellationToken cancellationToken = default)
@@ -396,20 +459,27 @@ public sealed class EcologyInventoryCurationService
         if (string.IsNullOrWhiteSpace(workspace.ReviewNotes) || workspace.ReviewNotes.Trim().Length < 20)
             errors.Add("Record at least 20 characters describing the curation review and source assumptions.");
 
+        var candidateRows = workspace.Candidates ?? new List<EcologyCurationCandidateRow>();
         var candidateMap = new Dictionary<int, List<EcologyCurationCandidateRow>>();
-        foreach (var candidate in workspace.Candidates ?? new List<EcologyCurationCandidateRow>())
+        foreach (var candidate in candidateRows)
         {
             if (candidate is null)
             {
                 errors.Add("The candidate review table contains an empty row.");
                 continue;
             }
+            if (candidate.CandidateIndex < 0 ||
+                !IsSha256(candidate.SourceArchiveSha256) ||
+                !IsSha256(candidate.DumpJsonSha256) ||
+                string.IsNullOrWhiteSpace(candidate.ResourceName) ||
+                string.IsNullOrWhiteSpace(candidate.CandidateValue))
+                errors.Add("A candidate row has invalid source, dump or identity metadata.");
             if (!ReviewDecisions.Contains(candidate.ReviewDecision ?? string.Empty))
             {
                 errors.Add("Candidate " + candidate.CandidateIndex + " has an unsupported review decision.");
                 continue;
             }
-            if (candidate.ReviewDecision.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) &&
+            if (string.Equals(candidate.ReviewDecision, "Confirmed", StringComparison.OrdinalIgnoreCase) &&
                 !IsValidId(candidate.CanonicalId))
                 errors.Add("Confirmed candidate " + candidate.CandidateIndex + " must map to a stable canonical ID.");
             if (!candidateMap.TryGetValue(candidate.CandidateIndex, out var list))
@@ -420,9 +490,9 @@ public sealed class EcologyInventoryCurationService
             list.Add(candidate);
         }
 
-        var unreviewedCount = workspace.Candidates.Count(candidate =>
+        var unreviewedCount = candidateRows.Count(candidate =>
             candidate is not null &&
-            candidate.ReviewDecision.Equals("Unreviewed", StringComparison.OrdinalIgnoreCase));
+            string.Equals(candidate.ReviewDecision, "Unreviewed", StringComparison.OrdinalIgnoreCase));
         if (unreviewedCount > 0)
             warnings.Add(unreviewedCount + " heuristic candidate row(s) remain unreviewed. This snapshot is only a partial semantic curation.");
 
@@ -575,9 +645,9 @@ public sealed class EcologyInventoryCurationService
             SnapshotFileName: Path.GetFileName(fullSnapshotPath),
             SnapshotSha256: snapshotHash,
             CandidateRows: workspace.Candidates.Count,
-            ConfirmedCandidateRows: workspace.Candidates.Count(item => item.ReviewDecision.Equals("Confirmed", StringComparison.OrdinalIgnoreCase)),
-            RejectedCandidateRows: workspace.Candidates.Count(item => item.ReviewDecision.Equals("Rejected", StringComparison.OrdinalIgnoreCase)),
-            UnreviewedCandidateRows: workspace.Candidates.Count(item => item.ReviewDecision.Equals("Unreviewed", StringComparison.OrdinalIgnoreCase)),
+            ConfirmedCandidateRows: workspace.Candidates.Count(item => string.Equals(item.ReviewDecision, "Confirmed", StringComparison.OrdinalIgnoreCase)),
+            RejectedCandidateRows: workspace.Candidates.Count(item => string.Equals(item.ReviewDecision, "Rejected", StringComparison.OrdinalIgnoreCase)),
+            UnreviewedCandidateRows: workspace.Candidates.Count(item => string.Equals(item.ReviewDecision, "Unreviewed", StringComparison.OrdinalIgnoreCase)),
             SpeciesCount: validation.Snapshot.Species.Count,
             HabitatCount: validation.Snapshot.Habitats.Count,
             PopulationEntryCount: validation.Snapshot.PopulationEntries.Count,
@@ -681,7 +751,7 @@ public sealed class EcologyInventoryCurationService
         value.All(character => char.IsAsciiLetterOrDigit(character) || character == '-') &&
         char.IsAsciiLetter(value[0]) &&
         !value.Contains("--", StringComparison.Ordinal) &&
-        !value.EndsWith('-', StringComparison.Ordinal);
+        !value.EndsWith("-", StringComparison.Ordinal);
 
     private void ValidateWorkspaceIdentity(EcologyInventoryCurationWorkspace workspace)
     {
@@ -690,7 +760,7 @@ public sealed class EcologyInventoryCurationService
             !IsSha256(workspace.GameExecutableSha256) ||
             !IsSha256(workspace.CandidateAnalysisReportSha256) ||
             string.IsNullOrWhiteSpace(workspace.CandidateAnalysisReportFileName) ||
-            !Path.GetFileName(workspace.CandidateAnalysisReportFileName).Equals(
+            !string.Equals(Path.GetFileName(workspace.CandidateAnalysisReportFileName),
                 workspace.CandidateAnalysisReportFileName, StringComparison.Ordinal) ||
             !string.Equals(workspace.ExtractorId, "gta-v-legacy-ecology-human-curation", StringComparison.Ordinal) ||
             !Version.TryParse(workspace.ExtractorVersion, out _))
