@@ -239,8 +239,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
             "CompletenessVerified and PackageEligibilityUnlocked are always false.";
 
         Directory.CreateDirectory(_evidenceRoot);
-        EnsureDirectoryPathIsNotReparsePoint(
-            Path.GetPathRoot(_evidenceRoot)!, _evidenceRoot);
+        EnsureDirectoryTreeNoReparse(_evidenceRoot);
         var reportPath = Path.Combine(
             _evidenceRoot,
             "ecology-candidates-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") +
@@ -522,7 +521,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
     {
         var full = Path.GetFullPath(archivePath);
         EnsureContained(gameRoot, full);
-        EnsureDirectoryPathIsNotReparsePoint(gameRoot, Path.GetDirectoryName(full)!);
+        EnsureContainedDirectoriesNoReparse(gameRoot, Path.GetDirectoryName(full)!);
         if (!File.Exists(full) || (File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0)
             throw new InvalidDataException("A source archive is missing or redirected.");
         return full;
@@ -535,7 +534,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
         EnsureContained(fullRoot, full);
         if (!File.Exists(full))
             throw new FileNotFoundException("The " + description + " was not found.", full);
-        EnsureDirectoryPathIsNotReparsePoint(fullRoot, Path.GetDirectoryName(full)!);
+        EnsureContainedDirectoriesNoReparse(fullRoot, Path.GetDirectoryName(full)!);
         if ((File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0)
             throw new InvalidDataException("The " + description + " is a reparse point.");
         var info = new FileInfo(full);
@@ -554,7 +553,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
             throw new InvalidDataException("A provenance path escapes its expected local directory.");
     }
 
-    private static void EnsureDirectoryPathIsNotReparsePoint(string root, string directory)
+    private static void EnsureContainedDirectoriesNoReparse(string root, string directory)
     {
         var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         var fullDirectory = Path.GetFullPath(directory);
@@ -572,7 +571,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
         }
     }
 
-    private static void EnsureDirectoryPathIsNotReparsePoint(string root, string leaf)
+    private static void EnsureDirectoryTreeNoReparse(string leaf)
     {
         var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         var fullLeaf = Path.GetFullPath(leaf);
@@ -587,7 +586,9 @@ public sealed class RageCliEcologyCandidateAnalysisService
             if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
                 throw new IOException("A candidate evidence directory is a reparse point.");
         }
-        EnsureDirectoryPathIsNotReparsePoint(rootPath, fullLeaf);
+        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(fullLeaf));
+        if ((File.GetAttributes(rootPath) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("A candidate evidence directory is a reparse point.");
     }
 
     private static bool IsSha256(string? value) =>
