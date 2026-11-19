@@ -113,6 +113,33 @@ jobs:
           & $iscc '/DAppVersion=${{ steps.version.outputs.value }}' 'installer/GtaTransformationHub.iss'
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
 
+      - name: Smoke-test installer installation and removal
+        shell: pwsh
+        run: |
+          $setup = 'artifacts/installer/GtaTransformationHub-Setup-${{ steps.version.outputs.value }}.exe'
+          if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) { throw "Installer is missing: $setup" }
+
+          $installRoot = Join-Path $env:RUNNER_TEMP ('GtaTransformationHub-Smoke-' + [Guid]::NewGuid().ToString('N'))
+          $installLog = Join-Path $env:RUNNER_TEMP 'GtaTransformationHub-Setup-Smoke.log'
+          & $setup /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot" "/LOG=$installLog"
+          if ($LASTEXITCODE -ne 0) {
+            if (Test-Path -LiteralPath $installLog) { Get-Content -LiteralPath $installLog -Tail 80 }
+            throw "Silent installer execution failed with exit code $LASTEXITCODE."
+          }
+
+          $installedExe = Join-Path $installRoot 'GtaTransformationHub.exe'
+          $installedCatalogue = Join-Path $installRoot 'Catalogue/catalogue.json'
+          $uninstaller = Join-Path $installRoot 'unins000.exe'
+          if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) { throw 'Installed application executable is missing.' }
+          if ((Get-Item -LiteralPath $installedExe).Length -lt 100KB) { throw 'Installed application executable is unexpectedly small.' }
+          if (-not (Test-Path -LiteralPath $installedCatalogue -PathType Leaf)) { throw 'Installed mod catalogue is missing.' }
+          if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'Per-user uninstaller was not installed.' }
+
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if ($LASTEXITCODE -ne 0) { throw "Silent uninstaller execution failed with exit code $LASTEXITCODE." }
+          if (Test-Path -LiteralPath $installedExe) { throw 'Application executable remains after uninstallation.' }
+          Write-Host 'Installer smoke test passed: application and catalogue installed, then removed cleanly.'
+  
       - name: Sign installer
         if: env.SIGNING_CONFIGURED == 'true'
         shell: pwsh
