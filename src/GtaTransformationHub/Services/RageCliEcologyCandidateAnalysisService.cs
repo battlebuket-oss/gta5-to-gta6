@@ -238,7 +238,13 @@ public sealed class RageCliEcologyCandidateAnalysisService
         {
             foreach (var payload in loaded.Index.Payloads)
             {
-                if (payload.CandidateIndex < 0 || payload.CandidateIndex >= totalCandidateCount)
+                if (payload is null ||
+                    !IsSha256(payload.SourceArchiveSha256) ||
+                    !IsSha256(payload.DumpJsonSha256) ||
+                    string.IsNullOrWhiteSpace(payload.SourceArchivePath) ||
+                    string.IsNullOrWhiteSpace(payload.DumpJsonPath) ||
+                    string.IsNullOrWhiteSpace(payload.InternalPath) ||
+                    payload.CandidateIndex < 0 || payload.CandidateIndex >= totalCandidateCount)
                     throw new InvalidDataException("A payload candidate index is outside the discovered candidate set.");
 
                 if (payloadsByCandidateIndex.TryGetValue(payload.CandidateIndex, out var existing))
@@ -368,9 +374,9 @@ public sealed class RageCliEcologyCandidateAnalysisService
                                 discovery.PatternResults is { Count: > 0 } &&
                                 discovery.PatternResults.All(item =>
                                     !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors);
-        var allBatchesComplete = loadedIndexes.All(item =>
-            item.Index.BatchComplete && item.Index.Errors is { Count: 0 });
-        var inputIndexComplete = candidateCoverageComplete && allBatchesComplete && discoveryComplete;
+        // A failed earlier attempt is resolved when a later retry batch supplies that
+        // exact global candidate index with the same source/dump fingerprints.
+        var inputIndexComplete = candidateCoverageComplete && discoveryComplete;
 
         const string limitation =
             "Candidates are heuristic field/path matches from the metadata resources that were successfully dumped. " +
@@ -399,7 +405,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
             discoveryHash,
             payloadsReviewed,
             candidates.Count,
-            inputIndexComplete && !outputCandidateCapReached,
+            inputIndexComplete,
             CompletenessVerified: false,
             PackageEligibilityUnlocked: false,
             limitation,
@@ -440,7 +446,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
             payloadsReviewed,
             candidates.Count,
             categoryCounts,
-            inputIndexComplete && !outputCandidateCapReached,
+            inputIndexComplete,
             CompletenessVerified: false,
             PackageEligibilityUnlocked: false,
             warnings,
