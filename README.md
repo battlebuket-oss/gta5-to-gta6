@@ -17,7 +17,7 @@ The application does not inject code into a running GTA V process, modify files 
 ## Current engineering status
 
 - WPF .NET 8 Windows application shell and initial game-path selection.
-- Windows CI workflow; the initial shell build passed. Newer builds are being checked as the deployment engine is added.
+- Windows CI: latest run [44469816496](https://github.com/battlebuket-oss/gta5-to-gta6/actions/runs/44469816496) passed build, automated tests, self-contained Windows x64 publish and artifact upload on commit `3388d3d22b246cfa5bf15141b46e0b795bb81411`. The [Windows x64 artifact](https://github.com/battlebuket-oss/gta5-to-gta6/actions/runs/44469816496/artifacts/14504161451) is a 66.3 MB CI package, not a signed installer or an in-game-tested release.
 - Package ID validation and typed package/profile foundations.
 - Hash-verified deployment plan validation.
 - Transaction journal, per-file backups, staged copy, rollback, and protection against overwriting files changed after installation.
@@ -25,12 +25,13 @@ The application does not inject code into a running GTA V process, modify files 
 - Research shortlist for potential Legacy mods; **research candidates are not yet approved or enabled packages**.
 - Quarantine-only ZIP/OIV import with HTTPS provenance, archive SHA-256, per-file SHA-256 inventory, size and compression-ratio limits, duplicate/case-collision rejection, path traversal checks, and symlink/reparse-point rejection.
 - Read-only OpenIV OIV `assembly.xml` inspection (format 2.0–2.2): metadata, nested archive operations, target/source paths, unresolved payload references, and unknown commands are summarized without executing or applying the package.
+- Manual CodeWalker OIV review handoff: verifies the retained archive and displayed manifest, pins the selected installer SHA-256, sets CodeWalker's default game folder to the detected GTA V Legacy installation, reads that path back, then opens the OIV for review. The user must click Install in CodeWalker; the Hub does not apply OIV operations or confirm install success. The external installer is not bundled, and its publisher signature is not verified by the Hub.
 - WPF import dialog connected to the quarantine importer. Imported packages stay in the local research library with status `Researching`; no GTA V game files are changed by import.
 - Catalogue validation now rejects unresolved or self-referencing package dependencies and profiles that reference missing package IDs.
 - PresentMon CSV analysis for GTA5.exe captures, with v1/v2 frame-time column support, mean/median/P95/P99 frame times, average FPS, estimated 1% low, dropped-frame count and optional CPU/GPU busy metrics; benchmark metadata and JSON reports are saved locally.
 - On-demand local package verification recomputes every extracted file's SHA-256 and checks for missing, modified or untracked files. The source archive is retained and hashed in the package library; this is local integrity checking, not a malware or provenance guarantee.
 
-The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The new archive importer is inspection-only and deliberately does not install anything. The application is **not production-ready**: RPF payload inspection and deployment adapters, root-level ASI/script-loader package handling, supported-build compatibility approvals, full profile persistence/resolution, menu/HUD integration approval, in-game validation, signed installer/update delivery, and clean-machine release testing remain outstanding. The PresentMon analysis workflow is implemented, but no RTX 4050 gameplay benchmark has been recorded yet.
+The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The archive importer is inspection-only; the CodeWalker path is a separate manual handoff, not a Hub installer. The application is **not production-ready**: RPF payload inspection and deployment adapters, root-level ASI/script-loader package handling, supported-build compatibility approvals, full profile persistence/resolution, complete in-game menu/map/settings replacement, story/character integrations, tested flora/fauna/water stacks, in-game validation, signed installer/update delivery, and clean-machine release testing remain outstanding. The PresentMon analyzer is implemented, but no RTX 4050 gameplay benchmark has been recorded yet.
 
 ## Mod catalogue and redistribution
 
