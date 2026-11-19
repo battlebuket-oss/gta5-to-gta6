@@ -59,9 +59,20 @@ public sealed class PackageDeploymentCoordinator
                 errors.Add(storyError);
             foreach (var ecologyError in EcologyCompatibilityService.Validate(manifest))
                 errors.Add(ecologyError);
+            foreach (var uiError in UiPackageValidationService.Validate(manifest))
+                errors.Add(uiError);
             if (string.Equals(manifest.PackageFormat, "OIV-2.2", StringComparison.OrdinalIgnoreCase))
                 errors.Add(manifest.Name + " uses the restricted OIV import path. OIV deployment remains disabled until a complete audited archive adapter, exact-build test evidence, and package-bound rollback validation are available. A manifest flag cannot self-approve OIV deployment.");
             var signature = await _signatureService.VerifyAsync(manifest, cancellationToken);
+            if (manifest.Ui is not null)
+            {
+                if (!manifest.CompatibilityVerified)
+                    errors.Add(manifest.Name + " is an in-game UI package but is not marked compatibility-verified.");
+                if (manifest.SignatureVersion < 3)
+                    errors.Add(manifest.Name + " must use signature version 3 to authenticate its UI replacement contract.");
+                if (signature.Status != PackageSignatureStatus.TrustedPublisher)
+                    errors.Add(manifest.Name + " is an in-game UI package and requires a valid signature from a locally trusted publisher.");
+            }
             switch (signature.Status)
             {
                 case PackageSignatureStatus.Invalid:
@@ -222,6 +233,9 @@ public sealed class PackageDeploymentCoordinator
             if (manifest.Files.Count == 0)
                 errors.Add(manifest.Name + " declares no deployable files.");
         }
+
+        foreach (var uiSelectionError in UiPackageValidationService.ValidateSelection(packageMap.Values.ToArray()))
+            errors.Add(uiSelectionError);
 
         foreach (var imported in packageMap.Values)
         {
