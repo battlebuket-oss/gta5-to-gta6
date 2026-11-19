@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -881,15 +882,9 @@ public partial class MainWindow : Window
                     "The retained OIV or extracted file inventory failed SHA-256 verification:" +
                     Environment.NewLine + string.Join(Environment.NewLine, inventory.Errors.Take(12)));
 
-            if (!string.Equals(inventory.OriginalArchiveSha256, _lastOivArchiveSha256,
-                    StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(inventory.ArchiveSha256, _lastOivArchiveSha256,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                // ImportedModLibraryEntry exposes the manifest digest, which is also
-                // checked against the retained source archive by VerifyAsync.
-                throw new InvalidDataException("The imported OIV SHA-256 no longer matches the archive reviewed in the Hub.");
-            }
+            var actualOivHash = await ComputeFileSha256Async(_lastImportedOivPath);
+            if (!string.Equals(actualOivHash, _lastOivArchiveSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The retained OIV SHA-256 no longer matches the archive reviewed in the Hub.");
 
             var installation = GetOpenRageGameInstallation();
             var preview = await _openRageToolchainService.InspectOivAsync(
@@ -981,8 +976,9 @@ public partial class MainWindow : Window
             if (!inventory.IsValid)
                 throw new InvalidDataException("The retained OIV inventory is no longer valid. No installation was attempted.");
 
-            if (!string.Equals(reviewed.PackageSha256, _lastOivArchiveSha256,
-                    StringComparison.OrdinalIgnoreCase))
+            var actualOivHash = await ComputeFileSha256Async(_lastImportedOivPath!);
+            if (!string.Equals(actualOivHash, reviewed.PackageSha256, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(actualOivHash, _lastOivArchiveSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The OIV changed after preview. Re-import and preview it before installation.");
 
             var result = await _openRageToolchainService.InstallOivAsync(
@@ -1298,6 +1294,14 @@ public partial class MainWindow : Window
             : "Game not running — configuration is available.";
 
         ModList.IsEnabled = !running;
+    }
+
+    private static async Task<string> ComputeFileSha256Async(string path)
+    {
+        await using var stream = new FileStream(
+            path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        return Convert.ToHexString(await SHA256.HashDataAsync(stream));
     }
 
     protected override void OnClosed(EventArgs e)
