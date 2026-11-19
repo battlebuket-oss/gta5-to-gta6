@@ -45,6 +45,10 @@ jobs:
           }
           "value=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Validate mod catalogue and approval gates
+        shell: pwsh
+        run: ./scripts/Validate-Catalogue.ps1
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v6
         with:
