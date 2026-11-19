@@ -64,6 +64,20 @@ Each JSON dump is also given a bounded structural summary in the index: object/a
 
 The JSON dumps are inspection artifacts for building and validating the semantic inventory parser. They are **not** a verified species inventory and do not unlock ecology-sensitive packages.
 
+## Exact-build game name harvesting
+
+The Hub can run rage-cli's `names harvest --output` command against the selected GTA5.exe and local RPF archives. The resulting JOAAT name list is stored in a folder keyed by the complete GTA5.exe SHA-256. A sidecar manifest records the selected game build, executable hash, pinned rage-cli version/digest, names-list digest and entry count. The Hub revalidates that manifest and re-hashes the names list before passing it to later `resource dump --names` invocations.
+
+This step helps convert more hashed model, archetype, enum and metadata member identifiers into readable names. It does not identify species by itself. A clean names harvest is not proof that all ecological resources were found, and a list with parser warnings remains warning-marked.
+
+## Heuristic metadata candidate analysis
+
+After dumping metadata payloads, the Hub can analyze the dump index and its JSON payloads. Before reading them, it checks the exact GTA5.exe build/fingerprint, the pinned rage-cli version/digest, the discovery report hash, each source RPF hash, each JSON payload hash and the declared payload sizes. Inputs are required to remain under the Hub's build-specific local directories; reparse points and paths outside the selected game/data roots are rejected.
+
+The analyzer walks the bounded JSON trees and emits a separate, provenance-linked candidate-review report. It tags values where structure types, field names or JSON paths resemble population/model-set, animal/fauna, plant/vegetation, habitat or water-related definitions. Where a field lies under multiple relevant structures, more than one review tag may be retained. The report records each JSON path, field, resource, original archive path and source/dump hashes.
+
+These matches are **heuristics**, not semantic truth. Generic field names, unresolved hashes, unsupported metadata classes, strings that happen to contain words such as `animal` or `water`, and data not covered by the bounded discovery/dump passes can all create false positives or omissions. The candidate report never becomes a normalized species baseline automatically. `CompletenessVerified` and `PackageEligibilityUnlocked` remain false, regardless of the number of candidates found.
+
 ## What this scan covers — and what it does not
 
 Upstream rage-cli's `catalog build` indexes supported drawables, fragments, drawable dictionaries, dictionary entries, texture dictionaries and textures in game load order. It can inspect nested RPF archives and read retail archive keys using the user's own GTA5.exe.
@@ -74,12 +88,13 @@ In particular, a successful asset catalogue build is not permission to install a
 
 ## Remaining extractor work
 
-1. Add a provenance record for the selected GTA V build, GTA5.exe digest, all source archive hashes and the exact parser version.
-2. Export and parse the relevant population and model-set metadata, including the supported `.ymt`, `.meta`, `.ytyp` and `.ymap` resources.
-3. Enumerate every vanilla land and aquatic species, its model identifiers, behaviour references, habitat associations and population entries.
-4. Build a separate baseline for water bodies, simulation/interaction definitions and visual water rendering parameters.
-5. Bind generated snapshots to verified source archives and an exact game build, then feed them to `EcologyInventoryDiffService`.
-6. Add in-game regression captures and controlled package tests before enabling any ecology-sensitive package.
+1. The build/executable/tool/archive/payload provenance chain is implemented for the current bounded workflow.
+2. Replace heuristic field tagging with versioned, schema-aware parsers for population, model-set, species, vegetation and water metadata structures.
+3. Expand discovery and extraction beyond current search/dump limits, including all supported nested RPFs, metadata resource types and DLC/load-order overrides; report every skipped or unsupported archive.
+4. Enumerate every vanilla land and aquatic species, plant identity, model identifier, behaviour reference, habitat association and population entry.
+5. Build a separate exact-build baseline for water bodies, simulation/interaction definitions, weather response and visual water rendering parameters.
+6. Bind normalized snapshots to verified source archives and an exact game build, then feed them to `EcologyInventoryDiffService`.
+7. Add in-game regression captures and controlled package tests before enabling any ecology-sensitive package.
 
 Until all of those steps exist, ecology-sensitive packages remain blocked.
 
