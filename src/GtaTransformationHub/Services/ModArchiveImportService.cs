@@ -77,6 +77,8 @@ public sealed class ModArchiveImportService
                                       entry.FullName.EndsWith("\\", StringComparison.Ordinal);
                     var relativePath = NormalizeArchivePath(entry.FullName, isDirectory);
                     ValidateArchiveEntryType(entry, isDirectory);
+                    if (string.Equals(relativePath, "package-manifest.json", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("The archive uses the reserved package-manifest.json filename.");
                     if (nodes.ContainsKey(relativePath))
                         throw new InvalidDataException("The archive contains duplicate or case-colliding paths: " + relativePath);
 
