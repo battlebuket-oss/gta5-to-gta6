@@ -126,6 +126,8 @@
                   <TextBlock Text="{Binding Manifest.Id}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
                   <TextBlock Text="{Binding Manifest.Licence}" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
                   <TextBlock Text="{Binding SignatureStatus, StringFormat='Signature: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <TextBlock Text="{Binding Manifest.StoryContent.ContentType, StringFormat='Story content: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <TextBlock Text="{Binding Manifest.StoryContent.ProgressionNamespace, StringFormat='Progression namespace: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
                   <Button Content="Open author/source page"
                           Tag="{Binding Manifest.SourceUri}"
                           HorizontalAlignment="Left"
