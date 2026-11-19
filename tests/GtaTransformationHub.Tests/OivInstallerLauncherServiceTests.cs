@@ -39,18 +39,21 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreateStartInfo_PassesPackageAsAnArgumentWithoutShellStringConcatenation()
+    public void CreateStartInfo_LaunchesTheInstallerWithoutAssumingAFileArgument()
     {
         var installer = Path.Combine(_root, "OIV Engine", "CodeWalker.OIVInstaller.exe");
         var package = Path.Combine(_root, "My Mods", "GTA VI HUD.oiv");
+        Directory.CreateDirectory(Path.GetDirectoryName(installer)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(package)!);
+        File.WriteAllText(installer, "placeholder executable");
+        File.WriteAllText(package, "placeholder OIV");
 
         var info = OivInstallerLauncherService.CreateStartInfo(installer, package);
 
         Assert.Equal(installer, info.FileName);
         Assert.Equal(Path.GetDirectoryName(installer), info.WorkingDirectory);
         Assert.False(info.UseShellExecute);
-        Assert.Single(info.ArgumentList);
-        Assert.Equal(package, info.ArgumentList[0]);
+        Assert.Empty(info.ArgumentList);
     }
 
     [Fact]
