@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly TransactionalDeploymentService _deploymentService = new();
     private readonly TransactionalRemovalService _removalService = new();
     private readonly GameInstallationService _gameInstallationService;
+    private readonly GameInstallationStoreService _gameInstallationStoreService = new();
     private readonly PackageArchiveService _archiveService = new();
     private readonly OivPackageImportService _oivImportService = new();
     private readonly PackageAcquisitionService _acquisitionService = new();
@@ -119,7 +120,20 @@ public partial class MainWindow : Window
             else
                 StatusText.Text = "Recovered " + recovered.Count + " interrupted deployment transaction(s).";
 
-            DetectionText.Text = "Locate GTA5.exe to verify the installed game build.";
+            var installationRestore = await _gameInstallationStoreService.RestoreAsync(_gameInstallationService);
+            if (installationRestore.Restored && installationRestore.Installation is not null)
+            {
+                _installation = installationRestore.Installation;
+                GamePathText.Text = _installation.RootPath;
+                DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " restored and revalidated.";
+                StatusText.Text = installationRestore.Message;
+            }
+            else
+            {
+                _installation = null;
+                GamePathText.Text = "GTA V Legacy not located";
+                DetectionText.Text = installationRestore.Message;
+            }
         }
         catch (Exception exception)
         {
@@ -166,7 +180,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void LocateButton_Click(object sender, RoutedEventArgs e)
+    private async void LocateButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration())
             return;
@@ -181,26 +195,34 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true)
             return;
 
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
-            _installation = _gameInstallationService.ValidateExecutable(dialog.FileName);
+            var validated = _gameInstallationService.ValidateExecutable(dialog.FileName);
+            await _gameInstallationStoreService.SaveAsync(validated);
+            _installation = validated;
             _rollbackTransactionIds.Clear();
             GamePathText.Text = _installation.RootPath;
-            DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " detected.";
-            StatusText.Text = "Installation validated. Import packages, review the source and run preflight.";
+            DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " detected and fingerprinted.";
+            StatusText.Text = "Installation validated and saved locally. It will be revalidated at next startup.";
         }
         catch (Exception exception)
         {
             _installation = null;
             GamePathText.Text = "No validated installation selected";
             DetectionText.Text = exception.Message;
-            StatusText.Text = "Game installation validation failed.";
+            StatusText.Text = "Game installation validation or persistence failed.";
+        }
+        finally
+        {
+            _operationInProgress = false;
         }
 
         RefreshSessionState();
     }
 
-    private void RefreshButton_Click(object sender, RoutedEventArgs e)
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration())
             return;
@@ -211,17 +233,25 @@ public partial class MainWindow : Window
             return;
         }
 
+        _operationInProgress = true;
+        RefreshSessionState();
         try
         {
-            _installation = _gameInstallationService.ValidateExecutable(_installation.ExecutablePath);
-            DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " verified.";
-            StatusText.Text = "Installation check passed.";
+            var validated = _gameInstallationService.ValidateExecutable(_installation.ExecutablePath);
+            await _gameInstallationStoreService.SaveAsync(validated);
+            _installation = validated;
+            DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " and executable fingerprint verified.";
+            StatusText.Text = "Installation check passed and the saved fingerprint was refreshed.";
         }
         catch (Exception exception)
         {
             _installation = null;
             DetectionText.Text = exception.Message;
             StatusText.Text = "Game installation validation failed.";
+        }
+        finally
+        {
+            _operationInProgress = false;
         }
 
         RefreshSessionState();
