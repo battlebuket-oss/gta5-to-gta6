@@ -10,18 +10,19 @@ The user's target hardware is an RTX 4050 6 GB laptop GPU at 1080p. This is a te
 
 | Area | Candidate | Evidence | Current gate |
 |---|---|---|---|
-| HUD / minimap / character wheel | [GTA VI-Inspired HUD single-player](https://github.com/Geckomacabre/GTA-VI-Inspired-HUD) | Upstream README describes a single-player HUD and 3D minimap, character wheel with Jason/Lucia slots, and additional systems. Jason/Lucia models are separate downloads; Lucia may be paid. | Researching. Exact Legacy build, package contents, nested licences, loaders, hash, install/rollback, and RTX 4050 test outstanding. |
+| HUD / minimap / character wheel | [GTA VI-Inspired HUD single-player](https://github.com/Geckomacabre/GTA-VI-Inspired-HUD) | Current upstream Legacy package is 2.8.2 `.oiv`; its guide requires Script Hook V, Script Hook V .NET 3.7.0 Nightly 193+, OpenIV/ASI setup, and English game language. Jason/Lucia models are separate; Lucia is paid creator work. | Researching. Exact installed game build, OIV manifest and all nested asset rights, archive hash, root ASI file placement, adapter, install/rollback, and RTX 4050 tests outstanding. |
 | Aquatic population | [Sea Life V](https://www.gta5-mods.com/misc/sea-life-v) | Source describes higher ocean populations of sharks, fish, killer whales, stingrays and dolphins. Original release is from 2017. | Researching. Legacy-era file; current-build compatibility, population metadata conflicts, and real spawn behaviour unverified. |
 | Terrestrial vegetation | [Vanilla Vegetation Overhaul](https://www.gta5-mods.com/misc/realistic-vegetation-new-gen-tree-models-gta-5-legacy) | Listing includes a 5.0 beta and marks the project deprecated/discontinued. | Researching only. Do not install until archive, LODs, coverage, licences, build compatibility and VRAM use are audited. |
-| GTA VI-style standalone HUD | [GTA VI Styled Minimap & HUD (Legacy)](https://www.gta5-mods.com/scripts/gta-vi-styled-minimap-legacy) | Separate Legacy listing describes minimap and HUD redesign. | Researching; mutually exclusive with the full HUD overhaul until overlap is tested. |
+| Pause/settings API framework | [Pause Menu Library 1.0.1](https://www.gta5-mods.com/tools/pause-menu-library) | Framework lets mods add native-rendered pause-menu pages, tabs and settings. It explicitly does nothing on its own and requires a separate mod using its API. | Researching. Author licence forbids redistributing its `.asi`; link-only user acquisition, exact Legacy build and a dependent UI mod must be reviewed. This is not a complete menu replacement. |
+| GTA VI-style standalone HUD | [GTA VI Styled Minimap & HUD (Legacy)](https://www.gta5-mods.com/scripts/gta-vi-styled-minimap-legacy) | Current source page says the file is no longer available. | Blocked for acquisition unless the author republishes it; do not select it for a build.
 
 No candidate above is marked Tested or approved for one-click deployment. Source-page existence is not compatibility evidence.
 
 ## UI surface coverage
 
-- HUD/minimap: candidate found; not validated in-game.
+- HUD/minimap: current prebuilt 2.8.2 Legacy OIV candidate identified; not imported, installed or validated in-game. Its guide says the game must be in English; the character switcher does not supply Jason/Lucia models.
 - Character switcher: upstream HUD README describes Jason/Lucia slots; character models are not included in the HUD package.
-- Title/boot, full pause menu, full map replacement and complete settings replacement: no verified compatible Legacy stack approved yet.
+- Title/boot, complete map replacement and full settings replacement: no verified complete stack approved yet. Pause Menu Library 1.0.1 can provide API pages for separate mods, but on its own changes nothing and cannot be redistributed under its current licence.
 - GTA VI story: exact GTA VI campaign content is not a feasible lawful GTA V mod-pack deliverable. The product can catalogue separately authored fan-made missions/story expansions only, with clear attribution and no claim they are GTA VI's story.
 
 ## Wildlife, water and vegetation
@@ -43,7 +44,7 @@ These changes provide a safe package acquisition and inspection foundation. They
 
 ## Required integration work before release
 
-1. Add an OpenIV-specific OIV manifest and RPF payload inspector; the current generic importer only extracts into a quarantine folder and intentionally does not modify RPF archives.
+1. Add an OpenIV-specific OIV manifest and RPF payload inspector; the current generic importer only extracts into a quarantine folder and intentionally does not modify RPF archives. The HUD installation also has root-level ASI prerequisites/files to handle separately from the OIV package.
 2. Add package approval after human verification of licence/permission, exact source, archive and per-file hashes, supported game build, file destinations, required loaders, conflicts and restore procedure.
 3. Complete profile persistence, dependency/conflict resolution and adapter-aware load ordering; basic catalogue reference and exclusive-group validation exists, but no installable packages are approved.
 4. Implement per-adapter staged deployment, backup, journal, recovery and rollback for OpenIV OIV/RPF data and ScriptHookVDotNet scripts. The current generic copy engine alone does not prove these formats are handled safely.
@@ -51,7 +52,7 @@ These changes provide a safe package acquisition and inspection foundation. They
 6. Extend the local mod-import workflow with nested package manifests, adapter-specific file destinations, exact supported build ranges, loader version checks and an approval review. The current ZIP/OIV quarantine import records provenance, archive hash, package version and file inventory.
 7. Test clean install, first launch, missions, character switching, map/waypoints, settings persistence, cutscenes, normal exit, rollback, interrupted apply and repeated apply/rollback.
 8. Benchmark the selected profile on the RTX 4050 6 GB / 1080p target. Default to one visual overhaul, conservative textures, no experimental ray tracing, and optional density systems.
-9. Run the complete acceptance suite on an actual GTA V Legacy installation. GitHub CI cannot substitute for in-game validation.
+9. Run the complete acceptance suite on an actual GTA V Legacy installation, including the HUD in English, character wheel with separately sourced models, pause-map navigation, mission reloads, save reloads, root ASI placement, OIV rollback, and profile conflicts. GitHub CI cannot substitute for in-game validation.
 
 ## Release status
 
