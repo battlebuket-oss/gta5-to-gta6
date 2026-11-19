@@ -83,10 +83,15 @@ public static class OivManifestInspectionService
         var operations = new List<OivOperationSummary>();
         var unsupported = new List<string>();
         var sourceIssues = new List<string>();
-        var payloadPaths = archive.Entries
+        var contentEntries = archive.Entries
+            .Where(entry => entry.FullName.StartsWith("content/", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (contentEntries.Length == 0)
+            throw new InvalidDataException("The OIV package is missing the required content folder.");
+
+        var payloadPaths = contentEntries
             .Where(entry => !entry.FullName.EndsWith("/", StringComparison.Ordinal))
             .Select(entry => entry.FullName.Replace('\\', '/'))
-            .Where(path => path.StartsWith("content/", StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
         InspectCommands(content, string.Empty, payloadPaths, formatVersion, operations, unsupported, sourceIssues);
