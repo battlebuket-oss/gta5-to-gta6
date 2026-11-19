@@ -66,6 +66,7 @@ No candidate above is marked Tested or approved for one-click deployment. Source
 - The importer hashes the archive and every extracted file, enforces configurable entry/file/total-size and compression-ratio limits, rejects unsafe paths, Windows reserved names, duplicates/case collisions, path collisions, symbolic links, reparse points and special file types, and writes a provenance manifest with status `Researching`.
 - Added read-only OpenIV OIV manifest inspection for format versions 2.0–2.2: safe XML parsing, GUID/target metadata checks, nested archive-operation inventory, source/destination path validation, and warnings for unrecognised commands or unresolved payload references.
 - The import UI now displays OIV operation counts and manual-review flags. Import does not modify GTA V files, execute installers, approve packages, or enable profiles.
+- Added a read-only CodeWalker install-history view. It reads the external installer's `OIV_CW_Uninstall_Data/*/install.log` records, applies directory/file size and reparse-point checks, and displays package name/version/edition/date/file-operation count. It does not run CodeWalker's `--list` command, modify the game, or assert that any package remains active or functional.
 
 The inspector is a manifest reader, not an OpenIV-compatible installer. It does not parse/edit RPF contents, run XML/text patches, move root-level ASI dependencies, or guarantee the mod works. It does not validate the imported mod's code, licence, game-build support or behaviour.
 
