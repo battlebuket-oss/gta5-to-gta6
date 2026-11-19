@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.4-research",
+  "catalogueVersion": "0.4.5-research",
   "categories": [
     {
       "id": "graphics",
@@ -354,9 +354,9 @@
       "author": "Cass / JammersXAM",
       "sourceUri": "https://www.gta5-mods.com/misc/sea-life-v",
       "licence": "Author permissions and redistribution terms require review",
-      "version": "Current listing; original upload 2017",
-      "minimumGameBuild": "Not specified; legacy-era mod, current build unverified",
-      "maximumGameBuild": "Not specified; legacy-era mod, current build unverified",
+      "version": "1.0 (original listing 29 January 2017)",
+      "minimumGameBuild": "Not specified; 2017-era package, current Legacy build unverified",
+      "maximumGameBuild": "Not specified; 2017-era package, current Legacy build unverified",
       "sha256": null,
       "dependencies": [],
       "conflicts": [
@@ -366,7 +366,7 @@
       "installAdapter": "OpenIV archive data-file adapter required; not implemented",
       "restoreStrategy": "Back up and transactionally restore every modified population metadata file",
       "performanceTier": "Unknown; aquatic population density and spawn behaviour unmeasured",
-      "notes": "Source describes increased ocean populations including sharks, fish, killer whales, stingrays and dolphins. It modifies population metadata; a legacy upload date means current GTA V Legacy compatibility cannot be assumed. Confirm exact archive, affected files, build support, conflicts, and actual in-game spawns before approval. This is not a new species/model pack.",
+      "notes": "The original 2017 listing states that Sea Life V raises ocean populations of sharks, fish, killer whales, stingrays and dolphins by supplying a Popgroups.ymt file. The listing instructs users to place it in mods\\update\\update.rpf, but community comments disagree about the correct archive path and suggest mods\\update\\update.rpf\\x64\\levels\\gta5\\popgroups.ymt. This install-path ambiguity must be resolved by inspecting the actual archive and comparing the target Legacy build's files before any adapter is written. It changes spawn populations using existing species; it is not itself a new species/model pack. No compatibility or performance test has been run.",
       "externalRequirements": [
         "OpenIV"
       ],
@@ -391,7 +391,7 @@
       "installAdapter": "OpenIV archive data-file adapter required; not implemented",
       "restoreStrategy": "Per-file transactional backup of all replaced vegetation assets",
       "performanceTier": "Unknown; texture memory and streaming impact unmeasured",
-      "notes": "Candidate page lists a 5.0 beta and labels the project deprecated/discontinued. Not approved for installation. Inspect archive completeness, exact model/texture coverage, LODs, licensing, build compatibility, and 6GB VRAM behaviour. Do not describe it as a complete flora inventory.",
+      "notes": "The author's January 2026 pinned note says the project is discontinued because the scope became too large; the 5.0 beta files remain available but individual hedge/tree/bush changes may be released separately. Not approved as a baseline or default dependency. Inspect archive completeness, exact model/texture coverage, LODs, licensing, build compatibility and 6GB VRAM behaviour. Do not describe it as a complete flora inventory.",
       "externalRequirements": [
         "OpenIV"
       ],
@@ -426,9 +426,9 @@
       "name": "Animal Blips (Legacy and Enhanced)",
       "category": "wildlife",
       "author": "Trevor789GSF",
-      "sourceUri": "https://www.nexusmods.com/gta5/mods/1439",
+      "sourceUri": "https://www.gta5-mods.com/scripts/animal-blips-trevor789fd",
       "licence": "No upload permission; modification and asset use require author permission. Link to the author listing only.",
-      "version": "3.1 (6 October 2026)",
+      "version": "3.1 (6 October 2026; newer GTA5-Mods listing)",
       "minimumGameBuild": "GTA V Legacy; exact executable build range not published",
       "maximumGameBuild": "GTA V Legacy; exact executable build range not published",
       "sha256": null,
@@ -438,11 +438,11 @@
       "installAdapter": "User-acquired ScriptHookVDotNet script package; safe managed script deployment and exact dependency verification not implemented",
       "restoreStrategy": "Back up and restore only the exact script files/INI files after archive inspection; do not remove shared dependencies",
       "performanceTier": "Unknown; animal scan/update cost and impact on busy scenes not measured",
-      "notes": "Adds map blips to animals and configurable animal health/armour/invincibility behaviour. It does not add or spawn new animal species. The author forbids re-upload and requires permission for modifications/assets. Use only as an optional locator/utility after exact Legacy runtime testing; it does not satisfy the fauna-expansion requirement.",
+      "notes": "The current GTA5-Mods listing describes aquatic-animal map blips (not animal spawning or new species). The 3.1 changelog adds DLC animals and fixes animal fire/invincibility behaviour. Requirements are Script Hook V and Script Hook V .NET Nightly; OpenIV 4.1 is also listed. No re-upload, file modification or asset reuse is permitted without author permission. Use only as a locator overlay after Legacy runtime testing.",
       "externalRequirements": [
         "Script Hook V",
-        "Script Hook V .NET Nightly for GTA V Legacy",
-        "OpenIV 4.1 listed by the author"
+        "Script Hook V .NET Nightly for Legacy",
+        "OpenIV 4.1 (listed by the author)"
       ],
       "exclusiveGroup": "animal-location-overlay"
     },
@@ -450,26 +450,26 @@
       "id": "wildlife-mod-2-2",
       "name": "WildLife Mod",
       "category": "wildlife",
-      "author": "Loosekid187",
-      "sourceUri": "https://www.gta5-mods.com/scripts/wildlife-mod",
-      "licence": "Author permission and asset-use terms require review; no redistribution by the Hub",
+      "author": "AtlasMod (uploader: iNVENTEDRACER88)",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/2055",
+      "licence": "No upload or conversion permission; modifications and asset use require author permission. Link to the author-hosted Nexus page only.",
       "version": "2.2 (25 August 2026)",
-      "minimumGameBuild": "Not verified for GTA V Legacy; source description says Enhanced",
-      "maximumGameBuild": "Not verified for GTA V Legacy; source description says Enhanced",
+      "minimumGameBuild": "Not specified; exact GTA V Legacy executable build unverified",
+      "maximumGameBuild": "Not specified; exact GTA V Legacy executable build unverified",
       "sha256": null,
       "dependencies": [],
       "conflicts": [
         "other-wildlife-and-ambient-spawn-frameworks"
       ],
-      "status": "Blocked",
-      "installAdapter": "Not eligible for GTA V Legacy deployment until author publishes explicit Legacy support and exact runtime requirements are verified",
-      "restoreStrategy": "No install plan approved",
-      "performanceTier": "High/unknown; mass NPC and animal spawning, companions, AI tasks and repeated event spawning require profiling",
-      "notes": "The source describes animal skins and spawning lions, sharks, hawks, monkeys and animal events, alongside zombie/vampire/robot/chaos systems. However, its own description calls it an experience for GTA V Enhanced and lists ScriptHookVDotNet v3.6, so it is blocked for this Legacy-only project until explicit Legacy compatibility is confirmed. It is a scripted spawn/chaos package, not a validated ambient ecosystem or comprehensive fauna pack.",
+      "status": "Researching",
+      "installAdapter": "User-acquired ScriptHookVDotNet script package; safe managed script deployment and exact dependency verification not implemented",
+      "restoreStrategy": "Back up and restore only the exact script files/INI files after archive inspection; do not remove shared dependencies",
+      "performanceTier": "Unknown/high potential CPU cost; mass spawn modes and repeated AI task updates require profiling",
+      "notes": "The Nexus page is explicitly listed under Grand Theft Auto V Legacy and documents a single-player ScriptHookV/ScriptHookVDotNet package. Version 2.2 (25 August 2026) includes 12 animal skins (examples: lion, shark, hawk and monkey), animal spawn/companion events, bird-paradise/shark-attack/stampede presets, and many unrelated zombie/chaos systems. It does not provide a complete ecology simulation. Requirements listed are ScriptHookV, ScriptHookVDotNet v3.6 or higher, and LemonUI for SHVDN3 (included in the author's download). Exact Legacy executable/runtime compatibility is still untested. Author forbids re-upload/conversion and requires permission for modifications and asset use. Keep Researching; do not bundle.",
       "externalRequirements": [
         "Script Hook V",
-        "ScriptHookVDotNet v3.6 or newer",
-        "LemonUI for SHVDN3 (source says included)"
+        "ScriptHookVDotNet v3.6 or higher",
+        "LemonUI for SHVDN3 (included in author download)"
       ]
     },
     {
@@ -492,7 +492,7 @@
       "installAdapter": "OpenIV OIV/RPF water-texture adapter required; not implemented",
       "restoreStrategy": "Back up exact affected water and graphics texture archives before a transactional replacement; verify official uninstaller or restore exact originals",
       "performanceTier": "High memory risk; advertises 8K water textures and 2560x1440 reflections; 6GB VRAM impact is unknown",
-      "notes": "The Legacy listing describes water ripples, waves, shore foam, reflections, underwater fog and top/bottom water textures, with many textures upscaled to 4K/8K. It is a texture/visual overhaul, not a new water-physics engine or underwater vegetation pack. The author's page claims a small FPS cost, but the Hub will not adopt that claim without independent frame-time/VRAM benchmarks. Given the RTX 4050 6GB target, do not put 8K assets in the recommended profile before a lower-resolution alternative and real tests are available.",
+      "notes": "Legacy Nexus listing version 3.01 was last updated 10 February 2025. The author describes water ripples, waves, shore foam, reflections, puddles, underwater fog and top/bottom water textures, with textures upscaled as high as 8K and reflections to 2560x1440. Installation is an OIV through OpenIV. The listing reports a possible 1–2 FPS loss, but this is not an RTX 4050 test. Author prohibits re-upload, modification and asset reuse without permission. This is a visual texture/water-appearance overhaul, not a measured fluid-physics upgrade or an underwater flora pack. Avoid in the 6GB default profile pending lower-resolution options and real testing.",
       "externalRequirements": [
         "OpenIV",
         "Optional: Rainfall Rehaul"
@@ -568,7 +568,7 @@
       "installAdapter": "OpenIV OIV adapter required; not implemented",
       "restoreStrategy": "Back up the exact replaced grass model/texture archives; restore them transactionally",
       "performanceTier": "Potentially medium/high CPU/GPU streaming cost; source provides a performance-friendly option but increased density/draw distance still needs benchmarking",
-      "notes": "The beta replaces and recolours existing grass models and increases grass density, scaling and draw distance. Version 1.5 lists a performance-friendly option, but the mod remains beta and the author warns about installation order relative to other grass/vegetation replacements. It does not add new botanical species. Verify the exact performance-friendly variant and test it on 1080p/6GB VRAM.",
+      "notes": "The 1.5 beta listing (22 March 2025) says it added a performance-friendly OIV option with near-identical appearance and retained vanilla resolution for smaller grass models, while still increasing density and scaling. The page warns that other grass/vegetation replacements must be installed first to avoid overlap/texture problems. Beta status and draw-distance/density cost require exact archive review and RTX 4050 benchmarking. It adds no new botanical species.",
       "externalRequirements": [
         "OpenIV"
       ],
