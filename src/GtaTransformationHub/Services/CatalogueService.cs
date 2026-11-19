@@ -111,6 +111,7 @@ public sealed class CatalogueService
         EnsureUnique(catalogue.Profiles.Select(x => x.Id), "profile");
 
         var categoryIds = new HashSet<string>(catalogue.Categories.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+        var packageIds = new HashSet<string>(catalogue.Packages.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
         foreach (var package in catalogue.Packages)
         {
             if (!PackageIdValidator.IsValid(package.Id))
@@ -119,9 +120,18 @@ public sealed class CatalogueService
                 throw new InvalidDataException("Unknown category for package " + package.Id + ".");
             if (package.SourceUri is null || package.SourceUri.Scheme != Uri.UriSchemeHttps)
                 throw new InvalidDataException("Every package must have an HTTPS author/source URI.");
-            if (package.Dependencies.Any(x => !PackageIdValidator.IsValid(x)) ||
-                package.Conflicts.Any(x => !PackageIdValidator.IsValid(x)))
-                throw new InvalidDataException("A package contains an invalid dependency or conflict ID.");
+            if (package.Dependencies.Any(x => !PackageIdValidator.IsValid(x) ||
+                    !packageIds.Contains(x) || string.Equals(x, package.Id, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("A package contains an invalid, missing, or self-referencing dependency ID.");
+            if (package.Conflicts.Any(x => !PackageIdValidator.IsValid(x) ||
+                    string.Equals(x, package.Id, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("A package contains an invalid or self-referencing conflict ID.");
+        }
+
+        foreach (var profile in catalogue.Profiles)
+        {
+            if (profile.EnabledPackageIds.Any(id => !packageIds.Contains(id)))
+                throw new InvalidDataException("A profile references a package that is missing from the catalogue: " + profile.Id);
         }
     }
 
