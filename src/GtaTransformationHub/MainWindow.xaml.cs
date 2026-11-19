@@ -132,11 +132,26 @@ public partial class MainWindow : Window
             return;
         }
 
-        _gameExecutable = dialog.FileName;
-        GamePathText.Text = Path.GetDirectoryName(dialog.FileName) ?? dialog.FileName;
-        DetectionText.Text = "Executable selected. Edition and build validation is not yet implemented.";
+        _gameExecutable = null;
         LaunchButton.IsEnabled = false;
-        StatusText.Text = "Game path saved. Launch is disabled until verified package deployment is connected.";
+        try
+        {
+            var installation = new GameInstallationDetector().Inspect(dialog.FileName);
+            _gameExecutable = installation.ExecutablePath;
+            GamePathText.Text = installation.GameDirectory;
+            DetectionText.Text =
+                installation.Edition + " detected | executable version " + installation.FileVersion +
+                " | SHA-256 " + installation.ExecutableSha256[..12] +
+                " | mod compatibility not yet approved";
+            StatusText.Text =
+                "Legacy installation fingerprint recorded. Launch remains disabled until package compatibility, deployment and rollback are approved.";
+        }
+        catch (Exception ex)
+        {
+            GamePathText.Text = "GTA V Legacy not verified";
+            DetectionText.Text = "Installation check failed: " + ex.Message;
+            StatusText.Text = "No game installation was accepted. Select the actual GTA V Legacy root GTA5.exe.";
+        }
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
