@@ -1,0 +1,90 @@
+<Window x:Class="GtaTransformationHub.ModCatalogueWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Mod Control Centre"
+        Width="1120" Height="820" MinWidth="900" MinHeight="640"
+        Background="#101216" Foreground="#F4F4F5"
+        WindowStartupLocation="CenterOwner"
+        Loaded="Window_Loaded">
+  <Grid Margin="22">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <DockPanel Grid.Row="0" Margin="0,0,0,14">
+      <StackPanel>
+        <TextBlock Text="TRANSFORMATION HUB / MOD CONTROL" Foreground="#FF4655"
+                   FontSize="11" FontWeight="Bold"/>
+        <TextBlock Text="Choose your mod loadout" FontSize="26"
+                   FontWeight="SemiBold" Margin="0,4,0,0"/>
+      </StackPanel>
+      <Border DockPanel.Dock="Right" Background="#262A32" CornerRadius="8"
+              Padding="12,8" VerticalAlignment="Center">
+        <TextBlock x:Name="GameBuildText" Text="GAME BUILD NOT VERIFIED"
+                   FontSize="10" FontWeight="Bold"/>
+      </Border>
+    </DockPanel>
+
+    <TextBlock Grid.Row="1" Margin="0,0,0,12" Foreground="#ADB4C0"
+               TextWrapping="Wrap"
+               Text="Switch mods ON or OFF in your saved profile. Selection is persisted locally. A switch does not install a mod: only packages that pass source, licence, build, dependency, hash and rollback checks can be deployed." />
+
+    <Border Grid.Row="2" Background="#1B1F26" CornerRadius="9" Padding="12"
+            Margin="0,0,0,12">
+      <DockPanel>
+        <TextBlock x:Name="SelectionSummaryText"
+                   Text="Loading catalogue and saved profile..."
+                   Foreground="#E5E7EB" VerticalAlignment="Center"/>
+        <TextBlock x:Name="ProfileStorageText" DockPanel.Dock="Right"
+                   Text="LOCAL PROFILE" Foreground="#8D96A5"
+                   FontSize="10" VerticalAlignment="Center" Margin="10,0,0,0"/>
+      </DockPanel>
+    </Border>
+
+    <Border Grid.Row="3" Background="#1B1F26" CornerRadius="10" Padding="14">
+      <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="CatalogueList">
+          <TextBlock Text="Loading mod catalogue..." Foreground="#ADB4C0"/>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <Border Grid.Row="4" Background="#241E20" CornerRadius="8"
+            Padding="12" Margin="0,12,0,10">
+      <StackPanel>
+        <TextBlock Text="INSTALL READINESS" FontWeight="Bold"
+                   Foreground="#FF9BA3" FontSize="10"/>
+        <TextBlock x:Name="ReadinessSummaryText"
+                   Text="No readiness check run."
+                   Margin="0,5,0,0" TextWrapping="Wrap"/>
+        <TextBox x:Name="ReadinessDetailsText" IsReadOnly="True"
+                 AcceptsReturn="True" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 Background="#17191F" Foreground="#D5D9E0"
+                 BorderThickness="0" MinHeight="46" MaxHeight="110"
+                 Margin="0,7,0,0" Padding="7"
+                 Text="Select CHECK INSTALL READINESS to see blockers."/>
+      </StackPanel>
+    </Border>
+
+    <DockPanel Grid.Row="5">
+      <TextBlock x:Name="StatusText" Text="Profile selection is stored locally; no game files have been changed."
+                 Foreground="#ADB4C0" VerticalAlignment="Center"
+                 TextWrapping="Wrap"/>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="CHECK INSTALL READINESS" Click="CheckReadinessButton_Click"
+                Padding="13,9" Margin="8,0,8,0"
+                Background="#343A45" Foreground="White"/>
+        <Button Content="CLOSE" Click="CloseButton_Click"
+                Padding="17,9" Background="#FF4655" Foreground="White"
+                FontWeight="Bold"/>
+      </StackPanel>
+    </DockPanel>
+  </Grid>
+</Window>
