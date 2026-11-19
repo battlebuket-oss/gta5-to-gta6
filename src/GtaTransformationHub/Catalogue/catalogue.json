@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.5-research",
+  "catalogueVersion": "0.4.6-research",
   "categories": [
     {
       "id": "graphics",
@@ -346,6 +346,35 @@
         "Optional: separately sourced compatible Jason and/or Lucia character model (not included)"
       ],
       "exclusiveGroup": "ui-overhaul"
+    },
+    {
+      "id": "gta-vi-hud-fbicat-legacy",
+      "name": "GTA VI HUD [Legacy / Enhanced] — FBICat",
+      "category": "interface",
+      "author": "FBICat",
+      "sourceUri": "https://www.gta5-mods.com/sl/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705",
+      "licence": "Author and bundled dependency licences require review; do not redistribute binaries without explicit permission",
+      "version": "1.1 (listing updated November 2026)",
+      "minimumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "maximumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-inspired-hud-single-player",
+        "gta-vi-styled-minimap-hud-legacy",
+        "other-total-hud-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "Separate Legacy/Enhanced archive layout; root ASI and managed-script adapter required, not implemented",
+      "restoreStrategy": "Verified per-file backup and exact archive manifest required for scripts folder and root files; not implemented",
+      "performanceTier": "Unknown; 60 MB listing size is not a runtime performance measurement; RTX 4050 testing required",
+      "notes": "GTA5-Mods listing describes a GTA VI-inspired HUD with status bars, weapon wheel, vehicle card, world markers and cash rings, plus optional back-mounted weapons, stamina, vehicle storage, bounty and fuel systems. The archive has separate Legacy and Enhanced folders; install only the matching edition. Requires Script Hook V, ScriptHookVDotNet 3 and LemonUI.SHVDN3.dll in scripts. Listing reports version 1.1 and 60 MB. Exact Legacy game-build compatibility, complete archive file inventory, licence/redistribution permissions, overlap with other HUD mods, clean rollback and RTX 4050 performance remain unverified. Research candidate only; do not bundle or deploy.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3 for GTA V Legacy",
+        "LemonUI.SHVDN3.dll in the scripts folder",
+        "User-acquired Legacy archive from the author listing"
+      ]
     },
     {
       "id": "sea-life-v",
