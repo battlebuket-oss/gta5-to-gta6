@@ -18,7 +18,7 @@ Import is **not installation**. It does not modify the GTA V installation, execu
 - Extract into a newly created staging directory under the import root, then move the complete directory into its deterministic package location.
 - Hash the same open archive stream that is parsed, and hash every extracted file.
 - For OIV, parse `assembly.xml` with DTD processing prohibited and external XML resolution disabled. Accept package-format versions 2.0–2.2, validate the GUID and GTA target metadata, and enumerate `add`, `replace`, `delete`, nested `archive`, `xml`, `text`, and `defragmentation` operations.
-- Validate source/destination paths and check whether declared payload sources exist under the OIV `content/` directory. Unknown commands and unresolved sources are flagged for manual review.
+- Validate source/destination paths and check whether declared payload sources exist under the OIV `content/` directory. Unknown commands and unresolved sources are flagged for manual review. A clean structural report only means that the known manifest operations and payload paths could be parsed; licence, game-build, dependency, runtime and rollback compatibility must still be reviewed by a person.
 - On failure, remove the staging directory when possible. If cleanup itself fails, preserve the original error and leave the staging folder for manual inspection.
 
 ## Remaining work before installation
@@ -29,4 +29,4 @@ Import is **not installation**. It does not modify the GTA V installation, execu
 - Verify supported GTA V Legacy build ranges and all required loader versions.
 - Test clean install, interrupted install, rollback, game launch, missions and save lifecycle on a disposable GTA V installation.
 
-The imported file inventory is evidence for review, not evidence that its code or assets are safe, compatible, licensed, or functional.
+The imported file inventory is evidence for review, not evidence that its code or assets are safe, compatible, licensed, or functional. In particular, the OIV inspector does not execute `<add>`, `<replace>`, `<delete>`, nested `<archive>`, `<xml>` or `<text>` operations, and it does not prove that OpenIV can safely apply them to a real game installation.
