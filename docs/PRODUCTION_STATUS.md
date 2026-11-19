@@ -34,7 +34,12 @@ This document distinguishes implemented development-branch functions from releas
 | RSA publisher signatures | Implemented for package manifests using RSA-2048+, SHA-256 and PKCS#1 v1.5 |
 | Local trusted-publisher key store | Implemented with independent fingerprint matching and an add-key dialog |
 | Signature-aware package preflight | Implemented; unsigned and unknown-publisher packages warn, invalid trusted-key signatures reject |
-| Windows x64 CI build, test and publish workflow | Configured; one earlier full run passed build, tests and self-contained publish; latest head has not yet been verified |\n| Per-user Windows x64 installer definition | Implemented with Inno Setup; installer compilation and clean-machine installation still require a successful Windows workflow run |\n| Real-game gameplay/performance/rollback test protocol | Test plan and evidence requirements documented; no real GTA V gameplay or performance run has been executed from this environment |\n| Vanilla ecology identity validation | Preservation rules and semantic comparator exist; complete exact-build inventory and real-game package validation remain blocked |\n| Release packaging workflow | Implemented: self-contained publish, test gate, installer compilation, SHA-256 checksums and tag-based GitHub release |\n| Authenticode signing automation | Implemented conditionally for application EXE and installer; certificate secrets and a real signed release have not yet been configured or verified |
+| Windows x64 CI build, test and publish workflow | Configured; one earlier full run passed build, tests and self-contained publish; latest head has not yet been verified |
+| Per-user Windows x64 installer definition | Implemented with Inno Setup; installer compilation and clean-machine installation still require a successful Windows workflow run |
+| Real-game gameplay/performance/rollback test protocol | Test plan and evidence requirements documented; no real GTA V gameplay or performance run has been executed from this environment |
+| Vanilla ecology identity validation | Preservation rules and semantic comparator exist; complete exact-build inventory and real-game package validation remain blocked |
+| Release packaging workflow | Implemented: self-contained publish, test gate, installer compilation, SHA-256 checksums and tag-based GitHub release |
+| Authenticode signing automation | Implemented conditionally for application EXE and installer; certificate secrets and a real signed release have not yet been configured or verified |
 
 ## Not yet production-ready
 
