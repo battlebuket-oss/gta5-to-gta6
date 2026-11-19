@@ -12,9 +12,8 @@ using GtaTransformationHub.Models;
 namespace GtaTransformationHub.Services;
 
 /// <summary>
-/// Lists locally imported, research-only packages and recomputes each extracted file's SHA-256.
-/// It never loads or executes package code. The source archive digest cannot be independently
-/// re-verified because the original archive is not retained in the package library.
+/// Lists locally imported, research-only packages and recomputes every inventoried file's SHA-256,
+/// including the retained original ZIP/OIV source archive. It never loads or executes package code.
 /// </summary>
 public sealed class ImportedModLibraryService
 {
@@ -329,6 +328,29 @@ public sealed class ImportedModLibraryService
             if (string.IsNullOrWhiteSpace(packageName))
                 packageName = fallbackName;
 
+            string? originalArchivePath = null;
+            if (!string.IsNullOrWhiteSpace(manifest.OriginalArchiveRelativePath))
+            {
+                try
+                {
+                    var resolvedArchivePath = ResolveContainedFilePath(fullDirectory, manifest.OriginalArchiveRelativePath);
+                    if (!File.Exists(resolvedArchivePath))
+                        warnings.Add("The retained original source archive is missing.");
+                    else if ((File.GetAttributes(resolvedArchivePath) & FileAttributes.ReparsePoint) != 0)
+                        warnings.Add("The retained original source archive is a reparse point.");
+                    else
+                        originalArchivePath = resolvedArchivePath;
+                }
+                catch (InvalidDataException exception)
+                {
+                    warnings.Add("The retained source archive path is invalid: " + exception.Message);
+                }
+            }
+            else
+            {
+                warnings.Add("The original source archive is not retained in this package manifest.");
+            }
+
             return new ImportedModLibraryEntry(
                 metadata?.PackageId ?? "unknown",
                 packageName,
@@ -339,8 +361,10 @@ public sealed class ImportedModLibraryService
                 manifest.Files?.Count ?? 0,
                 fullDirectory,
                 warnings.Count == 0,
-                "Per-file SHA-256 values were re-computed and compared with the import manifest. Archive provenance is not re-verified because the original archive is not retained.",
-                warnings);
+                "Per-file SHA-256 values were re-computed and compared with the import manifest, including the retained source archive.",
+                warnings,
+                originalArchivePath,
+                manifest.OivInspection);
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or JsonException or
@@ -485,7 +509,9 @@ public sealed record ImportedModLibraryEntry(
     string PackageDirectory,
     bool ManifestValid,
     string VerificationNote,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    string? OriginalArchivePath = null,
+    OivManifestInspectionResult? OivInspection = null);
 
 public sealed record ImportedModVerificationResult(
     bool IsValid,
