@@ -248,6 +248,8 @@ public sealed class PackageArchiveService
     {
         if (manifest.SchemaVersion != 1)
             throw new InvalidDataException("Unsupported package manifest schema.");
+        if (manifest.SignatureVersion is not (1 or 2))
+            throw new InvalidDataException("Unsupported package signature version.");
         if (!PackageIdValidator.IsValid(manifest.Id))
             throw new InvalidDataException("The package manifest has an invalid package ID.");
         if (string.IsNullOrWhiteSpace(manifest.Name) || manifest.Name.Length > 160 ||
@@ -272,6 +274,10 @@ public sealed class PackageArchiveService
         if (!string.IsNullOrWhiteSpace(manifest.ExclusiveGroup) &&
             !PackageIdValidator.IsValid(manifest.ExclusiveGroup))
             throw new InvalidDataException("The package manifest contains an invalid exclusive group ID.");
+
+        var storyErrors = StoryContentValidationService.Validate(manifest);
+        if (storyErrors.Count > 0)
+            throw new InvalidDataException(string.Join(Environment.NewLine, storyErrors));
 
         foreach (var id in manifest.Dependencies.Concat(manifest.Conflicts))
         {
