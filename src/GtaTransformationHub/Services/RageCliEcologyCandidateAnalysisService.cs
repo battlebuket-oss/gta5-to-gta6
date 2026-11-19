@@ -31,6 +31,11 @@ public sealed record EcologyMetadataCandidateAnalysisResult(
     IReadOnlyList<string> Warnings,
     IReadOnlyList<EcologyMetadataCandidate> Candidates);
 
+public sealed record EcologyCandidateExtractionResult(
+    IReadOnlyList<EcologyMetadataCandidate> Candidates,
+    bool TraversalComplete,
+    int NodesVisited);
+
 /// <summary>
 /// Converts bounded rage-cli metadata JSON dumps into a reviewable, provenance-linked
 /// candidate index. Classification is deliberately heuristic: a value found under a
@@ -276,6 +281,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var payloadsReviewed = 0;
         long totalInputJsonBytes = 0;
         var outputCandidateCapReached = false;
+        var nodeLimitReached = false;
         var payloadDirectory = Path.Combine(_dataRoot, "metadata-dumps", buildDirectory);
         var verifiedSourceHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -327,7 +333,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
                 cancellationToken);
 
             var before = candidates.Count;
-            ExtractCandidates(
+            var payloadTraversalComplete = ExtractCandidates(
                 payload.CandidateIndex,
                 document.RootElement,
                 payload.ResourceName,
@@ -337,7 +343,10 @@ public sealed class RageCliEcologyCandidateAnalysisService
                 payload.DumpJsonSha256,
                 candidates,
                 warnings,
-                MaximumCandidates);
+                MaximumCandidates,
+                MaximumNodesPerPayload);
+            if (!payloadTraversalComplete)
+                nodeLimitReached = true;
 
             if (candidates.Count == MaximumCandidates)
             {
@@ -368,9 +377,12 @@ public sealed class RageCliEcologyCandidateAnalysisService
         // exact global candidate index with the same source/dump fingerprints.
         var inputIndexComplete = candidateCoverageComplete &&
                                  discoveryComplete &&
-                                 !outputCandidateCapReached;
+                                 !outputCandidateCapReached &&
+                                 !nodeLimitReached;
         if (outputCandidateCapReached)
             warnings.Add("Not all payloads were semantically walked because the candidate report reached its 10,000-record output cap.");
+        if (nodeLimitReached)
+            warnings.Add("At least one metadata payload exceeded the one-million-node traversal limit; heuristic candidate review is incomplete.");
 
         const string limitation =
             "Candidates are heuristic field/path matches from the metadata resources that were successfully dumped. " +
@@ -519,7 +531,19 @@ public sealed class RageCliEcologyCandidateAnalysisService
         string internalArchivePath,
         string sourceArchivePath,
         string sourceArchiveSha256,
-        string dumpJsonSha256)
+        string dumpJsonSha256) =>
+        ExtractCandidatesFromJsonWithStatus(
+            json, resourceName, internalArchivePath, sourceArchivePath,
+            sourceArchiveSha256, dumpJsonSha256).Candidates;
+
+    public static EcologyCandidateExtractionResult ExtractCandidatesFromJsonWithStatus(
+        string json,
+        string resourceName,
+        string internalArchivePath,
+        string sourceArchivePath,
+        string sourceArchiveSha256,
+        string dumpJsonSha256,
+        int maximumNodesPerPayload = MaximumNodesPerPayload)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         ArgumentException.ThrowIfNullOrWhiteSpace(resourceName);
@@ -527,18 +551,48 @@ public sealed class RageCliEcologyCandidateAnalysisService
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceArchivePath);
         if (!IsSha256(sourceArchiveSha256) || !IsSha256(dumpJsonSha256))
             throw new ArgumentException("Valid source archive and dumped JSON SHA-256 fingerprints are required.");
+        if (maximumNodesPerPayload is < 1 or > MaximumNodesPerPayload)
+            throw new ArgumentOutOfRangeException(nameof(maximumNodesPerPayload));
 
         using var document = JsonDocument.Parse(
             json, new JsonDocumentOptions { MaxDepth = RageCliJsonStructureAnalyzer.MaximumDepth });
         var candidates = new List<EcologyMetadataCandidate>();
         var warnings = new List<string>();
-        ExtractCandidates(
+        var complete = ExtractCandidates(
             0, document.RootElement, resourceName, internalArchivePath, sourceArchivePath,
-            sourceArchiveSha256, dumpJsonSha256, candidates, warnings, MaximumCandidates);
-        return candidates;
+            sourceArchiveSha256, dumpJsonSha256, candidates, warnings, MaximumCandidates,
+            maximumNodesPerPayload);
+        var nodesVisited = warnings.Any(item => item.Contains("node cap", StringComparison.OrdinalIgnoreCase))
+            ? maximumNodesPerPayload
+            : CountCandidateJsonNodes(document.RootElement, maximumNodesPerPayload);
+        return new EcologyCandidateExtractionResult(candidates, complete, nodesVisited);
     }
 
-    private static void ExtractCandidates(
+    private static int CountCandidateJsonNodes(JsonElement root, int maximumNodes)
+    {
+        var count = 0;
+        void Visit(JsonElement element)
+        {
+            if (count >= maximumNodes)
+                return;
+            count++;
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in element.EnumerateObject())
+                    Visit(property.Value);
+            }
+            else if (element.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in element.EnumerateArray())
+                    Visit(item);
+            }
+        }
+
+        Visit(root);
+        return count;
+    }
+
+    private static bool ExtractCandidates(
         int candidateIndex,
         JsonElement root,
         string resourceName,
@@ -548,15 +602,18 @@ public sealed class RageCliEcologyCandidateAnalysisService
         string dumpJsonSha256,
         ICollection<EcologyMetadataCandidate> output,
         ICollection<string> warnings,
-        int maximumCandidates)
+        int maximumCandidates,
+        int maximumNodes)
     {
         var nodes = 0;
+        var nodeLimitReached = false;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         void Visit(JsonElement element, string path, string structureType, string? fieldName, string inheritedContext)
         {
-            if (++nodes > MaximumNodesPerPayload)
+            if (++nodes > maximumNodes)
             {
+                nodeLimitReached = true;
                 warnings.Add("The JSON walker reached the one-million-node cap for '" + resourceName + "'.");
                 return;
             }
@@ -614,6 +671,15 @@ public sealed class RageCliEcologyCandidateAnalysisService
                 if (!string.IsNullOrWhiteSpace(resourceCategory))
                     categories.Add(resourceCategory);
             }
+            var identityContext = structureType + "/" + inheritedContext + "/" + path + "/" + resourceName;
+            if (IsModelIdentityField(fieldName) &&
+                ContainsAny(identityContext.ToLowerInvariant(),
+                    "animal", "fauna", "wildlife", "fish", "marine", "bird",
+                    "deer", "coyote", "boar", "shark", "whale",
+                    "plant", "flora", "vegetation", "tree", "grass",
+                    "popgroup", "popcycle", "pedmodelset", "species"))
+                categories.Add("ModelIdentifier");
+
             if (categories.Count == 0)
                 return;
 
@@ -652,6 +718,15 @@ public sealed class RageCliEcologyCandidateAnalysisService
         }
 
         Visit(root, "$", string.Empty, null, string.Empty);
+        return !nodeLimitReached;
+    }
+
+    private static bool IsModelIdentityField(string? fieldName)
+    {
+        var normalized = (fieldName ?? string.Empty).ToLowerInvariant();
+        return ContainsAny(normalized,
+            "modelname", "model_name", "modelhash", "model_hash",
+            "archetype", "speciesmodel", "joaat", "namehash");
     }
 
     /// <summary>
