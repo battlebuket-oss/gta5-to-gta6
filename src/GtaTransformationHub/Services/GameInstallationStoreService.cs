@@ -40,11 +40,19 @@ public sealed class GameInstallationStoreService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(installation);
+        if (!Version.TryParse(installation.BuildVersion, out _))
+            throw new InvalidDataException("The selected GTA V Legacy build version is not numeric.");
+
+        var executablePath = Path.GetFullPath(installation.ExecutablePath);
+        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installation.RootPath));
+        if (!Path.GetDirectoryName(executablePath)!.Equals(rootPath, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The selected GTA5.exe does not belong to the declared game installation root.");
+
         var fingerprint = await GameExecutableFingerprintService.ComputeSha256Async(
-            installation.ExecutablePath, cancellationToken);
+            executablePath, cancellationToken);
 
         var record = new SavedGameInstallation(
-            Path.GetFullPath(installation.ExecutablePath),
+            executablePath,
             fingerprint,
             installation.BuildVersion,
             DateTimeOffset.UtcNow);
