@@ -136,6 +136,7 @@ public sealed class PackageSignatureServiceTests : IDisposable
         var manifest = CreateManifest() with
         {
             SignatureVersion = 3,
+            SigningKeyId = new string('A', 64),
             ImpactAreas = new[] { "interface" },
             Ui = CreateUiDescriptor() with { VerifiedGta5ExeSha256 = null! }
         };
