@@ -160,6 +160,81 @@
 
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
+            <TextBlock Text="PREBUILT MOD INSTALLER" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Install existing OpenIV .oiv packages using the upstream OpenRAGE installer. The Hub previews package changes first; OpenRAGE writes to the OpenIV mods folder and keeps its own uninstall journal, separate from the Hub's ZIP deployment transactions. No mod files are bundled by this project."
+                       TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <WrapPanel Margin="0,0,0,7">
+              <Button x:Name="DownloadOpenRageButton"
+                      Content="Download and verify OpenRAGE v0.4.0"
+                      Padding="10,7"
+                      Click="DownloadOpenRageButton_Click"/>
+              <Button x:Name="OpenOpenRageSourceButton"
+                      Content="Open OpenRAGE source and licence"
+                      Padding="10,7"
+                      Margin="6,0,0,0"
+                      Click="OpenOpenRageSourceButton_Click"/>
+            </WrapPanel>
+            <TextBlock x:Name="OpenRageToolStatusText"
+                       Text="OpenRAGE has not been installed. Download the official upstream Windows x64 release to enable OIV preview/install."
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,7"/>
+            <WrapPanel Margin="0,0,0,7">
+              <Button x:Name="InstallOivButton"
+                      Content="Select, preview and install OIV"
+                      Padding="10,7"
+                      IsEnabled="False"
+                      Click="InstallOivButton_Click"/>
+              <Button x:Name="ListOpenRagePackagesButton"
+                      Content="List OpenRAGE-installed packages"
+                      Padding="10,7"
+                      Margin="6,0,0,0"
+                      IsEnabled="False"
+                      Click="ListOpenRagePackagesButton_Click"/>
+            </WrapPanel>
+            <TextBlock Text="For uninstall, copy the exact package group name from the OpenRAGE package list:"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,5"/>
+            <TextBox x:Name="OpenRageUninstallGroupText"
+                     AutomationProperties.Name="OpenRAGE OIV package group name"
+                     ToolTip="Exact name and version shown by openrage oiv list"
+                     Padding="7"
+                     Margin="0,0,0,7"/>
+            <WrapPanel Margin="0,0,0,7">
+              <Button x:Name="UninstallOpenRagePackageButton"
+                      Content="Uninstall selected OpenRAGE package"
+                      Padding="9,6"
+                      IsEnabled="False"
+                      Click="UninstallOpenRagePackageButton_Click"/>
+              <Button x:Name="UndoOpenRageLastChangeButton"
+                      Content="Undo latest OpenRAGE change"
+                      Padding="9,6"
+                      Margin="6,0,0,0"
+                      IsEnabled="False"
+                      Click="UndoOpenRageLastChangeButton_Click"/>
+            </WrapPanel>
+            <CheckBox x:Name="OpenRageExecutableConsentCheckBox"
+                      Content="I reviewed the OIV preview and allow any listed loose files to be written directly into the GTA V game folder (including possible ASI/DLL plugins)."
+                      IsThreeState="False"
+                      Margin="0,0,0,7"/>
+            <TextBlock x:Name="OpenRageStatusText"
+                       Text="No OpenRAGE OIV operation has been run."
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="OpenRAGE is GPL-3.0-only and remains an external upstream program. The Hub keeps the original official release archive and licence notices on your PC. OIV installs use OpenRAGE's journal and are not controlled by the Hub's own rollback button."
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
             <TextBlock Text="ECOLOGICAL FIDELITY" FontSize="15" FontWeight="SemiBold"/>
             <TextBlock Text="Preserve every original land and aquatic animal, plant, underwater vegetation species, model identity and population entry. New species may only be added as unique additions. Existing water simulation and interaction behaviour must remain intact. Ecology-sensitive packages stay blocked until a trusted exact-build inventory is available." TextWrapping="Wrap" Margin="0,8,0,8"/>
             <Expander x:Name="AssetToolchainExpander"
