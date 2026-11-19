@@ -81,6 +81,10 @@ public static class UiPackageValidationService
 
         ValidateEvidenceUri(descriptor.CompatibilityEvidenceUri, "compatibility evidence", manifest.Name, errors);
         ValidateEvidenceUri(descriptor.RollbackEvidenceUri, "rollback evidence", manifest.Name, errors);
+        if (!Version.TryParse(descriptor.VerifiedGameBuild, out _))
+            errors.Add(manifest.Name + " must declare the exact numeric GTA V Legacy build used for UI validation.");
+        if (!IsSha256(descriptor.VerifiedGta5ExeSha256))
+            errors.Add(manifest.Name + " must declare the GTA5.exe SHA-256 used for UI validation.");
 
         foreach (var surface in descriptor.Surfaces ?? Array.Empty<string>())
         {
@@ -117,6 +121,9 @@ public static class UiPackageValidationService
 
         return errors;
     }
+
+    private static bool IsSha256(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length == 64 && value.All(Uri.IsHexDigit);
 
     private static bool IsUiImpactArea(string area) =>
         string.Equals(area, "interface", StringComparison.OrdinalIgnoreCase) ||
