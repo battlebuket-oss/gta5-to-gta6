@@ -221,6 +221,19 @@
                           IsEnabled="False"
                           Click="CompareEcologyInventoryButton_Click"/>
                 </WrapPanel>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="CreateEcologyCurationWorkspaceButton"
+                          Content="Create curation workspace"
+                          Padding="9,6"
+                          IsEnabled="False"
+                          Click="CreateEcologyCurationWorkspaceButton_Click"/>
+                  <Button x:Name="OpenEcologyCurationDraftButton"
+                          Content="Open curation draft"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="OpenEcologyCurationDraftButton_Click"/>
+                </WrapPanel>
                 <TextBlock x:Name="RageNamesStatusText"
                            Text="Harvest the current build's JOAAT name list before dumping metadata to resolve hashed archetype and model names."
                            Foreground="{StaticResource SecondaryText}"
@@ -235,6 +248,12 @@
                            Margin="0,0,0,7"/>
                 <TextBlock x:Name="EcologyComparisonStatusText"
                            Text="A semantic comparison can be run only from normalized snapshots. It cannot certify scan completeness or unlock ecology packages."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
+                <TextBlock x:Name="EcologyCurationStatusText"
+                           Text="Create a curation workspace from a candidate analysis report, or reopen an existing exact-build draft."
                            Foreground="{StaticResource SecondaryText}"
                            FontSize="10"
                            TextWrapping="Wrap"
