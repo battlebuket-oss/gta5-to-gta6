@@ -64,6 +64,8 @@
               <Button x:Name="GetOivInstallerButton" Content="GET OIV ENGINE" Padding="10,7" Click="GetOivInstallerButton_Click"/>
             </StackPanel>
             <TextBlock x:Name="OivEngineStatusText" Text="No external installer selected. The Hub does not bundle third-party installers." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+            <Button x:Name="RefreshOivInstallHistoryButton" Content="REFRESH OIV INSTALL RECORDS" Padding="10,7" Margin="0,8,0,0" HorizontalAlignment="Left" IsEnabled="False" Click="RefreshOivInstallHistoryButton_Click"/>
+            <TextBlock x:Name="OivInstallHistoryText" Text="No CodeWalker OIV install records read. This checks installer backup logs only; it does not verify active mod files or gameplay." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
             <TextBlock Text="RTX 4050 / FRAME-TIME BENCHMARK" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,14,0,6"/>
             <TextBlock x:Name="BenchmarkSummaryText" Text="No PresentMon capture analysed yet. Capture baseline and modded runs using identical conditions." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
             <Button x:Name="ImportBenchmarkButton" Content="IMPORT PRESENTMON CSV" Padding="10,7" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ImportBenchmarkButton_Click"/>
