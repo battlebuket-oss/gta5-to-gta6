@@ -45,6 +45,20 @@ public sealed class PackageDeploymentCoordinator
         if (selectedPackages is null || selectedPackages.Count == 0)
             errors.Add("Select at least one imported package.");
 
+        string? actualUiExecutableSha256 = null;
+        if (selectedPackages?.Any(imported => imported?.Manifest?.Ui is not null) == true)
+        {
+            try
+            {
+                actualUiExecutableSha256 = await GameExecutableFingerprintService.ComputeSha256Async(
+                    installation.ExecutablePath, cancellationToken);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                errors.Add("The exact GTA5.exe fingerprint could not be verified for UI package preflight: " + exception.Message);
+            }
+        }
+
         foreach (var imported in selectedPackages ?? Array.Empty<ImportedPackage>())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -72,6 +86,10 @@ public sealed class PackageDeploymentCoordinator
                     errors.Add(manifest.Name + " must use signature version 3 to authenticate its UI replacement contract.");
                 if (signature.Status != PackageSignatureStatus.TrustedPublisher)
                     errors.Add(manifest.Name + " is an in-game UI package and requires a valid signature from a locally trusted publisher.");
+                if (!manifest.Ui.VerifiedGameBuild.Equals(installation.BuildVersion, StringComparison.OrdinalIgnoreCase) ||
+                    actualUiExecutableSha256 is null ||
+                    !manifest.Ui.VerifiedGta5ExeSha256.Equals(actualUiExecutableSha256, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " was validated against a different exact GTA5.exe build or SHA-256 fingerprint.");
             }
             switch (signature.Status)
             {
