@@ -67,6 +67,108 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         Assert.Empty(result.PayloadSourceIssues);
     }
 
+    [Theory]
+    [InlineData("Legacy", "Legacy", true, false, false)]
+    [InlineData("Enhanced", "Enhanced", false, true, false)]
+    [InlineData("Any", "Any", false, false, true)]
+    public void Inspect_ReadsGameVersionMarkerFromMetadata(
+        string markerValue,
+        string expectedRequirement,
+        bool expectedLegacy,
+        bool expectedEnhanced,
+        bool expectedAny)
+    {
+        var archivePath = CreateOiv(
+            "game-version-" + markerValue + ".oiv",
+            Manifest($"""
+                <package version="2.2" id="{{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}}" target="Five">
+                  <metadata>
+                    <name>Edition marker test</name>
+                    <version><major>1</major><minor>0</minor><tag>Not a game edition</tag></version>
+                    <author><displayName>Test Author</displayName></author>
+                    <description><![CDATA[Edition marker test]]></description>
+                    <gameversion>{markerValue}</gameversion>
+                  </metadata>
+                  <colors>
+                    <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
+                    <iconBackground>$FFFFFFFF</iconBackground>
+                  </colors>
+                  <content/>
+                </package>
+                """));
+
+        using var file = File.OpenRead(archivePath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        var result = OivManifestInspectionService.Inspect(archive);
+
+        Assert.Equal(expectedRequirement, result.GameVersionRequirement);
+        Assert.Equal(expectedLegacy, result.IsExplicitlyLegacy);
+        Assert.Equal(expectedEnhanced, result.IsExplicitlyEnhanced);
+        Assert.Equal(expectedAny, result.IsAnyGameVersion);
+        Assert.DoesNotContain(result.UnsupportedCommands,
+            command => command.Contains("gameversion", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Inspect_DoesNotTreatPackageVersionTagAsAGameEditionMarker()
+    {
+        var archivePath = CreateOiv(
+            "version-tag.oiv",
+            Manifest("""
+                <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
+                  <metadata>
+                    <name>Tag is not game version</name>
+                    <version><major>1</major><minor>0</minor><tag>Legacy</tag></version>
+                    <author><displayName>Test Author</displayName></author>
+                    <description><![CDATA[Version tag test]]></description>
+                  </metadata>
+                  <colors>
+                    <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
+                    <iconBackground>$FFFFFFFF</iconBackground>
+                  </colors>
+                  <content/>
+                </package>
+                """));
+
+        using var file = File.OpenRead(archivePath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        var result = OivManifestInspectionService.Inspect(archive);
+
+        Assert.Equal("Unspecified", result.GameVersionRequirement);
+        Assert.False(result.IsExplicitlyLegacy);
+        Assert.False(result.IsExplicitlyEnhanced);
+        Assert.False(result.IsAnyGameVersion);
+        Assert.True(result.RequiresManualReview);
+    }
+
+    [Fact]
+    public void Inspect_RejectsMultipleGameVersionMarkers()
+    {
+        var archivePath = CreateOiv(
+            "duplicate-game-version.oiv",
+            Manifest("""
+                <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
+                  <metadata>
+                    <name>Duplicate markers</name>
+                    <version><major>1</major><minor>0</minor></version>
+                    <author><displayName>Test Author</displayName></author>
+                    <description><![CDATA[Duplicate marker test]]></description>
+                    <gameversion>Legacy</gameversion>
+                    <gameversion>Enhanced</gameversion>
+                  </metadata>
+                  <colors>
+                    <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
+                    <iconBackground>$FFFFFFFF</iconBackground>
+                  </colors>
+                  <content/>
+                </package>
+                """));
+
+        using var file = File.OpenRead(archivePath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        Assert.Throws<InvalidDataException>(() => OivManifestInspectionService.Inspect(archive));
+    }
+
     [Fact]
     public void Inspect_RejectsDocumentTypeDeclarations()
     {
