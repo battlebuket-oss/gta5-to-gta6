@@ -506,7 +506,7 @@ public sealed class RageCliMetadataPayloadService
         string resourcePath,
         string outputDirectory)
     {
-        var normalizedResourcePath = resourcePath.Replace('\\\\', '/');
+        var normalizedResourcePath = resourcePath.Replace('\\', '/');
         if (string.IsNullOrWhiteSpace(normalizedResourcePath) ||
             normalizedResourcePath.StartsWith('/') ||
             normalizedResourcePath.Contains(':') ||
