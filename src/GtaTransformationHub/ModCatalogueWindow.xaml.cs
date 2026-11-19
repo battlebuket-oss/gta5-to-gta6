@@ -19,6 +19,7 @@ public partial class ModCatalogueWindow : Window
     private CatalogueDocument? _catalogue;
     private HashSet<string> _selectedPackageIds = new(StringComparer.OrdinalIgnoreCase);
     private bool _profileStorageAvailable = true;
+    private bool _savingProfile;
     private bool _loaded;
 
     public ModCatalogueWindow(string? installedGameBuild)
@@ -221,8 +222,8 @@ public partial class ModCatalogueWindow : Window
 
     private async void PackageToggle_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_loaded || _catalogue is null || sender is not CheckBox toggle ||
-            toggle.Tag is not string packageId)
+        if (!_loaded || _savingProfile || _catalogue is null ||
+            sender is not CheckBox toggle || toggle.Tag is not string packageId)
             return;
 
         var wasEnabled = _selectedPackageIds.Contains(packageId);
@@ -242,6 +243,9 @@ public partial class ModCatalogueWindow : Window
 
         var previous = _selectedPackageIds;
         _selectedPackageIds = result.SelectedPackageIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _savingProfile = true;
+        CatalogueList.IsEnabled = false;
+        ProfileStorageText.Text = "SAVING PROFILE…";
         try
         {
             await _profileStore.SaveEnabledPackageIdsAsync(_selectedPackageIds);
@@ -257,16 +261,21 @@ public partial class ModCatalogueWindow : Window
                               packageId + " in the saved profile." + changes +
                               " Nothing has been installed.";
             ProfileStorageText.Text = "PROFILE SAVED";
-            RenderCatalogue();
         }
         catch (Exception exception)
         {
             _selectedPackageIds = previous;
-            RenderCatalogue();
             StatusText.Text = "Profile could not be saved. Previous selection was restored: " +
                               exception.Message;
+            ProfileStorageText.Text = "SAVE FAILED";
             MessageBox.Show(StatusText.Text, "Profile save failed",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _savingProfile = false;
+            CatalogueList.IsEnabled = true;
+            RenderCatalogue();
         }
     }
 
