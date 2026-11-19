@@ -103,6 +103,18 @@ public sealed class OpenRageToolchainServiceTests : IDisposable
     }
 
     [Fact]
+    public void BuildOivGroupName_MatchesOpenRageNamePlusVersionJournalConvention()
+    {
+        Assert.Equal(
+            "GTA VI-Inspired HUD 2.8.2 (GTA V Legacy) 2.8 LEGACY 2.8.2",
+            OpenRageToolchainService.BuildOivGroupName(
+                "GTA VI-Inspired HUD 2.8.2 (GTA V Legacy)",
+                "2.8 LEGACY 2.8.2"));
+        Assert.Throws<ArgumentException>(() =>
+            OpenRageToolchainService.BuildOivGroupName("", "2.8"));
+    }
+
+    [Fact]
     public void ValidateOpenIvModsFolder_RequiresModsDirectoryAndOpenIvAsi()
     {
         var root = Path.Combine(_root, "game");
