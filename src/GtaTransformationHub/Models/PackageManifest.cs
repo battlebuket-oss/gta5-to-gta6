@@ -26,7 +26,8 @@ public sealed record PackageManifest(
     string? PackageFormat = "HubZip",
     EcologyPreservationContract? Ecology = null,
     StoryContentDescriptor? StoryContent = null,
-    int SignatureVersion = 1);
+    int SignatureVersion = 1,
+    UiPackageDescriptor? Ui = null);
 
 public sealed record EcologyPreservationContract(
     string ReviewStatus,
@@ -58,6 +59,25 @@ public sealed record StoryContentDescriptor(
     IReadOnlyList<string> VoiceLanguages,
     IReadOnlyList<string> SubtitleLanguages,
     string? TestEvidenceUri = null);
+
+/// <summary>
+/// Explicit contract for an in-game UI replacement. This describes a real game-side
+/// implementation; it is not satisfied by a desktop companion window or mock-up.
+/// Signature version 3 authenticates this metadata.
+/// </summary>
+public sealed record UiPackageDescriptor(
+    IReadOnlyList<string> Surfaces,
+    string ImplementationType,
+    IReadOnlyList<string> InputMethods,
+    IReadOnlyList<string> ResolutionTargets,
+    IReadOnlyList<string> AccessibilityFeatures,
+    bool NativeActionsPreserved,
+    bool MissionTransitionsPreserved,
+    bool CutscenesPreserved,
+    bool SubtitlesPreserved,
+    bool OriginalCampaignPreserved,
+    string CompatibilityEvidenceUri,
+    string RollbackEvidenceUri);
 
 public sealed record PackageManifestFile(
     string SourcePath,
