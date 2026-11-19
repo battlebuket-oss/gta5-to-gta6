@@ -247,6 +247,8 @@ public sealed class OivInstallerLauncherService
             throw new InvalidDataException("The selected executable is not CodeWalker.OIVInstaller.exe.");
         if (!string.Equals(Path.GetExtension(package), ".oiv", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The external installer launcher accepts only .oiv files.");
+        if (!File.Exists(package) || (File.GetAttributes(package) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("Select an existing OIV file that is not a symbolic link or reparse point.");
 
         var startInfo = new ProcessStartInfo
         {
@@ -256,9 +258,8 @@ public sealed class OivInstallerLauncherService
             CreateNoWindow = false
         };
 
-        // CodeWalker's GUI reads an OIV file path from its command-line arguments.
-        // ArgumentList handles spaces safely and avoids shell-string concatenation.
-        startInfo.ArgumentList.Add(package);
+        // The documented GUI workflow is to open the installer, then use Browse
+        // or drag-and-drop the retained OIV package. Do not assume a CLI file argument.
         return startInfo;
     }
 
