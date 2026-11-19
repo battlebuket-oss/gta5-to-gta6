@@ -71,7 +71,7 @@ public sealed class StoryTestEvidenceServiceTests : IDisposable
         Assert.Equal(record.RecordId, matching[0].RecordId);
 
         var otherExecutable = await service.ListAsync(
-            record.PackageId, record.PackageVersion, new string('B', 64));
+            record.PackageId, record.PackageVersion, new string('C', 64));
         Assert.Empty(otherExecutable);
 
         var otherPackage = await service.ListAsync("other-story-pack", record.PackageVersion);
