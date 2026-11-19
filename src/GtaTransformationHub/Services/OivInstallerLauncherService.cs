@@ -148,6 +148,183 @@ public sealed class OivInstallerLauncherService
         (expected.ManifestWarnings ?? Array.Empty<string>())
             .SequenceEqual(actual.ManifestWarnings ?? Array.Empty<string>(), StringComparer.Ordinal);
 
+    public async Task<Process> OpenPackageInInstallerAsync(
+        string installerExecutablePath,
+        string expectedInstallerSha256,
+        string packagePath,
+        string expectedArchiveSha256,
+        string gameExecutablePath,
+        OivManifestInspectionResult expectedInspection,
+        bool allowUnspecifiedLegacyTarget = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(expectedInspection);
+        _processMonitor.EnsureConfigurationUnlocked();
+
+        var installer = InspectInstallerExecutable(installerExecutablePath);
+        if (!IsSha256(expectedInstallerSha256) ||
+            !installer.Sha256.Equals(expectedInstallerSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException(
+                "The selected OIV installer changed after it was approved. Re-select the external installer.");
+
+        var game = new GameInstallationDetector().Inspect(gameExecutablePath);
+
+        // Re-hash and re-parse the retained source package at handoff time. Never trust
+        // an in-memory manifest alone after the user has left the import screen.
+        var currentInspection = InspectRetainedPackage(packagePath, expectedArchiveSha256);
+        if (!InspectionsMatch(expectedInspection, currentInspection))
+            throw new InvalidDataException(
+                "The OIV manifest differs from the inspection displayed to the user. Re-import the package.");
+
+        ValidatePackageForLegacyTarget(packagePath, currentInspection, allowUnspecifiedLegacyTarget);
+
+        // CodeWalker's GUI loads its saved game directory when it starts. Set the
+        // default to the Legacy root selected in this Hub and read it back through
+        // CodeWalker's own CLI before opening its GUI. A stale Enhanced or other
+        // install path must not silently become the OIV target.
+        await ConfigureDefaultGameFolderAsync(
+            installer.ExecutablePath, game.GameDirectory, cancellationToken);
+
+        _processMonitor.EnsureConfigurationUnlocked();
+
+        // Re-check both external binaries after the awaited configuration step.
+        var finalInstaller = InspectInstallerExecutable(installer.ExecutablePath);
+        if (!finalInstaller.Sha256.Equals(expectedInstallerSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The external OIV installer changed during target configuration.");
+
+        var finalInspection = InspectRetainedPackage(packagePath, expectedArchiveSha256);
+        if (!InspectionsMatch(currentInspection, finalInspection))
+            throw new InvalidDataException("The OIV package changed during target configuration. Re-import it.");
+
+        ValidatePackageForLegacyTarget(packagePath, finalInspection, allowUnspecifiedLegacyTarget);
+
+        var process = Process.Start(CreateStartInfo(finalInstaller.ExecutablePath, packagePath));
+        return process ?? throw new InvalidOperationException("Windows did not start the external OIV installer.");
+    }
+
+    public static ProcessStartInfo CreateSetGameStartInfo(string installerExecutablePath, string gameFolder)
+    {
+        var startInfo = CreateCliStartInfo(installerExecutablePath);
+        startInfo.ArgumentList.Add("--set-game");
+        startInfo.ArgumentList.Add(Path.GetFullPath(gameFolder));
+        return startInfo;
+    }
+
+    public static ProcessStartInfo CreateGetGameStartInfo(string installerExecutablePath)
+    {
+        var startInfo = CreateCliStartInfo(installerExecutablePath);
+        startInfo.ArgumentList.Add("--get-game");
+        return startInfo;
+    }
+
+    public static bool OutputConfirmsDefaultGameFolder(string output, string expectedGameFolder)
+    {
+        if (string.IsNullOrWhiteSpace(output) || string.IsNullOrWhiteSpace(expectedGameFolder))
+            return false;
+
+        const string prefix = "Default game folder:";
+        foreach (var line in output.Split(new[] { "\\r\\n", "\\n" }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var actualPath = trimmed[prefix.Length..].Trim();
+            try
+            {
+                return string.Equals(
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(actualPath)),
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(expectedGameFolder)),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or IOException or NotSupportedException)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static ProcessStartInfo CreateCliStartInfo(string installerExecutablePath)
+    {
+        var installer = Path.GetFullPath(installerExecutablePath);
+        if (!string.Equals(
+                Path.GetFileName(installer),
+                "CodeWalker.OIVInstaller.exe",
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The selected executable is not CodeWalker.OIVInstaller.exe.");
+
+        return new ProcessStartInfo
+        {
+            FileName = installer,
+            WorkingDirectory = Path.GetDirectoryName(installer)!,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+    }
+
+    private static async Task ConfigureDefaultGameFolderAsync(
+        string installerExecutablePath,
+        string gameFolder,
+        CancellationToken cancellationToken)
+    {
+        var setResult = await RunCliCommandAsync(
+            CreateSetGameStartInfo(installerExecutablePath, gameFolder), cancellationToken);
+        if (setResult.ExitCode != 0)
+            throw new InvalidOperationException(
+                "CodeWalker rejected the selected GTA V Legacy folder. " +
+                setResult.StandardError + Environment.NewLine + setResult.StandardOutput);
+
+        var getResult = await RunCliCommandAsync(
+            CreateGetGameStartInfo(installerExecutablePath), cancellationToken);
+        if (getResult.ExitCode != 0 ||
+            !OutputConfirmsDefaultGameFolder(getResult.StandardOutput, gameFolder))
+            throw new InvalidOperationException(
+                "CodeWalker did not confirm the selected GTA V Legacy folder as its active OIV target. " +
+                "The package was not opened. " +
+                getResult.StandardError + Environment.NewLine + getResult.StandardOutput);
+    }
+
+    private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunCliCommandAsync(
+        ProcessStartInfo startInfo,
+        CancellationToken cancellationToken)
+    {
+        using var process = new Process { StartInfo = startInfo };
+        if (!process.Start())
+            throw new InvalidOperationException("Windows did not start the CodeWalker OIV installer CLI.");
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(15));
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+                // Preserve the timeout/cancellation exception.
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException("CodeWalker did not complete the game-folder command within 15 seconds.");
+        }
+
+        return (process.ExitCode, await stdoutTask, await stderrTask);
+    }
+
     public static OivManifestInspectionResult InspectRetainedPackage(
         string packagePath,
         string expectedArchiveSha256)
