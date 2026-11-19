@@ -20,8 +20,8 @@ public sealed record PackageSignatureVerification(
 
 /// <summary>
 /// Verifies RSA-SHA256 signatures over deterministic package-manifest payloads.
-/// Signature version 1 preserves the original canonical format for legacy manifests.
-/// Signature version 2 authenticates all deployment and Story Mode metadata.
+/// Signature v1 preserves the original format; v2 authenticates compatibility,
+/// ecology and Story Mode metadata; v3 also authenticates in-game UI metadata.
 /// </summary>
 public sealed class PackageSignatureService
 {
@@ -65,6 +65,30 @@ public sealed class PackageSignatureService
         CanonicalStoryContent? StoryContent,
         IReadOnlyList<CanonicalFile> Files);
 
+    private sealed record CanonicalManifestV3(
+        int SignatureVersion,
+        int SchemaVersion,
+        string Id,
+        string Name,
+        string Author,
+        string SourceUri,
+        string Licence,
+        string Version,
+        string GameTarget,
+        string MinimumGameBuild,
+        string MaximumGameBuild,
+        IReadOnlyList<string> Dependencies,
+        IReadOnlyList<string> Conflicts,
+        string? ExclusiveGroup,
+        string SigningKeyId,
+        IReadOnlyList<string> ImpactAreas,
+        bool CompatibilityVerified,
+        string? PackageFormat,
+        CanonicalEcology? Ecology,
+        CanonicalStoryContent? StoryContent,
+        CanonicalUi? Ui,
+        IReadOnlyList<CanonicalFile> Files);
+
     private sealed record CanonicalEcology(
         string ReviewStatus,
         string ImpactType,
@@ -92,6 +116,20 @@ public sealed class PackageSignatureService
         IReadOnlyList<string> SubtitleLanguages,
         string? TestEvidenceUri);
 
+    private sealed record CanonicalUi(
+        IReadOnlyList<string> Surfaces,
+        string ImplementationType,
+        IReadOnlyList<string> InputMethods,
+        IReadOnlyList<string> ResolutionTargets,
+        IReadOnlyList<string> AccessibilityFeatures,
+        bool NativeActionsPreserved,
+        bool MissionTransitionsPreserved,
+        bool CutscenesPreserved,
+        bool SubtitlesPreserved,
+        bool OriginalCampaignPreserved,
+        string CompatibilityEvidenceUri,
+        string RollbackEvidenceUri);
+
     private sealed record CanonicalFile(
         string SourcePath,
         string DestinationPath,
@@ -111,7 +149,7 @@ public sealed class PackageSignatureService
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
-        if (manifest.SignatureVersion is not (1 or 2))
+        if (manifest.SignatureVersion is not (1 or 2 or 3))
             return Invalid(manifest.SigningKeyId, "The package uses an unsupported signature version.");
 
         if (manifest.Files is null || manifest.Dependencies is null || manifest.Conflicts is null ||
@@ -187,17 +225,17 @@ public sealed class PackageSignatureService
     }
 
     /// <summary>
-    /// Returns the exact canonical bytes publishers must sign with RSA-SHA256/PKCS#1 v1.5.
-    /// Version 1 remains byte-compatible with existing simple manifests. Version 2 signs
-    /// optional compatibility, ecology, and Story Mode metadata so it cannot be changed
-    /// after signing without invalidating the publisher signature.
+    /// Returns canonical bytes publishers must sign with RSA-SHA256/PKCS#1 v1.5.
+    /// Version 1 is byte-compatible with the original format. Version 2 authenticates
+    /// compatibility, ecology and Story Mode metadata. Version 3 adds in-game UI
+    /// replacement metadata without changing the canonical payload of existing v1/v2 packages.
     /// </summary>
     public static byte[] CreateSigningPayload(PackageManifest manifest)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         if (string.IsNullOrWhiteSpace(manifest.SigningKeyId))
             throw new InvalidDataException("A signing key fingerprint is required.");
-        if (manifest.SignatureVersion is not (1 or 2))
+        if (manifest.SignatureVersion is not (1 or 2 or 3))
             throw new InvalidDataException("Unsupported package signature version.");
         if (manifest.Files is null || manifest.Dependencies is null || manifest.Conflicts is null ||
             manifest.Files.Any(file => file is null ||
@@ -218,9 +256,9 @@ public sealed class PackageSignatureService
 
         if (manifest.SignatureVersion == 1)
         {
-            if (HasVersion2Metadata(manifest))
+            if (HasVersion2Metadata(manifest) || HasVersion3Metadata(manifest))
                 throw new InvalidDataException(
-                    "Signature version 1 cannot authenticate compatibility, ecology, or Story Mode metadata. Re-sign this manifest with signatureVersion 2.");
+                    "Signature version 1 cannot authenticate compatibility, ecology, Story Mode or UI metadata. Re-sign this manifest with signatureVersion 3.");
 
             var legacy = new CanonicalManifestV1(
                 manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Author, manifest.SourceUri,
@@ -248,14 +286,45 @@ public sealed class PackageSignatureService
             manifest.StoryContent.SubtitleLanguages?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
             manifest.StoryContent.TestEvidenceUri);
 
-        var canonical = new CanonicalManifestV2(
-            2, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Author, manifest.SourceUri,
+        var impactAreas = manifest.ImpactAreas?
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>();
+
+        if (manifest.SignatureVersion == 2)
+        {
+            if (HasVersion3Metadata(manifest))
+                throw new InvalidDataException(
+                    "Signature version 2 cannot authenticate in-game UI metadata. Re-sign this manifest with signatureVersion 3.");
+
+            var canonicalV2 = new CanonicalManifestV2(
+                2, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Author, manifest.SourceUri,
+                manifest.Licence, manifest.Version, manifest.GameTarget, manifest.MinimumGameBuild,
+                manifest.MaximumGameBuild, dependencies, conflicts, manifest.ExclusiveGroup, fingerprint,
+                impactAreas, manifest.CompatibilityVerified, manifest.PackageFormat, ecology, story, files);
+
+            return JsonSerializer.SerializeToUtf8Bytes(canonicalV2);
+        }
+
+        var ui = manifest.Ui is null ? null : new CanonicalUi(
+            manifest.Ui.Surfaces?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
+            manifest.Ui.ImplementationType,
+            manifest.Ui.InputMethods?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
+            manifest.Ui.ResolutionTargets?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
+            manifest.Ui.AccessibilityFeatures?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
+            manifest.Ui.NativeActionsPreserved,
+            manifest.Ui.MissionTransitionsPreserved,
+            manifest.Ui.CutscenesPreserved,
+            manifest.Ui.SubtitlesPreserved,
+            manifest.Ui.OriginalCampaignPreserved,
+            manifest.Ui.CompatibilityEvidenceUri,
+            manifest.Ui.RollbackEvidenceUri);
+
+        var canonicalV3 = new CanonicalManifestV3(
+            3, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Author, manifest.SourceUri,
             manifest.Licence, manifest.Version, manifest.GameTarget, manifest.MinimumGameBuild,
             manifest.MaximumGameBuild, dependencies, conflicts, manifest.ExclusiveGroup, fingerprint,
-            manifest.ImpactAreas?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
-            manifest.CompatibilityVerified, manifest.PackageFormat, ecology, story, files);
+            impactAreas, manifest.CompatibilityVerified, manifest.PackageFormat, ecology, story, ui, files);
 
-        return JsonSerializer.SerializeToUtf8Bytes(canonical);
+        return JsonSerializer.SerializeToUtf8Bytes(canonicalV3);
     }
 
     public static string ComputePublisherFingerprint(string publicKeyPem)
@@ -270,6 +339,9 @@ public sealed class PackageSignatureService
         manifest.Ecology is not null ||
         manifest.StoryContent is not null ||
         !string.Equals(manifest.PackageFormat, "HubZip", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasVersion3Metadata(PackageManifest manifest) =>
+        manifest.Ui is not null;
 
     private static PackageSignatureVerification Invalid(string? fingerprint, string message) =>
         new(PackageSignatureStatus.Invalid, null, fingerprint, message);
