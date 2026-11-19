@@ -167,7 +167,7 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
         Assert.Contains(candidates, item =>
             item.Category == "Population" && item.CandidateValue == "a_c_deer");
         Assert.Contains(candidates, item =>
-            item.Category == "Animal" && item.CandidateValue == "deer");
+            item.Category == "TerrestrialAnimal" && item.CandidateValue == "deer");
         Assert.Contains(candidates, item =>
             item.Category == "Water" && item.CandidateValue == "1.25");
         Assert.All(candidates, item =>
