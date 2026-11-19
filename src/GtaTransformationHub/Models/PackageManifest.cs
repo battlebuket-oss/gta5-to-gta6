@@ -24,7 +24,9 @@ public sealed record PackageManifest(
     IReadOnlyList<string>? ImpactAreas = null,
     bool CompatibilityVerified = false,
     string? PackageFormat = "HubZip",
-    EcologyPreservationContract? Ecology = null);
+    EcologyPreservationContract? Ecology = null,
+    StoryContentDescriptor? StoryContent = null,
+    int SignatureVersion = 1);
 
 public sealed record EcologyPreservationContract(
     string ReviewStatus,
@@ -39,6 +41,23 @@ public sealed record EcologyPreservationContract(
     bool ChangesSpeciesSpawnTables,
     string VanillaIdentityInventorySha256,
     string EvidenceUri);
+
+/// <summary>
+/// Story Mode content metadata. SaveCompatibility is one of:
+/// SeparateNamespace, NoPersistentData, or UsesVanillaSave.
+/// </summary>
+public sealed record StoryContentDescriptor(
+    string ContentType,
+    IReadOnlyList<string> MissionIds,
+    IReadOnlyList<string> ProtagonistRequirements,
+    IReadOnlyList<string> StartLocations,
+    string ProgressionNamespace,
+    string SaveCompatibility,
+    bool RequiresSaveBackup,
+    bool PreservesOriginalCampaign,
+    IReadOnlyList<string> VoiceLanguages,
+    IReadOnlyList<string> SubtitleLanguages,
+    string? TestEvidenceUri = null);
 
 public sealed record PackageManifestFile(
     string SourcePath,
