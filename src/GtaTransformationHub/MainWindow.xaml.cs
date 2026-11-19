@@ -121,6 +121,23 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void RefreshLibraryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted)
+            return;
+
+        RefreshLibraryButton.IsEnabled = false;
+        try
+        {
+            await RefreshImportedPackageLibraryAsync();
+            StatusText.Text = "Local package library refreshed. Imported packages remain research-only.";
+        }
+        finally
+        {
+            RefreshSessionState();
+        }
+    }
+
     private async void ImportArchiveButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning() || !_recoveryCompleted)
@@ -186,6 +203,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            await RefreshImportedPackageLibraryAsync();
             RefreshSessionState();
         }
     }
@@ -282,6 +300,7 @@ public partial class MainWindow : Window
         LocateButton.IsEnabled = !running && _recoveryCompleted;
         ImportArchiveButton.IsEnabled = !running && _recoveryCompleted;
         RefreshButton.IsEnabled = !running && _recoveryCompleted;
+        RefreshLibraryButton.IsEnabled = !running && _recoveryCompleted;
         // Never launch from the dashboard until profile validation and transactional
         // deployment are wired into this exact path.
         LaunchButton.IsEnabled = false;
