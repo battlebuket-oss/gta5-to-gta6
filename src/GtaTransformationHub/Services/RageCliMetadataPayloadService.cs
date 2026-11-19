@@ -304,6 +304,9 @@ public sealed class RageCliMetadataPayloadService
             {
                 errors.Add("Metadata dump failed for candidate " + (startingCandidateIndex + index) + " ('" + candidate.InternalPath + "'): " +
                            LimitForMessage(exception.Message));
+                // Preserve a contiguous prefix. The next batch resumes at this exact
+                // candidate and will not overlap later successful payloads.
+                break;
             }
             finally
             {
