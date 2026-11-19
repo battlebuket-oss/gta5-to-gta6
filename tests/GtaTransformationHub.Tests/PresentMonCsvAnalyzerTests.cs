@@ -40,8 +40,8 @@ public sealed class PresentMonCsvAnalyzerTests : IDisposable
         Assert.Equal(8, report.P95FrameTimeMs, 6);
         Assert.Equal(1000.0 / 8.26, report.AverageFps, 6);
         Assert.Equal(1000.0 / 12.0, report.EstimatedOnePercentLowFps, 6);
-        Assert.Equal(2.03, report.AverageCpuBusyMs, 6);
-        Assert.Equal(4.03, report.AverageGpuBusyMs, 6);
+        Assert.Equal(2.03, report.AverageCpuBusyMs!.Value, 6);
+        Assert.Equal(4.03, report.AverageGpuBusyMs!.Value, 6);
         Assert.Equal("1920x1080", report.Metadata.Resolution);
         Assert.Equal(64, report.SourceCsvSha256.Length);
     }
