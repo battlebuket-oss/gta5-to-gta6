@@ -2193,7 +2193,7 @@ public partial class MainWindow : Window
 
             var installed = await _openRageToolchainService.InstallOivAsync(
                 _installation,
-                inspection.PackagePath,
+                inspection,
                 userConfirmed: true,
                 allowGameFolderFiles: OpenRageExecutableConsentCheckBox.IsChecked == true);
 
