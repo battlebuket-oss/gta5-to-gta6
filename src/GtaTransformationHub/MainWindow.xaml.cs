@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private readonly ProfileStoreService _profileStore = new();
     private readonly TrustedPublisherStore _trustedPublisherStore = new();
     private readonly StoryTestEvidenceService _storyTestEvidenceService = new();
+    private readonly CompatibilityTestEvidenceService _compatibilityTestEvidenceService = new();
     private readonly AccessibilityPreferencesService _accessibilityPreferencesService = new();
     private readonly ObservableCollection<ImportedPackage> _packages = new();
     private readonly ObservableCollection<ModPackage> _cataloguePackages = new();
@@ -745,6 +746,92 @@ public partial class MainWindow : Window
             StoryTestEvidenceStatusText.Text = exception.Message;
             MessageBox.Show(exception.Message, "Story Mode test evidence",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+
+    private async void RecordCompatibilityTestEvidenceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null)
+            return;
+
+        var packages = PackageList.SelectedItems
+            .OfType<ImportedPackage>()
+            .OrderBy(item => item.Manifest.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new CompatibilityTestPackage
+            {
+                PackageId = item.Manifest.Id,
+                PackageName = item.Manifest.Name,
+                PackageVersion = item.Manifest.Version,
+                ArchiveSha256 = item.ArchiveSha256,
+                SignatureStatus = item.SignatureStatus
+            })
+            .ToArray();
+
+        var profileName = packages.Length == 0
+            ? "Vanilla baseline"
+            : ProfileSelector.SelectedItem is ModProfile profile
+                ? profile.Name
+                : "Current selection";
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            StatusText.Text = "Computing exact GTA5.exe fingerprint for compatibility evidence...";
+            var fingerprint = await GameExecutableFingerprintService.ComputeSha256Async(
+                _installation.ExecutablePath);
+            var dialog = new CompatibilityTestEvidenceWindow(
+                _installation.BuildVersion,
+                fingerprint,
+                profileName,
+                packages,
+                _compatibilityTestEvidenceService)
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true && dialog.SavedRecord is not null)
+            {
+                var summary = CompatibilityTestEvidenceService.Summarize(dialog.SavedRecord);
+                CompatibilityTestEvidenceStatusText.Text =
+                    summary.IsCompletePass
+                        ? "Complete evidence record: all " + summary.Total +
+                          " scenarios passed, with the required benchmark and 60-minute soak. This is tester evidence only; it does not auto-approve packages."
+                        : "Evidence saved: " + summary.Passed + "/" + summary.Total + " passed; " +
+                          summary.Failed + " failed; " + summary.Blocked + " blocked; " +
+                          summary.NotRun + " not run. The stack remains unverified.";
+                StatusText.Text = "Compatibility/performance evidence saved for " + profileName + ".";
+                App.Diagnostics.Write(
+                    summary.IsCompletePass ? AuditLogLevel.Information : AuditLogLevel.Warning,
+                    "CompatibilityTestEvidenceSaved",
+                    "Saved exact-build compatibility evidence. Profile=" + profileName +
+                    "; packageCount=" + packages.Length +
+                    "; passed=" + summary.Passed +
+                    "; total=" + summary.Total +
+                    "; completePass=" + summary.IsCompletePass +
+                    ". Evidence is not an automatic compatibility approval.");
+            }
+            else
+            {
+                StatusText.Text = "Compatibility/performance evidence recording was cancelled.";
+            }
+        }
+        catch (Exception exception)
+        {
+            CompatibilityTestEvidenceStatusText.Text =
+                "Compatibility/performance evidence could not be recorded: " + exception.Message;
+            StatusText.Text = "No compatibility evidence was accepted.";
+            MessageBox.Show(
+                exception.Message,
+                "Compatibility / performance evidence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {
@@ -1705,6 +1792,7 @@ public partial class MainWindow : Window
             PackageList.SelectedItems.Count == 1 &&
             PackageList.SelectedItem is ImportedPackage storyPackage &&
             storyPackage.Manifest.StoryContent is not null;
+        RecordCompatibilityTestEvidenceButton.IsEnabled = canConfigure && _installation is not null;
         LaunchButton.IsEnabled = canConfigure && _installation is not null;
         OpenRageCliReleaseButton.IsEnabled = canConfigure;
         SelectRageCliButton.IsEnabled = canConfigure;
