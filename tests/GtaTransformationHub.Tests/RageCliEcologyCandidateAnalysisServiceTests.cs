@@ -43,7 +43,7 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
     [InlineData(1, 135, 0, 50, 50, true, true)]
     [InlineData(3, 135, 0, 50, 50, false, true)]
     [InlineData(3, 135, 0, 40, 50, true, true)]
-    [InlineData(3, 135, 0, 50, 50, true, true)]
+    [InlineData(3, 135, 0, 50, 49, true, true)]
     [InlineData(3, 135, 50, 100, 50, true, false)]
     public void ValidateDumpBatchContract_RejectsInconsistentBatchMetadata(
         int schemaVersion,
