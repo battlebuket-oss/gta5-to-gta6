@@ -198,6 +198,52 @@ public partial class MainWindow : Window
                     }
                 };
                 details.Children.Add(verifyButton);
+
+                if (entry.OivInspection is not null &&
+                    entry.OriginalArchivePath is not null &&
+                    string.Equals(Path.GetExtension(entry.OriginalArchivePath), ".oiv", StringComparison.OrdinalIgnoreCase))
+                {
+                    var openOivButton = new Button
+                    {
+                        Content = "OPEN RETAINED OIV FOR REVIEW",
+                        Padding = new Thickness(8, 4, 8, 4),
+                        Margin = new Thickness(0, 6, 0, 0),
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        IsEnabled = entry.ManifestValid &&
+                                    entry.OriginalArchiveSha256 is { Length: 64 } &&
+                                    !IsGameRunning() &&
+                                    _recoveryCompleted &&
+                                    _gameExecutable is not null &&
+                                    _oivInstallerExecutable is not null &&
+                                    _oivInstallerSha256 is not null
+                    };
+                    openOivButton.ToolTip =
+                        "Reopen this previously imported OIV. The Hub will re-verify all local file hashes and the original archive digest before opening the external installer.";
+                    openOivButton.Click += (_, _) =>
+                    {
+                        if (!entry.ManifestValid ||
+                            entry.OriginalArchivePath is null ||
+                            entry.OriginalArchiveSha256 is not { Length: 64 } ||
+                            entry.OivInspection is null)
+                        {
+                            MessageBox.Show(
+                                "This package's retained OIV or integrity metadata is unavailable. Re-import the original package before opening it.",
+                                "OIV package unavailable",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        _lastImportedOivPath = entry.OriginalArchivePath;
+                        _lastOivArchiveSha256 = entry.OriginalArchiveSha256;
+                        _lastImportedOivPackageDirectory = entry.PackageDirectory;
+                        _lastOivInspection = entry.OivInspection;
+                        RefreshSessionState();
+                        OpenImportedOivButton_Click(this, new RoutedEventArgs());
+                    };
+                    details.Children.Add(openOivButton);
+                }
+
                 card.Child = details;
                 ModList.Children.Add(card);
             }
