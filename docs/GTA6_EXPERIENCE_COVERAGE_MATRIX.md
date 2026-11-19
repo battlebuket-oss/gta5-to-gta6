@@ -36,6 +36,42 @@
 | Performance | Stable frame pacing and predictable memory use | Hardware detection, mutually exclusive profiles and benchmark metadata | Record actual test hardware and settings; no invented FPS guarantee |
 | Privacy and security | Local-first configuration, trustworthy packages and transparent updates | Signed catalogue metadata, HTTPS sources, SHA-256, safe archive extraction, least privilege | Never execute arbitrary package installers by default; never silently elevate |
 
+## Priority map conversion track — Leonida / Vice City
+
+**Priority: P0 research and integration blocker. Status: not implemented.**
+
+The target is the closest playable GTA V Legacy world replacement that can be sourced and lawfully used. The desired geography is the complete Leonida concept, not merely a Vice City-themed HUD or a small Miami-style map add-on.
+
+Target regions to track independently:
+- Vice City urban core and surrounding beaches/districts.
+- Leonida Keys and the island/causeway chain.
+- Grassrivers wetlands and waterways.
+- Port Gellhorn and its surrounding rural/coastal area.
+- Ambrosia industrial/central region.
+- Mount Kalaga National Park and northern terrain.
+- The road, bridge, rail, airport, port and water connections between these regions.
+
+### Evidence and candidate status (checked 19 November 2026)
+
+- **Sunshine Dream / Leonida Keys-to-Vice City map work:** a creator video and Nexus article show a GTA VI-inspired map expansion for GTA V Enhanced Story Mode, with a Leonida Keys connection to a Vice City map and later 3D-model/texture improvements. This is a lead, not a verified GTA V Legacy package. Do not enable on Legacy until the author publishes explicit Legacy support and the exact archive, dependencies, licence, map boundaries, collisions, navmesh, traffic paths and rollback have been tested. [Nexus author article](https://www.nexusmods.com/gta5enhanced/articles/74) · [creator demonstration](https://www.youtube.com/watch?v=4IJHA4lEIM4)
+- **Project Vice (Dark Space / The Ambitioneers):** previously demonstrated a playable fan-made Leonida map in GTA V, but its distribution was withdrawn following a copyright claim. Do not fetch unofficial mirrors, re-uploads or leaked Rockstar assets. It is not an installable package. [Project showcase](https://www.youtube.com/watch?v=FulpnBLnivc) · [reported takedown](https://gtahouse.net/en/games/gta-6/news/gta-6-map-mod-gta-5-taken-down-take-two/)
+- **Vice Cry / Vice City Overhaul:** historical Vice City map conversions, not the GTA VI Leonida map. Current availability is reported as withdrawn/no download on the original listings. They must not be represented as a Leonida replacement or sourced from untrusted mirrors.
+- **Leonida Atlas / community mapping datasets:** useful as an external research reference for region names and approximate landmark geography, not a GTA V world asset or a plug-in map conversion. Its own project labels the map positions as community approximations. [Open-source atlas](https://github.com/navanem/gta6-leonida-atlas)
+
+### Integration rules
+
+1. Do not install an Enhanced-only map package into the current Legacy target. Maintain separate edition compatibility declarations.
+2. Do not treat a 2D map image, browser atlas, radar texture, minimap, or menu-map replacement as a playable 3D world conversion.
+3. A playable map package must declare every archive/RPF operation, world-space bounds, IPL/YMAP/YTYP/YDR/YBN/YND and related dependencies where applicable, LODs, collision, navmesh/path nodes, water, vegetation, traffic paths, portals/interior links, streaming budgets, and uninstall/restore operations.
+4. Detect and report overlaps with the base Los Santos world, map DLC, existing map mods, interiors, roads, bridges, traffic nodes and mission locations before activation.
+5. Provide independent toggles for map package components only where they can be safely separated. Components with shared dependencies must be grouped into one atomic profile and switched together.
+6. Require a clean disposable GTA V Legacy installation for tests: boot, map boundaries, road traversal, vehicle and pedestrian navigation, water/boats, aircraft, interiors, mission starts, cutscenes, save/reload, repeated apply/rollback and performance.
+7. If a complete compatible Leonida map cannot be sourced, keep the native GTA V world and offer only clearly labelled, independently installable regional/visual enhancements. Never imply that this equals the GTA VI map.
+
+### Acceptance gate
+
+The map track is not complete until the user can enter the replacement world in Story Mode, traverse its connected regions without falling through geometry or hitting invisible boundaries, see working traffic and pedestrian navigation, use its interiors and water systems, complete representative GTA V missions, save/reload, and restore the original world. No such end-to-end Legacy acceptance test has been run.
+
 ## Story Mode product requirements
 
 Story Mode must be treated as the primary use case:
