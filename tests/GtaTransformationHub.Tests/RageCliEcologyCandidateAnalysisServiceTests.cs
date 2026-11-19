@@ -88,8 +88,10 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
     [Theory]
     [InlineData("popgroups.ymt", "CPopulationGroup", "$/pedModels/0/modelName", "modelName", "Population")]
     [InlineData("water.xml", "CWaterConfig", "$/water/waveHeight", "waveHeight", "Water")]
-    [InlineData("animals.ymt", "CAnimalModel", "$/animal/modelName", "modelName", "Animal")]
-    [InlineData("vegetation.ymt", "CPlantModel", "$/plant/modelName", "modelName", "Plant")]
+    [InlineData("animals.ymt", "CAnimalModel", "$/animal/modelName", "modelName", "TerrestrialAnimal")]
+    [InlineData("fish.ymt", "CFishModel", "$/fish/modelName", "modelName", "AquaticAnimal")]
+    [InlineData("vegetation.ymt", "CPlantModel", "$/plant/modelName", "modelName", "TerrestrialPlant")]
+    [InlineData("underwater.ymt", "CAquaticPlantModel", "$/underwater/kelp/modelName", "modelName", "AquaticPlant")]
     [InlineData("habitats.ymt", "CHabitatDefinition", "$/habitat/name", "name", "Habitat")]
     public void ClassifyCandidateField_DetectsReviewCategoryFromPathAndMetadataContext(
         string resource, string structure, string path, string field, string expected)
