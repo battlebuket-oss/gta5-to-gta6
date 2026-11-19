@@ -58,9 +58,31 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
         var package = CreatePackage();
         var inspection = Inspection(gameVersion: "Legacy");
 
-        OivInstallerLauncherService.ValidatePackageForLegacyTarget(package, inspection);
+        OivInstallerLauncherService.ValidatePackageForLegacyTarget(package, ComputeSha256(package), inspection);
 
         Assert.True(File.Exists(package));
+    }
+
+    [Fact]
+    public void ValidatePackageForLegacyTarget_RejectsArchiveModifiedAfterInspection()
+    {
+        var package = CreatePackage();
+        var inspectedHash = ComputeSha256(package);
+        File.WriteAllBytes(package, new byte[] { 0x50, 0x4B, 0x03, 0x04, 0x99 });
+
+        Assert.Throws<InvalidDataException>(() =>
+            OivInstallerLauncherService.ValidatePackageForLegacyTarget(
+                package, inspectedHash, Inspection(gameVersion: "Legacy")));
+    }
+
+    [Fact]
+    public void ValidatePackageForLegacyTarget_RejectsMalformedExpectedDigest()
+    {
+        var package = CreatePackage();
+
+        Assert.Throws<InvalidDataException>(() =>
+            OivInstallerLauncherService.ValidatePackageForLegacyTarget(
+                package, "not-a-hash", Inspection(gameVersion: "Legacy")));
     }
 
     [Fact]
@@ -70,7 +92,7 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
 
         Assert.Throws<InvalidDataException>(() =>
             OivInstallerLauncherService.ValidatePackageForLegacyTarget(
-                package, Inspection(gameVersion: "Enhanced"), allowUnspecifiedLegacyTarget: true));
+                package, ComputeSha256(package), Inspection(gameVersion: "Enhanced"), allowUnspecifiedLegacyTarget: true));
     }
 
     [Fact]
@@ -80,10 +102,10 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
         var inspection = Inspection(gameVersion: "Unspecified");
 
         Assert.Throws<InvalidDataException>(() =>
-            OivInstallerLauncherService.ValidatePackageForLegacyTarget(package, inspection));
+            OivInstallerLauncherService.ValidatePackageForLegacyTarget(package, ComputeSha256(package), inspection));
 
         OivInstallerLauncherService.ValidatePackageForLegacyTarget(
-            package, inspection, allowUnspecifiedLegacyTarget: true);
+            package, ComputeSha256(package), inspection, allowUnspecifiedLegacyTarget: true);
     }
 
     [Fact]
@@ -96,7 +118,7 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
 
         Assert.Throws<InvalidDataException>(() =>
             OivInstallerLauncherService.ValidatePackageForLegacyTarget(
-                package, inspection, allowUnspecifiedLegacyTarget: true));
+                package, ComputeSha256(package), inspection, allowUnspecifiedLegacyTarget: true));
     }
 
     private string CreatePackage()
@@ -104,6 +126,12 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
         var package = Path.Combine(_root, "test-mod.oiv");
         File.WriteAllBytes(package, new byte[] { 0x50, 0x4B, 0x03, 0x04 });
         return package;
+    }
+
+    private static string ComputeSha256(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
     }
 
     private static OivManifestInspectionResult Inspection(
