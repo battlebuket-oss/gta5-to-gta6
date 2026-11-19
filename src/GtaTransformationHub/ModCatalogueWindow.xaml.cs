@@ -14,18 +14,33 @@ namespace GtaTransformationHub;
 public partial class ModCatalogueWindow : Window
 {
     private readonly string? _installedGameBuild;
+    private readonly string? _gameExecutablePath;
+    private readonly string _packageLibraryRoot = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "GtaTransformationHub", "Packages");
+    private readonly PackageAcquisitionService _packageAcquisitionService = new();
+    private readonly OpenRageToolchainService _openRageToolchainService;
+    private readonly GtaViInspiredHudProfileAdapter _hudProfileAdapter;
+    private readonly ImportedModLibraryService _libraryService = new();
     private readonly ModProfileStore _profileStore = new();
     private readonly ModProfileSelectionService _selectionService = new();
+    private ImportedModLibraryEntry? _hudPackage;
+    private bool? _hudInstalled;
+    private bool _operationBusy;
     private CatalogueDocument? _catalogue;
     private HashSet<string> _selectedPackageIds = new(StringComparer.OrdinalIgnoreCase);
     private bool _profileStorageAvailable = true;
     private bool _savingProfile;
     private bool _loaded;
 
-    public ModCatalogueWindow(string? installedGameBuild)
+    public ModCatalogueWindow(string? installedGameBuild, string? gameExecutablePath)
     {
         InitializeComponent();
         _installedGameBuild = installedGameBuild;
+        _gameExecutablePath = gameExecutablePath;
+        _openRageToolchainService = new OpenRageToolchainService(_packageAcquisitionService);
+        _hudProfileAdapter = new GtaViInspiredHudProfileAdapter(_openRageToolchainService);
+        Closed += (_, _) => _packageAcquisitionService.Dispose();
         GameBuildText.Text = string.IsNullOrWhiteSpace(installedGameBuild)
             ? "LOCATE GTA V TO CHECK BUILD"
             : "GTA V LEGACY · " + installedGameBuild;
@@ -62,6 +77,7 @@ public partial class ModCatalogueWindow : Window
 
             _loaded = true;
             RenderCatalogue();
+            await RefreshInstalledStateAsync();
         }
         catch (Exception exception)
         {
@@ -112,7 +128,12 @@ public partial class ModCatalogueWindow : Window
             package.Status == CatalogueStatus.Researching);
         SelectionSummaryText.Text =
             selectedCount + " selected in profile · " +
-            researchingCount + " still require verification · no mods installed by this screen";
+            researchingCount + " research candidate(s) selected";
+        ApplyProfileButton.IsEnabled = _profileStorageAvailable &&
+                                       !_operationBusy &&
+                                       !string.IsNullOrWhiteSpace(_gameExecutablePath);
+        RefreshInstalledStateButton.IsEnabled = !_operationBusy &&
+                                                !string.IsNullOrWhiteSpace(_gameExecutablePath);
     }
 
     private Border CreatePackageCard(ModPackage package)
@@ -259,7 +280,7 @@ public partial class ModCatalogueWindow : Window
 
             StatusText.Text = (requestedEnabled ? "Added " : "Removed ") +
                               packageId + " in the saved profile." + changes +
-                              " Nothing has been installed.";
+                              " Installation state is unchanged until APPLY SELECTED PROFILE is used.";
             ProfileStorageText.Text = "PROFILE SAVED";
         }
         catch (Exception exception)
@@ -277,6 +298,244 @@ public partial class ModCatalogueWindow : Window
             CatalogueList.IsEnabled = true;
             RenderCatalogue();
         }
+    }
+
+    private async Task RefreshInstalledStateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_gameExecutablePath))
+        {
+            _hudInstalled = null;
+            AppliedStateText.Text = "GAME STATE: locate GTA V Legacy in the main window before applying a profile.";
+            return;
+        }
+
+        if (_operationBusy)
+            return;
+
+        _operationBusy = true;
+        RefreshSessionButtons();
+        try
+        {
+            var entries = await _libraryService.LoadAsync(_packageLibraryRoot);
+            _hudPackage = entries
+                .Where(entry =>
+                    string.Equals(entry.PackageId, GtaViInspiredHudPackageService.PackageId,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    entry.ManifestValid &&
+                    string.Equals(entry.OriginalArchiveSha256,
+                        GtaViInspiredHudPackageService.PackageSha256,
+                        StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(entry => entry.ImportedAt)
+                .FirstOrDefault();
+
+            if (_hudPackage is null)
+            {
+                _hudInstalled = null;
+                AppliedStateText.Text = "HUD STATE: unknown — import the pinned official Legacy HUD OIV from the main window first.";
+                return;
+            }
+
+            var installation = new GameInstallationService()
+                .ValidateExecutable(_gameExecutablePath);
+            var groupName = GtaViInspiredHudProfileAdapter.GetPackageGroupName(
+                _hudPackage.OivInspection!);
+            var installed = await _hudProfileAdapter.GetInstalledStateAsync(
+                installation, groupName);
+
+            _hudInstalled = installed is not null;
+            AppliedStateText.Text = installed is null
+                ? "GTA VI HUD: NOT INSTALLED · OpenRAGE journal confirms the package group is absent."
+                : "GTA VI HUD: INSTALLED · " + installed.RecordedChanges +
+                  " journalled changes · group: " + installed.Name;
+            StatusText.Text = "Installed state refreshed from the OpenRAGE package journal.";
+        }
+        catch (Exception exception)
+        {
+            _hudInstalled = null;
+            AppliedStateText.Text = "HUD STATE: UNKNOWN — " + exception.Message;
+            StatusText.Text = "Installed state could not be verified. Apply is blocked until the journal can be read.";
+        }
+        finally
+        {
+            _operationBusy = false;
+            RefreshSessionButtons();
+        }
+    }
+
+    private void RefreshSessionButtons()
+    {
+        var canUseGame = !string.IsNullOrWhiteSpace(_gameExecutablePath);
+        ApplyProfileButton.IsEnabled = _profileStorageAvailable && !_operationBusy && canUseGame;
+        RefreshInstalledStateButton.IsEnabled = !_operationBusy && canUseGame;
+        CatalogueList.IsEnabled = !_operationBusy && _profileStorageAvailable;
+    }
+
+    private async void RefreshInstalledStateButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RefreshInstalledStateAsync();
+    }
+
+    private async void ApplyProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_catalogue is null || string.IsNullOrWhiteSpace(_gameExecutablePath) ||
+            !_profileStorageAvailable || _operationBusy)
+            return;
+
+        var unsupportedSelected = _selectedPackageIds
+            .Where(id => !string.Equals(id, GtaViInspiredHudPackageService.PackageId,
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (unsupportedSelected.Length > 0)
+        {
+            ReadinessSummaryText.Text =
+                "Profile apply blocked: " + unsupportedSelected.Length +
+                " selected package(s) do not yet have verified ON/OFF adapters.";
+            ReadinessDetailsText.Text =
+                string.Join(Environment.NewLine, unsupportedSelected.Select(id =>
+                    "• " + id + " — desired selection is saved, but the installer adapter is not implemented/approved."));
+            StatusText.Text = "No game changes were made. Disable unsupported selections or wait for their adapter integrations.";
+            return;
+        }
+
+        _operationBusy = true;
+        RefreshSessionButtons();
+        try
+        {
+            var entries = await _libraryService.LoadAsync(_packageLibraryRoot);
+            _hudPackage = entries
+                .Where(entry =>
+                    string.Equals(entry.PackageId, GtaViInspiredHudPackageService.PackageId,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    entry.ManifestValid &&
+                    string.Equals(entry.OriginalArchiveSha256,
+                        GtaViInspiredHudPackageService.PackageSha256,
+                        StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(entry => entry.ImportedAt)
+                .FirstOrDefault();
+
+            if (_hudPackage is null)
+            {
+                throw new InvalidOperationException(
+                    "The pinned HUD OIV is not imported. Use GET OFFICIAL LEGACY HUD OIV in the main window, then retry.");
+            }
+
+            var installation = new GameInstallationService()
+                .ValidateExecutable(_gameExecutablePath);
+            var shouldEnable = _selectedPackageIds.Contains(
+                GtaViInspiredHudPackageService.PackageId);
+            var groupName = GtaViInspiredHudProfileAdapter.GetPackageGroupName(
+                _hudPackage.OivInspection!);
+            var packageState = await _hudProfileAdapter.GetInstalledStateAsync(
+                installation, groupName);
+
+            if (shouldEnable && packageState is null)
+            {
+                var prerequisites = new GtaViInspiredHudPrerequisiteService().Inspect(installation);
+                if (!prerequisites.AllRequiredFilesPresent)
+                {
+                    throw new InvalidOperationException(
+                        "HUD loader prerequisites are missing: " +
+                        string.Join(", ", prerequisites.MissingItems.Select(item => item.RelativePath)));
+                }
+
+                var preview = await _openRageToolchainService.InspectOivAsync(
+                    installation, _hudPackage.OriginalArchivePath!);
+                if (!preview.IsInstallable)
+                {
+                    throw new InvalidDataException(
+                        "OpenRAGE blocked this package during dry-run: " +
+                        string.Join("; ", preview.Blockers));
+                }
+
+                var runtimeConsent = MessageBox.Show(
+                    "This is a research-stage community HUD, not a Hub-approved/tested package. Its author requires GTA V English, Script Hook V .NET 3.7.0 Nightly 193 or newer, and a Script Hook V release compatible with the exact game patch. The Hub verified the required loader files but cannot prove their runtime versions.\\n\\nConfirm that you have independently verified those requirements and that you accept testing this package in Story Mode?",
+                    "Confirm HUD runtime and compatibility",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (runtimeConsent != MessageBoxResult.Yes)
+                    return;
+
+                var rootFileConsent = !preview.RequiresExecutableConsent ||
+                    MessageBox.Show(
+                        "OpenRAGE's dry-run includes loose game-root plugin files alongside mods-folder changes. These can affect GTA5.exe startup. OpenRAGE will journal the changes and handle its own uninstall group. Continue?",
+                        "Confirm game-root plugin operations",
+                        MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+                if (!rootFileConsent)
+                    return;
+
+                var finalConfirm = MessageBox.Show(
+                    "Apply the saved profile by installing this exact pinned HUD OIV through OpenRAGE?\\n\\nPackage group: " +
+                    groupName + "\\nArchive SHA-256: " + _hudPackage.OriginalArchiveSha256 +
+                    "\\n\\nThe OIV dry-run will be repeated immediately before installation, and the Hub will verify the installed group afterwards.",
+                    "Apply selected GTA V profile",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (finalConfirm != MessageBoxResult.Yes)
+                    return;
+
+                var result = await _hudProfileAdapter.ApplyAsync(
+                    installation, _packageLibraryRoot, _hudPackage,
+                    shouldBeEnabled: true,
+                    userConfirmed: true,
+                    allowGameFolderFiles: preview.RequiresExecutableConsent,
+                    confirmedHudRuntimeAndLanguage: true);
+
+                ReadinessSummaryText.Text = result.Message;
+                ReadinessDetailsText.Text = string.Join(Environment.NewLine, result.Details);
+                StatusText.Text = "HUD enabled through OpenRAGE and its exact journal group was verified. Gameplay compatibility is not yet certified.";
+            }
+            else if (!shouldEnable && packageState is not null)
+            {
+                var disableConfirm = MessageBox.Show(
+                    "The saved profile has the HUD OFF. OpenRAGE will uninstall only this exact journal group and verify that it is absent afterwards. Continue?\\n\\n" +
+                    groupName,
+                    "Disable GTA VI-Inspired HUD",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (disableConfirm != MessageBoxResult.Yes)
+                    return;
+
+                var result = await _hudProfileAdapter.ApplyAsync(
+                    installation, _packageLibraryRoot, _hudPackage,
+                    shouldBeEnabled: false,
+                    userConfirmed: true,
+                    allowGameFolderFiles: false,
+                    confirmedHudRuntimeAndLanguage: false);
+
+                ReadinessSummaryText.Text = result.Message;
+                ReadinessDetailsText.Text = string.Join(Environment.NewLine, result.Details);
+                StatusText.Text = "HUD disable operation completed and OpenRAGE journal confirms the group is absent.";
+            }
+            else
+            {
+                ReadinessSummaryText.Text = shouldEnable
+                    ? "The saved HUD selection is ON and the OpenRAGE journal already confirms it is installed."
+                    : "The saved HUD selection is OFF and the OpenRAGE journal confirms it is already uninstalled.";
+                ReadinessDetailsText.Text = "No game files were changed.";
+                StatusText.Text = "Profile and installed HUD state already match.";
+            }
+
+            await RefreshInstalledStateAfterApplyAsync();
+        }
+        catch (Exception exception)
+        {
+            ReadinessSummaryText.Text = "Profile apply failed or was blocked.";
+            ReadinessDetailsText.Text = exception.ToString();
+            StatusText.Text = "The Hub did not mark the profile as applied. Inspect OpenRAGE's journal/history before retrying.";
+            MessageBox.Show(exception.Message, "Profile apply failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            _operationBusy = false;
+            RefreshSessionButtons();
+            await RefreshInstalledStateAsync();
+            return;
+        }
+
+        _operationBusy = false;
+        RefreshSessionButtons();
+    }
+
+    private async Task RefreshInstalledStateAfterApplyAsync()
+    {
+        _operationBusy = false;
+        RefreshSessionButtons();
+        await RefreshInstalledStateAsync();
     }
 
     private void CheckReadinessButton_Click(object sender, RoutedEventArgs e)
