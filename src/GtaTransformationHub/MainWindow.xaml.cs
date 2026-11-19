@@ -41,8 +41,86 @@ public partial class MainWindow : Window
             DetectionText.Text = "Recovery could not be verified. Configuration remains locked; restart the Hub after reviewing the transaction journal.";
             StatusText.Text = "Safety recovery failed. No installation or launch actions are available.";
         }
+        await RefreshImportedPackageLibraryAsync();
         RefreshSessionState();
     }
+
+    private string PackageLibraryRoot => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "GtaTransformationHub", "Packages");
+
+    private async Task RefreshImportedPackageLibraryAsync()
+    {
+        try
+        {
+            var entries = await new ImportedModLibraryService().LoadAsync(PackageLibraryRoot);
+            ModList.Children.Clear();
+
+            if (entries.Count == 0)
+            {
+                ModList.Children.Add(new TextBlock
+                {
+                    Text = "No local research packages imported yet. Import a ZIP/OIV archive to inspect it.",
+                    Foreground = (System.Windows.Media.Brush)FindResource("SecondaryText"),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 8, 0, 0)
+                });
+                return;
+            }
+
+            foreach (var entry in entries)
+            {
+                var card = new Border
+                {
+                    BorderBrush = (System.Windows.Media.Brush)FindResource("PanelBackground"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(10),
+                    Margin = new Thickness(0, 0, 0, 8)
+                };
+
+                var details = new StackPanel();
+                details.Children.Add(new TextBlock
+                {
+                    Text = entry.Name,
+                    FontSize = 13,
+                    FontWeight = FontWeights.SemiBold,
+                    TextWrapping = TextWrapping.Wrap
+                });
+                details.Children.Add(new TextBlock
+                {
+                    Text = entry.Status + "  |  " + entry.FileCount + " files  |  " + entry.Version,
+                    Foreground = (System.Windows.Media.Brush)FindResource("SecondaryText"),
+                    FontSize = 10,
+                    Margin = new Thickness(0, 3, 0, 0),
+                    TextWrapping = TextWrapping.Wrap
+                });
+                details.Children.Add(new TextBlock
+                {
+                    Text = entry.ManifestValid
+                        ? entry.VerificationNote
+                        : string.Join(" ", entry.Warnings.Take(2)),
+                    Foreground = (System.Windows.Media.Brush)FindResource("SecondaryText"),
+                    FontSize = 10,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    TextWrapping = TextWrapping.Wrap
+                });
+                card.Child = details;
+                ModList.Children.Add(card);
+            }
+        }
+        catch (Exception exception)
+        {
+            ModList.Children.Clear();
+            ModList.Children.Add(new TextBlock
+            {
+                Text = "The local package library could not be read: " + exception.Message,
+                Foreground = (System.Windows.Media.Brush)FindResource("SecondaryText"),
+                TextWrapping = TextWrapping.Wrap
+            });
+        }
+    }
+
     private async void ImportArchiveButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning() || !_recoveryCompleted)
@@ -66,11 +144,8 @@ public partial class MainWindow : Window
         StatusText.Text = "Inspecting archive and extracting into the local research library...";
         try
         {
-            var importRoot = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "GtaTransformationHub", "Packages");
             var result = await new ModArchiveImportService().ImportAsync(
-                archiveDialog.FileName, importRoot, metadataDialog.Metadata);
+                archiveDialog.FileName, PackageLibraryRoot, metadataDialog.Metadata);
 
             var inspectionDetails = result.OivInspection is null
                 ? "OIV manifest: not applicable (ZIP inventory only)."
@@ -86,6 +161,7 @@ public partial class MainWindow : Window
                   "Manifest structural warnings: " + (result.OivInspection.RequiresManualReview ? "Present" : "None detected") + "\\n" +
                   "Licence, game-build, compatibility and runtime review is still required before approval.";
 
+            await RefreshImportedPackageLibraryAsync();
             StatusText.Text = "Imported " + metadataDialog.Metadata.Name +
                               " for review. No GTA V files were changed; package status remains Researching.";
             DetectionText.Text = "Research package stored at: " + result.PackageDirectory;
