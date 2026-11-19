@@ -201,6 +201,26 @@ public sealed class EcologyInventoryDiffServiceTests
     }
 
     [Fact]
+    public void Compare_RejectsEmptyInventoriesInsteadOfReturningFalsePass()
+    {
+        var baseline = CreateBaseline() with
+        {
+            Species = Array.Empty<EcologySpeciesIdentity>(),
+            Habitats = Array.Empty<EcologyHabitatIdentity>(),
+            PopulationEntries = Array.Empty<EcologyPopulationEntry>(),
+            WaterBodies = Array.Empty<EcologyWaterBodyIdentity>()
+        };
+
+        var result = EcologyInventoryDiffService.Compare(baseline, baseline);
+
+        Assert.False(result.VanillaPreserved);
+        Assert.Contains(result.Errors, error => error.Contains("has no species identities", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("has no habitat identities", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("has no population entries", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("has no water-body identities", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Compare_RejectsDifferentGameBuildOrExecutableFingerprint()
     {
         var baseline = CreateBaseline();
