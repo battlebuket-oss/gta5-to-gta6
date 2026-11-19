@@ -106,6 +106,82 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
     }
 
     [Fact]
+    public void Inspect_EnumeratesXmlPsoAndTextPatchOperations()
+    {
+        var archivePath = CreateOiv(
+            "patches.oiv",
+            Manifest("""
+                <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
+                  <metadata>
+                    <name>Patch inventory</name>
+                    <version><major>1</major><minor>0</minor></version>
+                    <author><displayName>Author</displayName></author>
+                    <description><![CDATA[Patch inventory test]]></description>
+                  </metadata>
+                  <colors>
+                    <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
+                    <iconBackground>$FFFFFFFF</iconBackground>
+                  </colors>
+                  <content>
+                    <xml path="update/update.rpf/common/data/dlclist.xml">
+                      <add xpath="/Paths" append="Before"><Item>dlcpacks:/sample/</Item></add>
+                      <remove xpath="/Paths/Item[2]" />
+                    </xml>
+                    <text path="data/info.dat" createIfNotExist="False">
+                      <add>line one</add>
+                      <insert where="After" line="line one" condition="Equal">line two</insert>
+                      <replace line="line three" condition="StartWith">replacement</replace>
+                      <delete line="#*" condition="Mask" />
+                    </text>
+                    <pso path="x64/data/carcols.ymt">
+                      <replace xpath="/CHandlingDataMgr/Item"><Item /></replace>
+                    </pso>
+                  </content>
+                </package>
+                """));
+
+        using var file = File.OpenRead(archivePath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        var result = OivManifestInspectionService.Inspect(archive);
+
+        Assert.False(result.RequiresManualReview);
+        Assert.Equal(7, result.PatchOperationCount);
+        Assert.Contains(result.Operations, item => item.Command == "xml:add");
+        Assert.Contains(result.Operations, item => item.Command == "xml:remove");
+        Assert.Contains(result.Operations, item => item.Command == "text:insert");
+        Assert.Contains(result.Operations, item => item.Command == "text:delete");
+        Assert.Contains(result.Operations, item => item.Command == "pso:replace");
+    }
+
+    [Fact]
+    public void Inspect_RejectsUnsupportedOiv22XmlAppendMode()
+    {
+        var archivePath = CreateOiv(
+            "bad-append.oiv",
+            Manifest("""
+                <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
+                  <metadata>
+                    <name>Invalid append</name>
+                    <version><major>1</major><minor>0</minor></version>
+                    <author><displayName>Author</displayName></author>
+                    <description><![CDATA[Invalid append test]]></description>
+                  </metadata>
+                  <colors>
+                    <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
+                    <iconBackground>$FFFFFFFF</iconBackground>
+                  </colors>
+                  <content>
+                    <xml path="dlclist.xml"><add xpath="/Paths" append="Middle"><Item /></add></xml>
+                  </content>
+                </package>
+                """));
+
+        using var file = File.OpenRead(archivePath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        Assert.Throws<InvalidDataException>(() => OivManifestInspectionService.Inspect(archive));
+    }
+
+    [Fact]
     public void Inspect_RejectsMissingAssemblyManifest()
     {
         var archivePath = Path.Combine(_root, "missing.oiv");
