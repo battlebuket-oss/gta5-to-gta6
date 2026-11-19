@@ -30,10 +30,29 @@ No candidate above is marked Tested or approved for one-click deployment. Source
 
 ## Wildlife, water and vegetation
 
-- Sea Life V is a legacy candidate for increasing aquatic population counts, not a complete species expansion.
-- Aquatic Animals Blips 2.0 is a locator/overlay, not an animal-spawn or species pack. The source page lists Script Hook V and ScriptHookVDotNet; community reports describe script/runtime issues and an animal invulnerability behaviour. It is not selected for the default profile.
-- Vanilla GTA V species and flora inventories have not yet been extracted from the exact installed game build. Therefore a claim of a complete vanilla inventory, or a complete list of additional species, would be unverified.
-- No verified underwater vegetation package has been approved. Water shaders, water-level changes, aquatic population metadata and underwater plant assets are separate technical scopes and must not be conflated.
+### Candidate evidence (all still Researching unless explicitly Blocked)
+
+| Domain | Candidate | What the source actually documents | Current gate |
+|---|---|---|---|
+| Aquatic population | [Sea Life V](https://www.gta5-mods.com/misc/sea-life-v) | A 2017 `Popgroups.ymt` replacement intended to raise ocean populations of sharks, fish, killer whales, stingrays and dolphins. | Researching. Current Legacy compatibility, exact species/model references, population balance and file conflicts are unknown. It changes spawn populations; it is not itself a new species model pack. |
+| Animal locator | [Animal Blips 3.1](https://www.nexusmods.com/gta5/mods/1439) | Updated 6 October 2026. Adds map blips for animals and optional animal health/armour/invincibility configuration; requires Script Hook V and the Legacy Script Hook V .NET Nightly runtime. | Researching. This is a locator/configuration utility, not a species spawner. The author disallows re-upload and requires permission for modifications/assets, so the Hub must link to the author source only. |
+| Scripted animal spawns | [WildLife Mod 2.2](https://www.gta5-mods.com/scripts/wildlife-mod) | Describes animal skins and spawning lions, sharks, hawks and monkeys, animal companions/riding, plus broad zombie, vampire, robot and crowd/chaos modes. | **Blocked for this Legacy build target.** The listing's own description says it is for GTA V Enhanced, although the page is filed under Legacy. It is not a tested ambient ecosystem or a complete fauna pack. Reconsider only if the author confirms Legacy support and the exact script requirements are validated. |
+| Water visuals | [Upscaled Water Overhaul (8K) 3.01](https://www.nexusmods.com/gta5/mods/1085) | Legacy listing describes ripple/wave/foam/reflection changes and upscaled top/bottom water and underwater-fog textures; several textures reach 4K/8K. | Researching. Not a physics simulation or new underwater flora. 8K texture footprint is a risk for the 6GB VRAM target. Author disallows re-upload, modifications and asset use without permission; never bundle it. The author's FPS claim is not a benchmark result for our hardware. |
+| Water configuration | [Indian Ocean (Clear Ocean Water) 1.3](https://www.gta5-mods.com/misc/indian-ocean-water-mod) | A 2017 configuration option for ocean clarity and wave size. | Researching. Exact edited files, current Legacy compatibility and interaction with other water configuration mods must be inspected. It adds no animals, plants or water simulation. |
+| Underwater/vegetation textures | [HD Vegetation Upscale](https://www.nexusmods.com/gta5/mods/1095) | Describes existing vegetation textures upscaled to 2560×1440, including underwater vegetation. | Researching. Texture upscaling only; no new plant species or underwater plant meshes are documented. Asset provenance/permissions and VRAM/streaming impact are unclear. |
+| Grass models/density | [Grass V 1.5 beta](https://www.gta5-mods.com/misc/grass-v-improved-models-textures-density-beta-oiv-foxy_oxy) | Replaces/recolours grass models and increases density, scaling and draw distance; the author lists a performance-friendly option. | Researching. Still beta; the author warns that install order relative to other grass/vegetation replacements matters. It adds no new botanical species. Verify the lighter option and benchmark. |
+| Broad tree/hedge overhaul | [Vanilla Vegetation Overhaul 5.0 beta](https://www.gta5-mods.com/misc/realistic-vegetation-new-gen-tree-models-gta-5-legacy) | Adds/replaces selected tree and hedge models/textures. The author marked the project discontinued in January 2026. | Researching only; not a long-term default dependency. Its beta/discontinued status and exact archive must be reviewed before use. |
+
+### What is and is not solved
+
+- The catalogue now distinguishes **species/population**, **animal locator**, **scripted animal spawn**, **water texture/configuration**, and **vegetation texture/model** packages. These are separate systems and should not be represented as one complete ecosystem mod.
+- The strongest verified aquatic population lead is Sea Life V, but it is old and only changes population metadata. It still needs model references and spawn validation against the selected Legacy build.
+- Animal Blips 3.1 helps locate animals already in the game; it does not add species.
+- WildLife Mod documents some extra animal skins and scripted animal spawning, but the same page markets the package as Enhanced. It is blocked for this Legacy-only deployment until the author clarifies support.
+- Upscaled Water Overhaul changes water textures, waves/foam/reflections and underwater fog appearance. It does not establish new fluid physics or an underwater plant ecosystem.
+- HD Vegetation Upscale explicitly includes underwater vegetation textures, but does not document new underwater plant models/species. At present there is **no verified underwater plant-species pack** in the research catalogue.
+- Vanilla GTA V species and flora inventories have not yet been extracted from the exact installed game build. An exhaustive baseline/additions list cannot be claimed until the relevant population metadata, model archives and texture/model dictionaries are inspected.
+- For the RTX 4050 6GB / 1080p target, avoid stacking multiple population, grass-density, water-texture and vegetation overhauls. Start with one package per resource domain, use lighter texture variants where available, and measure frame-time, VRAM, streaming hitches and spawn rates before approval.
 
 ## Implemented on the development branch
 
