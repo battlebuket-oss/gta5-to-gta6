@@ -56,8 +56,14 @@ public partial class MainWindow : Window
             var entries = await new ImportedModLibraryService().LoadAsync(PackageLibraryRoot);
             ModList.Children.Clear();
 
+            var cleanInventories = entries.Count(entry => entry.ManifestValid);
+            LibrarySummaryText.Text =
+                entries.Count + " imported package(s) | " + cleanInventories +
+                " manifest/inventory presence checks clear | file hashes are not re-computed | no packages approved";
+
             if (entries.Count == 0)
             {
+                LibrarySummaryText.Text = "No packages imported. Importing an archive only stores it for inspection.";
                 ModList.Children.Add(new TextBlock
                 {
                     Text = "No local research packages imported yet. Import a ZIP/OIV archive to inspect it.",
@@ -97,14 +103,45 @@ public partial class MainWindow : Window
                 });
                 details.Children.Add(new TextBlock
                 {
+                    Text = entry.Author + "  |  " +
+                           (entry.ImportedAt == DateTimeOffset.MinValue
+                               ? "Import timestamp unavailable"
+                               : entry.ImportedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")),
+                    Foreground = (System.Windows.Media.Brush)FindResource("SecondaryText"),
+                    FontSize = 10,
+                    Margin = new Thickness(0, 3, 0, 0),
+                    TextWrapping = TextWrapping.Wrap
+                });
+                details.Children.Add(new TextBlock
+                {
                     Text = entry.ManifestValid
                         ? entry.VerificationNote
-                        : string.Join(" ", entry.Warnings.Take(2)),
+                        : string.Join(Environment.NewLine, entry.Warnings.Take(3)),
                     Foreground = (System.Windows.Media.Brush)FindResource("SecondaryText"),
                     FontSize = 10,
                     Margin = new Thickness(0, 4, 0, 0),
                     TextWrapping = TextWrapping.Wrap
                 });
+
+                var openFolderButton = new Button
+                {
+                    Content = "OPEN PACKAGE FOLDER",
+                    Padding = new Thickness(8, 4, 8, 4),
+                    Margin = new Thickness(0, 8, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Left
+                };
+                openFolderButton.Click += (_, _) =>
+                {
+                    if (Directory.Exists(entry.PackageDirectory))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = entry.PackageDirectory,
+                            UseShellExecute = true
+                        });
+                    }
+                };
+                details.Children.Add(openFolderButton);
                 card.Child = details;
                 ModList.Children.Add(card);
             }
@@ -112,6 +149,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             ModList.Children.Clear();
+            LibrarySummaryText.Text = "Local package library could not be read.";
             ModList.Children.Add(new TextBlock
             {
                 Text = "The local package library could not be read: " + exception.Message,
