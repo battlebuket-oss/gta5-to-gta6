@@ -60,7 +60,8 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         Assert.Equal(1, result.DeleteCount);
         Assert.Equal(2, result.ArchiveEditCount);
         Assert.Contains(result.Operations, item =>
-            item.Command == "xmlPatch" && item.TargetPath == "update/update.rpf/common/data/dlclist.xml");
+            item.Command == "xmlPatch" && item.ArchivePath == "update/update.rpf" &&
+            item.TargetPath == "common/data/dlclist.xml");
         Assert.Empty(result.PayloadSourceIssues);
     }
 
@@ -163,7 +164,7 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
     }
 
     private static string Manifest(string inner) =>
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?><root-placeholder>" + inner + "</root-placeholder>";
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>" + inner;
 
     private static void WriteEntry(ZipArchive archive, string path, string content)
     {
