@@ -56,6 +56,66 @@ public sealed class GtaViInspiredHudProfileAdapterTests
     }
 
     [Fact]
+    public void InspectLoosePlugins_FindsTheTwoRequiredHudFilesInGameRootOrModsFolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "GtaHudMarkerTests", Guid.NewGuid().ToString("N"));
+        var mods = Path.Combine(root, "mods");
+        Directory.CreateDirectory(mods);
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "ViMinimap.asi"), "minimap");
+            File.WriteAllText(Path.Combine(mods, "ViPreload.asi"), "preload");
+
+            var presence = GtaViInspiredHudProfileAdapter.InspectLoosePlugins(Installation(root));
+
+            Assert.True(presence.BothPresent);
+            Assert.Equal(2, presence.LocatedFiles.Count);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ValidateJournalAndPluginPresence_RejectsManualFilesWithoutOpenRageGroup()
+    {
+        var presence = new HudLoosePluginPresence(
+            true, true, new[] { @"C:\GTA5\ViMinimap.asi", @"C:\GTA5\ViPreload.asi" });
+
+        Assert.Throws<InvalidDataException>(() =>
+            GtaViInspiredHudProfileAdapter.ValidateJournalAndPluginPresence(
+                null, presence));
+    }
+
+    [Fact]
+    public void ValidateJournalAndPluginPresence_RejectsJournalGroupWithMissingRequiredPlugin()
+    {
+        var group = new OpenRageInstalledOivGroup("GTA VI HUD 2.8.2", 431);
+        var presence = new HudLoosePluginPresence(
+            true, false, new[] { @"C:\GTA5\ViMinimap.asi" });
+
+        Assert.Throws<InvalidDataException>(() =>
+            GtaViInspiredHudProfileAdapter.ValidateJournalAndPluginPresence(
+                group, presence));
+    }
+
+    [Fact]
+    public void ValidateJournalAndPluginPresence_AcceptsConsistentInstalledOrUninstalledState()
+    {
+        var group = new OpenRageInstalledOivGroup("GTA VI HUD 2.8.2", 431);
+
+        GtaViInspiredHudProfileAdapter.ValidateJournalAndPluginPresence(
+            group, new HudLoosePluginPresence(true, true, new[] { "ViMinimap.asi", "ViPreload.asi" }));
+        GtaViInspiredHudProfileAdapter.ValidateJournalAndPluginPresence(
+            null, new HudLoosePluginPresence(false, false, Array.Empty<string>()));
+    }
+
+    private static GameInstallation Installation(string root) =>
+        new(root, Path.Combine(root, "GTA5.exe"), "1.0.0.0", "1.0.0.0", "1.0.0.0");
+
+    [Fact]
     public void GetPackageGroupName_UsesManifestNameAndParsedVersionRatherThanCatalogueDisplayName()
     {
         var inspection = new OivManifestInspectionResult(
