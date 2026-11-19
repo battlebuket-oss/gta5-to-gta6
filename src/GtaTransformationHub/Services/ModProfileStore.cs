@@ -73,9 +73,12 @@ public sealed class ModProfileStore
         var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var packageId in enabledPackageIds)
         {
-            if (!PackageIdValidator.IsValid(packageId))
+            // Package IDs are canonical lower-case identifiers. Normalize pasted or
+            // case-varied selections before validation and de-duplication.
+            var canonicalId = packageId?.Trim().ToLowerInvariant();
+            if (!PackageIdValidator.IsValid(canonicalId))
                 throw new InvalidDataException("The profile contains an invalid package ID.");
-            selected.Add(packageId);
+            selected.Add(canonicalId);
         }
 
         var directory = Path.GetDirectoryName(_profilePath)
