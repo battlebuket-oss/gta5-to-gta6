@@ -112,6 +112,33 @@ public sealed class ModArchiveImportServiceTests : IDisposable
             new ModArchiveImportService().ImportAsync(archive, _importRoot, metadata));
     }
 
+
+    [Fact]
+    public async Task ImportAsync_RejectsDirectorySymbolicLinkEntries()
+    {
+        var archive = Path.Combine(_archiveRoot, "directory-symlink.zip");
+        using (var file = new FileStream(archive, FileMode.CreateNew))
+        using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
+        {
+            var entry = zip.CreateEntry("linked-folder/");
+            entry.ExternalAttributes = unchecked((int)(0xA000 << 16));
+        }
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new ModArchiveImportService().ImportAsync(archive, _importRoot, Metadata()));
+    }
+
+    [Fact]
+    public async Task ImportAsync_RejectsRepeatedExactArchiveInsteadOfOverwritingImport()
+    {
+        var archive = CreateZip("repeat.zip", ("mod.ini", "setting=true"));
+        var service = new ModArchiveImportService();
+        await service.ImportAsync(archive, _importRoot, Metadata());
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            service.ImportAsync(archive, _importRoot, Metadata()));
+    }
+
     private string CreateZip(string name, params (string Path, string Content)[] entries)
     {
         var path = Path.Combine(_archiveRoot, name);
