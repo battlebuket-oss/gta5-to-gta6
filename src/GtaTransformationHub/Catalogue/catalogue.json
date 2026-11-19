@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.2-research",
+  "catalogueVersion": "0.4.3-research",
   "categories": [
     {
       "id": "graphics",
@@ -324,10 +324,7 @@
       "minimumGameBuild": "Not specified; verify exact Legacy build",
       "maximumGameBuild": "Not specified; verify exact Legacy build",
       "sha256": null,
-      "dependencies": [
-        "Script Hook V",
-        "ScriptHookVDotNet (exact supported release to verify)"
-      ],
+      "dependencies": [],
       "conflicts": [
         "gta-vi-styled-minimap-hud-legacy",
         "other-total-hud-overhauls"
@@ -339,7 +336,8 @@
       "notes": "Single-player project README describes a GTA VI-inspired HUD, 3D minimap, character wheel with Jason/Lucia slots, and gameplay additions. The mod does not include the Jason or Lucia character models; the README directs users to separately sourced models, and the Lucia model may be paid. Do not bundle third-party model assets. Verify current Legacy install guide, exact build, all nested licences, required loaders, package hashes, and clean rollback before approval. Does not reproduce GTA VI story missions or replace every title/pause/settings/map screen.",
       "externalRequirements": [
         "Script Hook V",
-        "ScriptHookVDotNet"
+        "ScriptHookVDotNet",
+        "ScriptHookVDotNet (exact supported release to verify)"
       ],
       "exclusiveGroup": "ui-overhaul"
     },
@@ -354,9 +352,7 @@
       "minimumGameBuild": "Not specified; legacy-era mod, current build unverified",
       "maximumGameBuild": "Not specified; legacy-era mod, current build unverified",
       "sha256": null,
-      "dependencies": [
-        "OpenIV"
-      ],
+      "dependencies": [],
       "conflicts": [
         "other-popgroups-or-aquatic-population-overhauls"
       ],
@@ -381,9 +377,7 @@
       "minimumGameBuild": "Not specified; verify exact Legacy build",
       "maximumGameBuild": "Not specified; verify exact Legacy build",
       "sha256": null,
-      "dependencies": [
-        "OpenIV"
-      ],
+      "dependencies": [],
       "conflicts": [
         "other-vegetation-and-tree-overhauls"
       ],
