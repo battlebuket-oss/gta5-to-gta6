@@ -6,6 +6,39 @@ namespace GtaTransformationHub.Tests;
 public sealed class RageCliMetadataPayloadServiceTests
 {
     [Fact]
+    public void GetBatchWindow_ReturnsContiguousBatchRangesWithoutDroppingCandidates()
+    {
+        var first = RageCliMetadataPayloadService.GetBatchWindow(135, 0);
+        Assert.Equal(new RageCliMetadataBatchWindow(0, 50, 50), first);
+
+        var second = RageCliMetadataPayloadService.GetBatchWindow(135, first.NextCandidateIndex);
+        Assert.Equal(new RageCliMetadataBatchWindow(50, 100, 50), second);
+
+        var final = RageCliMetadataPayloadService.GetBatchWindow(135, second.NextCandidateIndex);
+        Assert.Equal(new RageCliMetadataBatchWindow(100, 135, 35), final);
+
+        Assert.Equal(135, final.NextCandidateIndex);
+    }
+
+    [Fact]
+    public void GetBatchWindow_AllowsExactlyTheEndOfTheCandidateList()
+    {
+        var window = RageCliMetadataPayloadService.GetBatchWindow(12, 12);
+
+        Assert.Equal(new RageCliMetadataBatchWindow(12, 12, 0), window);
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(20, -1)]
+    [InlineData(20, 21)]
+    public void GetBatchWindow_RejectsInvalidCandidateCountsAndOffsets(int total, int start)
+    {
+        Assert.ThrowsAny<ArgumentOutOfRangeException>(() =>
+            RageCliMetadataPayloadService.GetBatchWindow(total, start));
+    }
+
+    [Fact]
     public void BuildNestedArchiveExtractionPlan_ResolvesEachNestedRpfLayer()
     {
         var plan = RageCliMetadataPayloadService.BuildNestedArchiveExtractionPlan(
