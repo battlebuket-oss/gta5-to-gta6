@@ -97,6 +97,44 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task VerifyAsync_PassesWhenFilesMatchRecordedHashes()
+    {
+        var bytes = Encoding.UTF8.GetBytes("verify-me");
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        var packageDirectory = CreatePackage(
+            "verify-mod",
+            "Verify Mod",
+            "d".PadRight(64, 'd'),
+            ("scripts/verify.ini", bytes, hash));
+
+        var result = await new ImportedModLibraryService().VerifyAsync(_root, packageDirectory);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(1, result.FilesChecked);
+        Assert.Empty(result.Errors);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_FailsWhenAnImportedFileWasModified()
+    {
+        var original = Encoding.UTF8.GetBytes("original");
+        var originalHash = Convert.ToHexString(SHA256.HashData(original));
+        var packageDirectory = CreatePackage(
+            "tampered-mod",
+            "Tampered Mod",
+            "e".PadRight(64, 'e'),
+            ("scripts/changed.ini", original, originalHash));
+        await File.WriteAllTextAsync(
+            Path.Combine(packageDirectory, "scripts", "changed.ini"),
+            "modified after import");
+
+        var result = await new ImportedModLibraryService().VerifyAsync(_root, packageDirectory);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("SHA-256 does not match"));
+    }
+
+    [Fact]
     public async Task LoadAsync_ReportsInvalidManifestAsUnreadableEntry()
     {
         var directory = Path.Combine(_root, "bad-manifest");
