@@ -435,8 +435,11 @@ public sealed class OivInstallerLauncherService
             CreateNoWindow = false
         };
 
-        // The documented GUI workflow is to open the installer, then use Browse
-        // or drag-and-drop the retained OIV package. Do not assume a CLI file argument.
+        // CodeWalkerProjects documents the GUI form as:
+        //   CodeWalker.OIVInstaller.exe <package.oiv>
+        // MainForm loads the path for review but does not install until the user clicks Install.
+        // ArgumentList preserves paths containing spaces without invoking a shell.
+        startInfo.ArgumentList.Add(package);
         return startInfo;
     }
 
