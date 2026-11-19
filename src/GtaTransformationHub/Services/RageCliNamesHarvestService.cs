@@ -108,8 +108,6 @@ public sealed class RageCliNamesHarvestService
 
             if (!string.IsNullOrWhiteSpace(result.StandardError))
                 warnings.Add(LimitForMessage(result.StandardError));
-            if (!string.IsNullOrWhiteSpace(result.StandardOutput))
-                warnings.Add("rage-cli summary: " + LimitForMessage(result.StandardOutput));
 
             EnsureRegularFile(temporaryNamesPath, "harvested names list");
             var namesInfo = new FileInfo(temporaryNamesPath);
@@ -208,7 +206,7 @@ public sealed class RageCliNamesHarvestService
 
         if (!File.Exists(namesPath) || !File.Exists(manifestPath))
             return null;
-        EnsureDirectoryIsNotReparsePoint(directory);
+        EnsureDirectoryPathIsNotReparsePoint(_dataRoot, directory);
         EnsureFileIsNotReparsePointIfPresent(namesPath);
         EnsureFileIsNotReparsePointIfPresent(manifestPath);
 
@@ -339,6 +337,24 @@ public sealed class RageCliNamesHarvestService
     {
         if (!Directory.Exists(path) || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
             throw new IOException("A names data directory is missing or redirected.");
+    }
+
+    private static void EnsureDirectoryPathIsNotReparsePoint(string root, string leaf)
+    {
+        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        var leafPath = Path.GetFullPath(leaf);
+        var prefix = rootPath + Path.DirectorySeparatorChar;
+        if (!leafPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The names data directory escaped the Hub's local data root.");
+
+        EnsureDirectoryIsNotReparsePoint(rootPath);
+        var relative = Path.GetRelativePath(rootPath, leafPath);
+        var current = rootPath;
+        foreach (var segment in relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+            EnsureDirectoryIsNotReparsePoint(current);
+        }
     }
 
     private static bool IsSha256(string? value) =>
