@@ -161,7 +161,7 @@
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
             <TextBlock Text="PREBUILT MOD INSTALLER" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock Text="Install existing OpenIV .oiv packages using the upstream OpenRAGE installer. The Hub previews package changes first; OpenRAGE writes to the OpenIV mods folder and keeps its own uninstall journal, separate from the Hub's ZIP deployment transactions. No mod files are bundled by this project."
+            <TextBlock Text="Install existing OpenIV .oiv packages using the upstream OpenRAGE installer. The Hub requires OpenIV.asi and an existing mods folder, previews package changes, then requires Legacy-build/licence/backup confirmation. OpenRAGE keeps its own uninstall journal, separate from Hub ZIP deployment transactions. No mod files are bundled by this project."
                        TextWrapping="Wrap" Margin="0,8,0,8"/>
             <WrapPanel Margin="0,0,0,7">
               <Button x:Name="DownloadOpenRageButton"
