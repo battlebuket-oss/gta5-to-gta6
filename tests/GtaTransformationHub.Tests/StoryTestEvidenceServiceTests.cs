@@ -79,6 +79,24 @@ public sealed class StoryTestEvidenceServiceTests : IDisposable
     }
 
     [Fact]
+    public void Summarize_MalformedScenarioListNeverThrowsOrPasses()
+    {
+        var scenarios = StoryTestEvidenceService.CreateScenarioResults()
+            .Cast<StoryTestScenarioResult?>()
+            .Append(null)
+            .Select(item => item!)
+            .ToArray();
+        var record = CreateRecord() with { Scenarios = scenarios };
+
+        var summary = StoryTestEvidenceService.Summarize(record);
+
+        Assert.False(summary.IsCompletePass);
+        Assert.Equal(StoryTestEvidenceService.GetRequiredScenarios().Count, summary.Total);
+        Assert.Contains(StoryTestEvidenceService.Validate(record),
+            error => error.Contains("empty test scenario", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task SaveAsync_RejectsMalformedEvidenceBeforeWriting()
     {
         var service = new StoryTestEvidenceService(_root);
