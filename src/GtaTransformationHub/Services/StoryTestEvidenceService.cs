@@ -148,12 +148,13 @@ public sealed class StoryTestEvidenceService
     public static StoryTestEvidenceSummary Summarize(StoryTestEvidenceRecord record)
     {
         var scenarios = record.Scenarios ?? Array.Empty<StoryTestScenarioResult>();
-        var passed = scenarios.Count(item => item.Outcome == StoryTestOutcome.Passed);
-        var failed = scenarios.Count(item => item.Outcome == StoryTestOutcome.Failed);
-        var blocked = scenarios.Count(item => item.Outcome == StoryTestOutcome.Blocked);
-        var notRun = scenarios.Count(item => item.Outcome == StoryTestOutcome.NotRun);
+        var validScenarios = scenarios.Where(item => item is not null).ToArray();
+        var passed = validScenarios.Count(item => item.Outcome == StoryTestOutcome.Passed);
+        var failed = validScenarios.Count(item => item.Outcome == StoryTestOutcome.Failed);
+        var blocked = validScenarios.Count(item => item.Outcome == StoryTestOutcome.Blocked);
+        var notRun = validScenarios.Count(item => item.Outcome == StoryTestOutcome.NotRun);
         var allRequiredPresent = RequiredScenarios.All(required =>
-            scenarios.Count(item => string.Equals(item.ScenarioId, required.Id, StringComparison.Ordinal)) == 1);
+            validScenarios.Count(item => string.Equals(item.ScenarioId, required.Id, StringComparison.Ordinal)) == 1);
         var complete = errorsFree(record) && allRequiredPresent &&
                        passed == RequiredScenarios.Length && failed == 0 && blocked == 0 && notRun == 0;
         return new StoryTestEvidenceSummary(passed, failed, blocked, notRun, RequiredScenarios.Length, complete);
