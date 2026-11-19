@@ -1280,13 +1280,13 @@ public partial class MainWindow : Window
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "GtaTransformationHub", "rage-cli", "metadata-dumps"),
             CheckFileExists = true,
-            Multiselect = false
+            Multiselect = true
         };
-        if (dialog.ShowDialog() != true)
+        if (dialog.ShowDialog() != true || dialog.FileNames.Length == 0)
             return;
 
         var confirmation = MessageBox.Show(
-            "The Hub will verify the dump index, discovery report, source RPF hashes, JSON dump hashes, exact GTA5.exe SHA-256 and pinned rage-cli release. It will then extract heuristic candidates from metadata fields that resemble species, models, population, habitats and water settings. The report is for manual review only: field-name matches may be false positives, missed resources remain possible, and ecology package deployment will stay blocked. Continue?",
+            "Select every metadata-dump batch index for this same discovery report and exact GTA V build. The Hub will verify each index, the common discovery report, source RPF hashes, JSON dump hashes, GTA5.exe fingerprint and pinned rage-cli release. It will merge overlapping retry batches by global candidate index, reject conflicting payloads, and identify missing candidate ranges. The resulting species/plant/population/habitat/water field matches remain heuristic and require review; they will not certify a complete inventory or unlock ecology packages. Selected batch index files: " + dialog.FileNames.Length + ". Continue?",
             "Analyze ecological metadata candidates",
             MessageBoxButton.YesNo,
             MessageBoxImage.Information);
@@ -1305,7 +1305,7 @@ public partial class MainWindow : Window
             var result = await _rageCliEcologyCandidateAnalysisService.AnalyzeAsync(
                 _verifiedRageCliExecutablePath,
                 _installation,
-                dialog.FileName,
+                dialog.FileNames,
                 _assetCatalogueCancellation.Token);
 
             var categorySummary = result.CategoryCounts.Count == 0
@@ -1317,7 +1317,8 @@ public partial class MainWindow : Window
             EcologyCandidateAnalysisStatusText.Text =
                 "Candidate report saved: " + result.ReportPath + Environment.NewLine +
                 "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
-                "Metadata payloads reviewed: " + result.PayloadsReviewed + Environment.NewLine +
+                "Batch index files merged: " + dialog.FileNames.Length + Environment.NewLine +
+                "Unique metadata payloads reviewed: " + result.PayloadsReviewed + Environment.NewLine +
                 "Heuristic candidate records: " + result.CandidateCount + Environment.NewLine +
                 categorySummary + Environment.NewLine +
                 "Input dump/discovery stage complete: " + (result.InputIndexWasComplete ? "No known caps/errors" : "INCOMPLETE / warnings present") + Environment.NewLine +
