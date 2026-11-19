@@ -369,8 +369,9 @@ public partial class MainWindow : Window
                   " | archive edits: " + result.OivInspection.ArchiveEditCount +
                   " | patch commands: " + result.OivInspection.PatchOperationCount + "\n" +
                   "Payload issues: " + result.OivInspection.PayloadSourceIssues.Count +
-                  " | unrecognised commands: " + result.OivInspection.UnsupportedCommands.Count + "\n" +
-                  "Manifest structural warnings: " + (result.OivInspection.RequiresManualReview ? "Present" : "None detected") + "\n" +
+                  " | unrecognised commands: " + result.OivInspection.UnsupportedCommands.Count +
+                  " | manifest warnings: " + (result.OivInspection.ManifestWarnings?.Count ?? 0) + "\n" +
+                  "Manifest structural review: " + (result.OivInspection.RequiresManualReview ? "Required" : "No structural warnings detected") + "\n" +
                   "Licence, game-build, compatibility and runtime review is still required before approval.";
 
             await RefreshImportedPackageLibraryAsync();
@@ -499,6 +500,20 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             return;
+        }
+
+        if (inspection.ManifestWarnings is { Count: > 0 })
+        {
+            var warningAnswer = MessageBox.Show(
+                "The OIV manifest contains structural warnings:\\n\\n" +
+                string.Join("\\n", inspection.ManifestWarnings.Take(8)) +
+                "\\n\\nThe Hub can inventory these operations but cannot prove how the external installer will handle them. " +
+                "Review the author's instructions before continuing.",
+                "OIV manifest warnings",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (warningAnswer != MessageBoxResult.Yes)
+                return;
         }
 
         var allowUnspecified = !inspection.IsExplicitlyLegacy && !inspection.IsAnyGameVersion;
