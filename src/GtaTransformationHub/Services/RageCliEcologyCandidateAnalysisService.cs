@@ -625,7 +625,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
                     Visit(item, path + "/" + index.ToString(System.Globalization.CultureInfo.InvariantCulture),
                         structureType, fieldName, inheritedContext);
                     index++;
-                    if (nodes > MaximumNodesPerPayload || output.Count >= maximumCandidates)
+                    if (nodeLimitReached || output.Count >= maximumCandidates)
                         break;
                 }
                 return;
