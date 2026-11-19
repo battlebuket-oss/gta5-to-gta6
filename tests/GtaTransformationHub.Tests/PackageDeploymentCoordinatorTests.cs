@@ -88,6 +88,99 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
         Assert.Contains(report.Errors, error => error.Contains("OIV deployment remains disabled"));
     }
 
+    [Fact]
+    public async Task Validate_RequiresExactGta5ExecutableFingerprintForUiPackage()
+    {
+        var contentBytes = System.Text.Encoding.UTF8.GetBytes("ui package data");
+        using var rsa = RSA.Create(2048);
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(rsa.ExportSubjectPublicKeyInfoPem());
+        var trustedStore = new TrustedPublisherStore(Path.Combine(_root, "trusted-publishers.json"));
+        await trustedStore.AddAsync("UI Test Publisher", rsa.ExportSubjectPublicKeyInfoPem(), fingerprint);
+        var signatureService = new PackageSignatureService(trustedStore);
+        var actualHash = await GameExecutableFingerprintService.ComputeSha256Async(
+            Path.Combine(_gameRoot, "GTA5.exe"));
+
+        var importedWrongHash = await CreateSignedUiPackageAsync(
+            contentBytes, rsa, fingerprint, "1.0.3889.0", new string('B', 64));
+        var installation = new GameInstallation(
+            _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
+        var coordinator = new PackageDeploymentCoordinator(
+            new TransactionalDeploymentService(dataRoot: _transactionRoot),
+            _stagingRoot,
+            signatureService);
+
+        var report = await coordinator.ValidateAsync(installation, new[] { importedWrongHash });
+
+        Assert.False(report.IsValid);
+        Assert.Contains(report.Errors, error => error.Contains("different exact GTA5.exe build or SHA-256 fingerprint", StringComparison.Ordinal));
+        Assert.NotEqual(new string('B', 64), actualHash);
+    }
+
+    [Fact]
+    public async Task Validate_RequiresExactGta5BuildForUiPackage()
+    {
+        var contentBytes = System.Text.Encoding.UTF8.GetBytes("ui package data");
+        using var rsa = RSA.Create(2048);
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(rsa.ExportSubjectPublicKeyInfoPem());
+        var trustedStore = new TrustedPublisherStore(Path.Combine(_root, "trusted-publishers.json"));
+        await trustedStore.AddAsync("UI Test Publisher", rsa.ExportSubjectPublicKeyInfoPem(), fingerprint);
+        var signatureService = new PackageSignatureService(trustedStore);
+        var actualHash = await GameExecutableFingerprintService.ComputeSha256Async(
+            Path.Combine(_gameRoot, "GTA5.exe"));
+
+        var importedWrongBuild = await CreateSignedUiPackageAsync(
+            contentBytes, rsa, fingerprint, "1.0.3888.0", actualHash);
+        var installation = new GameInstallation(
+            _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
+        var coordinator = new PackageDeploymentCoordinator(
+            new TransactionalDeploymentService(dataRoot: _transactionRoot),
+            _stagingRoot,
+            signatureService);
+
+        var report = await coordinator.ValidateAsync(installation, new[] { importedWrongBuild });
+
+        Assert.False(report.IsValid);
+        Assert.Contains(report.Errors, error => error.Contains("different exact GTA5.exe build or SHA-256 fingerprint", StringComparison.Ordinal));
+    }
+
+    private async Task<ImportedPackage> CreateSignedUiPackageAsync(
+        byte[] contentBytes,
+        RSA privateKey,
+        string publisherFingerprint,
+        string verifiedGameBuild,
+        string verifiedExecutableSha256)
+    {
+        var manifest = CreateManifest(contentBytes) with
+        {
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true,
+            SignatureVersion = 3,
+            Ui = new UiPackageDescriptor(
+                new[] { "hud" },
+                "GameScript",
+                new[] { "KeyboardMouse", "Controller" },
+                new[] { "1920x1080" },
+                new[] { "KeyboardNavigation", "ControllerNavigation", "VisibleFocus" },
+                true,
+                true,
+                true,
+                true,
+                true,
+                "https://example.com/ui-compatibility",
+                "https://example.com/ui-rollback",
+                verifiedGameBuild,
+                verifiedExecutableSha256)
+        };
+        var toSign = manifest with { SigningKeyId = publisherFingerprint, Signature = null };
+        var signature = privateKey.SignData(
+            PackageSignatureService.CreateSigningPayload(toSign),
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+        var signed = toSign with { Signature = Convert.ToBase64String(signature) };
+        var archivePath = CreateArchive(signed, ("mods/sample.dat", contentBytes));
+        return await new PackageArchiveService(_packagesRoot).ImportAsync(archivePath);
+    }
+
     private static PackageManifest CreateManifest(byte[] content) =>
         new(
             1,
