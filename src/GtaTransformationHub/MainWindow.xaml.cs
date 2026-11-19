@@ -142,6 +142,55 @@ public partial class MainWindow : Window
                     }
                 };
                 details.Children.Add(openFolderButton);
+
+                var verifyButton = new Button
+                {
+                    Content = "VERIFY FILE SHA-256",
+                    Padding = new Thickness(8, 4, 8, 4),
+                    Margin = new Thickness(0, 6, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Left
+                };
+                verifyButton.Click += async (_, _) =>
+                {
+                    verifyButton.IsEnabled = false;
+                    StatusText.Text = "Recomputing SHA-256 for " + entry.Name + "...";
+                    try
+                    {
+                        var verification = await new ImportedModLibraryService().VerifyAsync(
+                            PackageLibraryRoot, entry.PackageDirectory);
+                        if (verification.IsValid)
+                        {
+                            StatusText.Text = entry.Name + ": file hashes verified. Package remains research-only.";
+                            MessageBox.Show(
+                                verification.FilesChecked + " file(s) passed SHA-256 verification.\n\n" +
+                                "This verifies the imported files against their local manifest only. " +
+                                "It does not verify the author's identity, licence, compatibility or safety, and does not install the mod.",
+                                "Package integrity check passed",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            StatusText.Text = entry.Name + ": integrity check found issues.";
+                            MessageBox.Show(
+                                string.Join(Environment.NewLine, verification.Errors.Take(12)),
+                                "Package integrity check failed",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        StatusText.Text = "Package integrity check failed.";
+                        MessageBox.Show(exception.Message, "Verification failed",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    finally
+                    {
+                        verifyButton.IsEnabled = true;
+                    }
+                };
+                details.Children.Add(verifyButton);
                 card.Child = details;
                 ModList.Children.Add(card);
             }
