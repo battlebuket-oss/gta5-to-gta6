@@ -80,14 +80,14 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
     {
         var archivePath = CreateOiv(
             "game-version-" + markerValue + ".oiv",
-            Manifest($"""
+            Manifest("""
                 <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
                   <metadata>
                     <name>Edition marker test</name>
                     <version><major>1</major><minor>0</minor><tag>Not a game edition</tag></version>
                     <author><displayName>Test Author</displayName></author>
                     <description><![CDATA[Edition marker test]]></description>
-                    <gameversion>{{markerValue}}</gameversion>
+                    <gameversion>__MARKER__</gameversion>
                   </metadata>
                   <colors>
                     <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
@@ -95,7 +95,7 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
                   </colors>
                   <content/>
                 </package>
-                """));
+                """.Replace("__MARKER__", markerValue)));
 
         using var file = File.OpenRead(archivePath);
         using var archive = new ZipArchive(file, ZipArchiveMode.Read);
