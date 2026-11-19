@@ -103,6 +103,43 @@ public sealed class OpenRageToolchainServiceTests : IDisposable
     }
 
     [Fact]
+    public void ValidateOpenIvModsFolder_RequiresModsDirectoryAndOpenIvAsi()
+    {
+        var root = Path.Combine(_root, "game");
+        Directory.CreateDirectory(root);
+
+        Assert.Throws<InvalidDataException>(() =>
+            OpenRageToolchainService.ValidateOpenIvModsFolder(root));
+
+        var mods = Path.Combine(root, "mods");
+        Directory.CreateDirectory(mods);
+        Assert.Throws<InvalidDataException>(() =>
+            OpenRageToolchainService.ValidateOpenIvModsFolder(root));
+
+        File.WriteAllBytes(Path.Combine(root, "OpenIV.asi"), new byte[] { 1, 2, 3 });
+        OpenRageToolchainService.ValidateOpenIvModsFolder(root);
+    }
+
+    [Fact]
+    public void ValidateOpenIvModsFolder_RejectsReparsePointGameRoot()
+    {
+        var root = Path.Combine(_root, "game");
+        Directory.CreateDirectory(root);
+        if (!OperatingSystem.IsWindows())
+        {
+            // Creating symlinks may be unavailable in the test runner; regular roots are covered above.
+            return;
+        }
+
+        var target = Path.Combine(_root, "target");
+        Directory.CreateDirectory(target);
+        var link = Path.Combine(_root, "linked-game");
+        Directory.CreateSymbolicLink(link, target);
+        Assert.Throws<InvalidDataException>(() =>
+            OpenRageToolchainService.ValidateOpenIvModsFolder(link));
+    }
+
+    [Fact]
     public void ValidateOivPackagePath_RequiresExistingOivFileAndRejectsOtherFormats()
     {
         Directory.CreateDirectory(_root);
