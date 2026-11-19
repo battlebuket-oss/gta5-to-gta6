@@ -24,10 +24,11 @@ The application does not inject code into a running GTA V process, modify files 
 - Fail-closed process monitor.
 - Research shortlist for potential Legacy mods; **research candidates are not yet approved or enabled packages**.
 - Quarantine-only ZIP/OIV import with HTTPS provenance, archive SHA-256, per-file SHA-256 inventory, size and compression-ratio limits, duplicate/case-collision rejection, path traversal checks, and symlink/reparse-point rejection.
+- Read-only OpenIV OIV `assembly.xml` inspection (format 2.0–2.2): metadata, nested archive operations, target/source paths, unresolved payload references, and unknown commands are summarized without executing or applying the package.
 - WPF import dialog connected to the quarantine importer. Imported packages stay in the local research library with status `Researching`; no GTA V game files are changed by import.
 - Catalogue validation now rejects unresolved or self-referencing package dependencies and profiles that reference missing package IDs.
 
-The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The new archive importer is inspection-only and deliberately does not install anything. The application is **not production-ready**: mod-specific installation adapters (especially OIV/RPF and script-loader packages), supported-build detection, full profile persistence/resolution, menu/HUD integrations, in-game validation, RTX 4050 benchmarks, signed installer/update delivery, and clean-machine release testing remain outstanding.
+The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The new archive importer is inspection-only and deliberately does not install anything. The application is **not production-ready**: RPF payload inspection and deployment adapters, root-level ASI/script-loader package handling, supported-build detection, full profile persistence/resolution, menu/HUD integration approval, in-game validation, RTX 4050 benchmarks, signed installer/update delivery, and clean-machine release testing remain outstanding.
 
 ## Mod catalogue and redistribution
 
