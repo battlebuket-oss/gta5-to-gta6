@@ -356,7 +356,7 @@ public sealed class RageCliExecutionException : Exception
 
 public sealed class RageCliProcessRunner : IRageCliProcessRunner
 {
-    private const int MaximumCapturedCharacters = 1024 * 1024;
+    private const int MaximumCapturedCharacters = 16 * 1024 * 1024;
 
     public async Task<RageCliProcessResult> RunAsync(
         string executablePath,
