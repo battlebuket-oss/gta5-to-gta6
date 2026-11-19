@@ -693,6 +693,21 @@ public sealed class EcologyInventoryCurationService
         }
     }
 
+    private static List<string> ParseModelIdentifiers(string value, ICollection<string> errors)
+    {
+        var values = (value ?? string.Empty)
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        if (values.Count == 0 ||
+            values.Any(item => item.Length > 128 ||
+                item.Any(character =>
+                    !(char.IsAsciiLetterOrDigit(character) || character is '_' or '-' or '.'))))
+            errors.Add("Species model identifiers must be one or more semicolon-separated GTA model names.");
+        if (values.Distinct(StringComparer.OrdinalIgnoreCase).Count() != values.Count)
+            errors.Add("Species model identifiers contain duplicate values.");
+        return values;
+    }
+
     private static List<string> ParseDelimitedIds(string value, string label, ICollection<string> errors)
     {
         var values = (value ?? string.Empty)
@@ -735,13 +750,45 @@ public sealed class EcologyInventoryCurationService
             using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 64 });
             if (document.RootElement.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array))
                 throw new JsonException("A definition must be a JSON object or array.");
-            var canonicalBytes = JsonSerializer.SerializeToUtf8Bytes(document.RootElement);
-            return Convert.ToHexString(SHA256.HashData(canonicalBytes)).ToLowerInvariant();
+
+            using var buffer = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(buffer))
+                WriteCanonicalJson(document.RootElement, writer);
+
+            return Convert.ToHexString(SHA256.HashData(buffer.ToArray())).ToLowerInvariant();
         }
         catch (JsonException exception)
         {
             errors.Add(label + " contains invalid definition JSON: " + exception.Message);
             return string.Empty;
+        }
+    }
+
+    private static void WriteCanonicalJson(JsonElement element, Utf8JsonWriter writer)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject().OrderBy(
+                             item => item.Name, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(property.Name);
+                    WriteCanonicalJson(property.Value, writer);
+                }
+                writer.WriteEndObject();
+                break;
+
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                    WriteCanonicalJson(item, writer);
+                writer.WriteEndArray();
+                break;
+
+            default:
+                element.WriteTo(writer);
+                break;
         }
     }
 
