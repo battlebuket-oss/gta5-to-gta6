@@ -205,6 +205,7 @@ public sealed class OpenRageToolchainService
         CancellationToken cancellationToken = default)
     {
         ValidateGameInstallation(installation);
+        ValidateOpenIvModsFolder(installation.RootPath);
         var safePackage = ValidateOivPackagePath(packagePath);
         var tool = await ValidateInstalledAsync(cancellationToken);
         await EnsureGameKeysAsync(tool, installation, cancellationToken);
@@ -396,6 +397,27 @@ public sealed class OpenRageToolchainService
                   line.Contains(".dll", StringComparison.OrdinalIgnoreCase) ||
                   line.Contains(".exe", StringComparison.OrdinalIgnoreCase))))
             .ToArray();
+
+    public static void ValidateOpenIvModsFolder(string gameRoot)
+    {
+        if (string.IsNullOrWhiteSpace(gameRoot))
+            throw new ArgumentException("A GTA V Legacy game folder is required.", nameof(gameRoot));
+
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameRoot));
+        if (!Directory.Exists(root) || (File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("The selected GTA V game folder is missing or redirected.");
+
+        var modsDirectory = Path.Combine(root, "mods");
+        if (!Directory.Exists(modsDirectory) ||
+            (File.GetAttributes(modsDirectory) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException(
+                "OpenRAGE requires an existing regular 'mods' folder. Install OpenIV and create/initialize its mods folder first.");
+
+        var openIvAsi = Path.Combine(root, "OpenIV.asi");
+        if (!File.Exists(openIvAsi) || (File.GetAttributes(openIvAsi) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException(
+                "OpenIV.asi is not installed in the selected GTA V Legacy folder. Install it with OpenIV ASI Manager before installing OIV packages.");
+    }
 
     public static string ValidateOivPackagePath(string packagePath)
     {
