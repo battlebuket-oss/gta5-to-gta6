@@ -66,6 +66,28 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
         Assert.Contains(report.Errors, error => error.Contains("not compatible"));
     }
 
+    [Fact]
+    public async Task Validate_RejectsOivEvenWhenManifestClaimsCompatibilityVerified()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("oiv imported loose file");
+        var manifest = CreateManifest(content) with
+        {
+            PackageFormat = "OIV-2.2",
+            CompatibilityVerified = true
+        };
+        var archivePath = CreateArchive(manifest, ("mods/oiv-sample.dat", content));
+        var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(archivePath);
+        var installation = new GameInstallation(
+            _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
+        var coordinator = new PackageDeploymentCoordinator(
+            new TransactionalDeploymentService(dataRoot: _transactionRoot), _stagingRoot);
+
+        var report = await coordinator.ValidateAsync(installation, new[] { imported });
+
+        Assert.False(report.IsValid);
+        Assert.Contains(report.Errors, error => error.Contains("OIV deployment remains disabled"));
+    }
+
     private static PackageManifest CreateManifest(byte[] content) =>
         new(
             1,
