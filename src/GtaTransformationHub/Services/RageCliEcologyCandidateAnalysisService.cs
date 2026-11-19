@@ -264,18 +264,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
             }
         }
 
-        var candidateCoverageComplete = payloadsByCandidateIndex.Count == totalCandidateCount;
-        if (candidateCoverageComplete)
-        {
-            for (var candidateIndex = 0; candidateIndex < totalCandidateCount; candidateIndex++)
-            {
-                if (!payloadsByCandidateIndex.ContainsKey(candidateIndex))
-                {
-                    candidateCoverageComplete = false;
-                    break;
-                }
-            }
-        }
+        var candidateCoverageComplete = HasCompleteCandidateCoverage(
+            totalCandidateCount, payloadsByCandidateIndex.Keys);
         if (!candidateCoverageComplete)
             warnings.Add(
                 "The selected batch indexes cover " + payloadsByCandidateIndex.Count +
@@ -451,6 +441,26 @@ public sealed class RageCliEcologyCandidateAnalysisService
             PackageEligibilityUnlocked: false,
             warnings,
             candidates);
+    }
+
+    public static bool HasCompleteCandidateCoverage(
+        int totalCandidateCount,
+        IEnumerable<int> candidateIndexes)
+    {
+        if (totalCandidateCount < 1 ||
+            totalCandidateCount > MaximumDiscoveredCandidates ||
+            candidateIndexes is null)
+            return false;
+
+        var indexes = new HashSet<int>();
+        foreach (var index in candidateIndexes)
+        {
+            if (index < 0 || index >= totalCandidateCount)
+                return false;
+            indexes.Add(index);
+        }
+
+        return indexes.Count == totalCandidateCount;
     }
 
     public static string? ClassifyCandidateField(
