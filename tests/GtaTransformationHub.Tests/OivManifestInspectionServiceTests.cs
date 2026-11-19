@@ -21,7 +21,7 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         var archivePath = CreateOiv(
             "valid.oiv",
             Manifest("""
-                <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
+                <package version="2.2" id="{{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}}" target="Five">
                   <metadata>
                     <name>Example HUD</name>
                     <version><major>2</major><minor>8</minor><tag>Legacy</tag></version>
