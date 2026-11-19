@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Media;
 using Microsoft.Win32;
 using GtaTransformationHub.Models;
 using GtaTransformationHub.Services;
@@ -28,6 +29,8 @@ public partial class MainWindow : Window
     private readonly ProfileActivationService _profileActivationService;
     private readonly ProfileStoreService _profileStore = new();
     private readonly TrustedPublisherStore _trustedPublisherStore = new();
+    private readonly StoryTestEvidenceService _storyTestEvidenceService = new();
+    private readonly AccessibilityPreferencesService _accessibilityPreferencesService = new();
     private readonly ObservableCollection<ImportedPackage> _packages = new();
     private readonly ObservableCollection<ModPackage> _cataloguePackages = new();
     private readonly ObservableCollection<ModProfile> _profiles = new();
@@ -39,6 +42,17 @@ public partial class MainWindow : Window
     private string? _verifiedRageCliExecutablePath;
     private CancellationTokenSource? _assetCatalogueCancellation;
     private readonly List<string> _rollbackTransactionIds = new();
+    private readonly Dictionary<FrameworkElement, double> _baseFontSizes = new();
+    private readonly Dictionary<TextBlock, Brush?> _baseTextBrushes = new();
+    private readonly Dictionary<Control, ControlPalette> _baseControlPalettes = new();
+    private readonly Dictionary<Border, BorderPalette> _baseBorderPalettes = new();
+    private Brush? _baseWindowBackground;
+    private Brush? _baseWindowForeground;
+    private bool _accessibilityDefaultsCaptured;
+    private bool _accessibilityPreferencesLoading;
+
+    private sealed record ControlPalette(Brush? Background, Brush? Foreground, Brush? BorderBrush);
+    private sealed record BorderPalette(Brush? Background, Brush? BorderBrush);
 
     public MainWindow()
     {
@@ -85,6 +99,7 @@ public partial class MainWindow : Window
             }
 
             await LoadProfilesAsync();
+            await LoadAccessibilityPreferencesAsync();
 
             try
             {
@@ -474,6 +489,226 @@ public partial class MainWindow : Window
             _operationInProgress = false;
         }
         RefreshSessionState();
+    }
+
+
+    private async Task LoadAccessibilityPreferencesAsync()
+    {
+        CaptureAccessibilityDefaults();
+        _accessibilityPreferencesLoading = true;
+        try
+        {
+            var preferences = await _accessibilityPreferencesService.LoadAsync();
+            HighContrastCheckBox.IsChecked = preferences.HighContrast;
+            HubTextScaleSlider.Value = preferences.TextScale;
+            ReduceMotionCheckBox.IsChecked = preferences.ReduceMotion;
+            TextScaleValueText.Text = Math.Round(preferences.TextScale * 100).ToString("0") + "%";
+            ApplyAccessibilityPreferences(preferences);
+            AccessibilityStatusText.Text =
+                "Saved locally. These controls affect the Hub only; no GTA V settings are modified. " +
+                "The Hub currently uses no nonessential animated transitions.";
+        }
+        catch (Exception exception)
+        {
+            ApplyAccessibilityPreferences(HubAccessibilityPreferences.Default);
+            AccessibilityStatusText.Text = "Saved accessibility preferences could not be loaded: " + exception.Message;
+            App.Diagnostics.Write(AuditLogLevel.Warning, "AccessibilityPreferencesLoadFailed",
+                "Hub accessibility preferences could not be loaded; defaults are active.", exception);
+        }
+        finally
+        {
+            _accessibilityPreferencesLoading = false;
+        }
+    }
+
+    private void CaptureAccessibilityDefaults()
+    {
+        if (_accessibilityDefaultsCaptured)
+            return;
+
+        _baseWindowBackground = Background;
+        _baseWindowForeground = Foreground;
+
+        foreach (var element in EnumerateVisualTree(this).OfType<FrameworkElement>())
+        {
+            if (element is Control or TextBlock)
+                _baseFontSizes.TryAdd(element, element.FontSize);
+
+            if (element is TextBlock textBlock)
+                _baseTextBrushes.TryAdd(textBlock, textBlock.Foreground);
+            if (element is Control control)
+                _baseControlPalettes.TryAdd(control,
+                    new ControlPalette(control.Background, control.Foreground, control.BorderBrush));
+            if (element is Border border)
+                _baseBorderPalettes.TryAdd(border, new BorderPalette(border.Background, border.BorderBrush));
+        }
+
+        _accessibilityDefaultsCaptured = true;
+    }
+
+    private static IEnumerable<DependencyObject> EnumerateVisualTree(DependencyObject root)
+    {
+        yield return root;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            foreach (var child in EnumerateVisualTree(VisualTreeHelper.GetChild(root, index)))
+                yield return child;
+        }
+    }
+
+    private void ApplyAccessibilityPreferences(HubAccessibilityPreferences preferences)
+    {
+        if (!_accessibilityDefaultsCaptured)
+            CaptureAccessibilityDefaults();
+
+        foreach (var item in _baseFontSizes)
+            item.Key.FontSize = item.Value * preferences.TextScale;
+
+        TextScaleValueText.Text = Math.Round(preferences.TextScale * 100).ToString("0") + "%";
+
+        if (!preferences.HighContrast)
+        {
+            Background = _baseWindowBackground;
+            Foreground = _baseWindowForeground;
+
+            foreach (var item in _baseTextBrushes)
+                item.Key.Foreground = item.Value;
+            foreach (var item in _baseControlPalettes)
+            {
+                item.Key.Background = item.Value.Background;
+                item.Key.Foreground = item.Value.Foreground;
+                item.Key.BorderBrush = item.Value.BorderBrush;
+            }
+            foreach (var item in _baseBorderPalettes)
+            {
+                item.Key.Background = item.Value.Background;
+                item.Key.BorderBrush = item.Value.BorderBrush;
+            }
+            return;
+        }
+
+        Background = Brushes.Black;
+        Foreground = Brushes.White;
+
+        foreach (var item in _baseTextBrushes)
+            item.Key.Foreground = Brushes.White;
+
+        foreach (var item in _baseControlPalettes)
+        {
+            var control = item.Key;
+            control.Foreground = Brushes.White;
+            control.BorderBrush = Brushes.White;
+            control.Background = control is Button ? Brushes.DarkBlue : Brushes.Black;
+        }
+
+        foreach (var item in _baseBorderPalettes)
+        {
+            item.Key.Background = Brushes.Black;
+            item.Key.BorderBrush = Brushes.White;
+        }
+    }
+
+    private HubAccessibilityPreferences ReadAccessibilityPreferencesFromUi() =>
+        new(
+            HighContrastCheckBox.IsChecked == true,
+            HubTextScaleSlider.Value,
+            ReduceMotionCheckBox.IsChecked == true);
+
+    private void AccessibilityPreference_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_accessibilityPreferencesLoading)
+            return;
+
+        ApplyAccessibilityPreferences(ReadAccessibilityPreferencesFromUi());
+    }
+
+    private void AccessibilityTextScale_ValueChanged(
+        object sender,
+        RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_accessibilityPreferencesLoading || TextScaleValueText is null)
+            return;
+
+        ApplyAccessibilityPreferences(ReadAccessibilityPreferencesFromUi());
+    }
+
+    private async void SaveAccessibilityPreferencesButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var preferences = ReadAccessibilityPreferencesFromUi();
+            await _accessibilityPreferencesService.SaveAsync(preferences);
+            AccessibilityStatusText.Text =
+                "Preferences saved locally. High contrast and text size are active. " +
+                "Reduced motion is stored for future nonessential transitions; the current Hub has no animated transitions.";
+            App.Diagnostics.Write(AuditLogLevel.Information, "AccessibilityPreferencesSaved",
+                "Hub accessibility preferences were saved.");
+        }
+        catch (Exception exception)
+        {
+            AccessibilityStatusText.Text = "Accessibility preferences could not be saved: " + exception.Message;
+            MessageBox.Show(exception.Message, "Accessibility preferences",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void RecordStoryTestEvidenceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null)
+            return;
+
+        if (PackageList.SelectedItems.Count != 1 ||
+            PackageList.SelectedItem is not ImportedPackage package ||
+            package.Manifest.StoryContent is null)
+        {
+            StatusText.Text = "Select exactly one imported Story Mode package to record its test evidence.";
+            return;
+        }
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        try
+        {
+            StatusText.Text = "Computing the exact GTA5.exe SHA-256 fingerprint...";
+            var fingerprint = await GameExecutableFingerprintService.ComputeSha256Async(
+                _installation.ExecutablePath);
+            var dialog = new StoryTestEvidenceWindow(
+                package, _installation, fingerprint, _storyTestEvidenceService)
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true && dialog.SavedRecord is not null)
+            {
+                var summary = StoryTestEvidenceService.Summarize(dialog.SavedRecord);
+                StoryTestEvidenceStatusText.Text = summary.IsCompletePass
+                    ? "Complete: all " + summary.Total + " required scenarios recorded as Passed for this exact package archive and GTA5.exe fingerprint. This does not automatically approve the mod."
+                    : "Saved evidence: " + summary.Passed + "/" + summary.Total + " passed; " +
+                      summary.Failed + " failed; " + summary.Blocked + " blocked; " + summary.NotRun +
+                      " not run. Exact-build evidence remains incomplete.";
+                StatusText.Text = "Story Mode test evidence saved for " + package.Manifest.Name + ".";
+                App.Diagnostics.Write(AuditLogLevel.Information, "StoryTestEvidenceSaved",
+                    "Saved Story Mode test evidence for package " + package.Manifest.Id +
+                    " version " + package.Manifest.Version + ". Passed " + summary.Passed +
+                    " of " + summary.Total + " scenarios.");
+            }
+            else
+            {
+                StatusText.Text = "Story Mode evidence recording was cancelled.";
+            }
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Story Mode test evidence could not be recorded.";
+            StoryTestEvidenceStatusText.Text = exception.Message;
+            MessageBox.Show(exception.Message, "Story Mode test evidence",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
     }
 
     private void OpenRageCliReleaseButton_Click(object sender, RoutedEventArgs e)
@@ -1266,6 +1501,10 @@ public partial class MainWindow : Window
         RemoveSelectedButton.IsEnabled = canConfigure && _installation is not null &&
                                          PackageList.SelectedItems.Count > 0;
         RollbackButton.IsEnabled = canConfigure && _rollbackTransactionIds.Count > 0;
+        RecordStoryTestEvidenceButton.IsEnabled = canConfigure && _installation is not null &&
+            PackageList.SelectedItems.Count == 1 &&
+            PackageList.SelectedItem is ImportedPackage storyPackage &&
+            storyPackage.Manifest.StoryContent is not null;
         LaunchButton.IsEnabled = canConfigure && _installation is not null;
         OpenRageCliReleaseButton.IsEnabled = canConfigure;
         SelectRageCliButton.IsEnabled = canConfigure;
