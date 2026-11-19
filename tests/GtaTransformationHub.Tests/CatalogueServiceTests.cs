@@ -26,8 +26,10 @@ public sealed class CatalogueServiceTests
                 GtaTransformationHub.Models.CatalogueStatus.Blocked
             }));
 
+        // The author-hosted listing currently documents a Legacy package, but
+        // the exact executable/runtime range is not verified by this Hub yet.
         Assert.Equal(
-            GtaTransformationHub.Models.CatalogueStatus.Blocked,
+            GtaTransformationHub.Models.CatalogueStatus.Researching,
             catalogue.Packages.Single(package => package.Id == "wildlife-mod-2-2").Status);
         Assert.DoesNotContain(catalogue.Packages, package =>
             package.Status is GtaTransformationHub.Models.CatalogueStatus.Verified or
