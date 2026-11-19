@@ -24,7 +24,7 @@ public sealed class CatalogueServiceTests
 
 
     [Fact]
-    public void Load_RejectsNoDependenciesOrProfilesThatReferenceUnknownPackages()
+    public void Load_EnsuresDependenciesAndProfilesReferenceExistingPackages()
     {
         var path = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
