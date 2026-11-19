@@ -131,6 +131,22 @@ public sealed class PackageSignatureServiceTests : IDisposable
     }
 
     [Fact]
+    public void CreateSigningPayload_V3RejectsNullUiFingerprintWithoutThrowing()
+    {
+        var manifest = CreateManifest() with
+        {
+            SignatureVersion = 3,
+            ImpactAreas = new[] { "interface" },
+            Ui = CreateUiDescriptor() with { VerifiedGta5ExeSha256 = null! }
+        };
+
+        var exception = Assert.Throws<InvalidDataException>(() =>
+            PackageSignatureService.CreateSigningPayload(manifest));
+
+        Assert.Contains("GTA5.exe SHA-256", exception.Message);
+    }
+
+    [Fact]
     public async Task VerifyAsync_V2SignatureCannotAuthenticateUiMetadata()
     {
         using var rsa = RSA.Create(2048);
