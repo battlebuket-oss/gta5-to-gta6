@@ -59,9 +59,8 @@ public sealed class PackageDeploymentCoordinator
                 errors.Add(storyError);
             foreach (var ecologyError in EcologyCompatibilityService.Validate(manifest))
                 errors.Add(ecologyError);
-            if (string.Equals(manifest.PackageFormat, "OIV-2.2", StringComparison.OrdinalIgnoreCase) &&
-                !manifest.CompatibilityVerified)
-                errors.Add(manifest.Name + " is an imported OIV package whose GTA V build compatibility has not been independently verified. It cannot be deployed yet.");
+            if (string.Equals(manifest.PackageFormat, "OIV-2.2", StringComparison.OrdinalIgnoreCase))
+                errors.Add(manifest.Name + " uses the restricted OIV import path. OIV deployment remains disabled until a complete audited archive adapter, exact-build test evidence, and package-bound rollback validation are available. A manifest flag cannot self-approve OIV deployment.");
             var signature = await _signatureService.VerifyAsync(manifest, cancellationToken);
             switch (signature.Status)
             {
