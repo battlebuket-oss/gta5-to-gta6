@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly TransactionalDeploymentService _deploymentService = new();
     private readonly TransactionalRemovalService _removalService = new();
     private readonly GameInstallationService _gameInstallationService;
+    private readonly GameInstallationStoreService _gameInstallationStore = new();
     private readonly GameInstallationStoreService _gameInstallationStoreService = new();
     private readonly PackageArchiveService _archiveService = new();
     private readonly OivPackageImportService _oivImportService = new();
@@ -88,6 +89,21 @@ public partial class MainWindow : Window
             var recovered = await _deploymentService.RecoverInterruptedTransactionsAsync();
             _recoveryCompleted = true;
             App.Diagnostics.Write(AuditLogLevel.Information, "StartupRecoveryCompleted", "Startup transaction recovery completed. Recovered transactions: " + recovered.Count + ".");
+
+            var savedInstallation = await _gameInstallationStore.RestoreAsync(_gameInstallationService);
+            if (savedInstallation.Restored && savedInstallation.Installation is not null)
+            {
+                _installation = savedInstallation.Installation;
+                GamePathText.Text = _installation.RootPath;
+                DetectionText.Text = savedInstallation.Message;
+                App.Diagnostics.Write(AuditLogLevel.Information, "GameInstallationRestored",
+                    "Restored and revalidated the previously selected GTA V Legacy installation.");
+            }
+            else
+            {
+                GamePathText.Text = "GTA V Legacy not located";
+                DetectionText.Text = savedInstallation.Message;
+            }
 
             try
             {
