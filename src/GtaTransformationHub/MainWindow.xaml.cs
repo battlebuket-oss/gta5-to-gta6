@@ -19,10 +19,17 @@ public partial class MainWindow : Window
     private OivManifestInspectionResult? _lastOivInspection;
     private bool _recoveryCompleted;
     private readonly DispatcherTimer _processTimer;
+    private readonly PackageAcquisitionService _packageAcquisitionService;
+    private readonly OpenRageToolchainService _openRageToolchainService;
+    private OpenRageOivInspection? _reviewedOpenRageInspection;
+    private bool _openRageReady;
+    private bool _openRageBusy;
 
     public MainWindow()
     {
         InitializeComponent();
+        _packageAcquisitionService = new PackageAcquisitionService();
+        _openRageToolchainService = new OpenRageToolchainService(_packageAcquisitionService);
         _processTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _processTimer.Tick += (_, _) => RefreshSessionState();
         _processTimer.Start();
@@ -49,6 +56,7 @@ public partial class MainWindow : Window
             StatusText.Text = "Safety recovery failed. No installation or launch actions are available.";
         }
         await RefreshImportedPackageLibraryAsync();
+        await RefreshOpenRageToolStatusAsync();
         RefreshSessionState();
     }
 
@@ -715,6 +723,429 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task RefreshOpenRageToolStatusAsync()
+    {
+        try
+        {
+            var tool = await _openRageToolchainService.ValidateInstalledAsync();
+            _openRageReady = true;
+            OpenRageToolStatusText.Text =
+                "Verified OpenRAGE v" + tool.Version + " | archive SHA-256 " +
+                tool.ArchiveSha256[..12] + " | CLI SHA-256 " + tool.ExecutableSha256[..12];
+        }
+        catch (FileNotFoundException)
+        {
+            _openRageReady = false;
+            OpenRageToolStatusText.Text =
+                "OpenRAGE v" + OpenRageToolchainService.PinnedVersion +
+                " is not installed. The Hub downloads the official upstream archive and verifies its pinned SHA-256.";
+        }
+        catch (Exception exception)
+        {
+            _openRageReady = false;
+            OpenRageToolStatusText.Text =
+                "OpenRAGE verification failed. The tool will not be run: " + exception.Message;
+        }
+    }
+
+    private bool CanRunOpenRage()
+    {
+        if (IsGameRunning() || !_recoveryCompleted || _openRageBusy)
+        {
+            StatusText.Text = "OpenRAGE actions are locked while GTA V is running, recovery is incomplete, or another operation is active.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_gameExecutable))
+        {
+            StatusText.Text = "Locate and verify GTA V Legacy before using the OIV installer.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private GameInstallation GetOpenRageGameInstallation()
+    {
+        if (string.IsNullOrWhiteSpace(_gameExecutable))
+            throw new InvalidOperationException("Locate GTA V Legacy first.");
+
+        return new GameInstallationService().ValidateExecutable(_gameExecutable);
+    }
+
+    private async void DownloadOpenRageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        StatusText.Text = "Downloading and verifying the official OpenRAGE v0.4.0 Windows x64 release...";
+        try
+        {
+            var tool = await _openRageToolchainService.DownloadAndInstallAsync();
+            _openRageReady = true;
+            OpenRageToolStatusText.Text =
+                "Installed and verified OpenRAGE v" + tool.Version +
+                " | archive SHA-256 " + tool.ArchiveSha256[..12] +
+                " | CLI SHA-256 " + tool.ExecutableSha256[..12];
+            StatusText.Text = "OpenRAGE is installed and verified. No GTA V mod has been installed.";
+        }
+        catch (Exception exception)
+        {
+            _openRageReady = false;
+            OpenRageToolStatusText.Text = "OpenRAGE installation failed: " + exception.Message;
+            StatusText.Text = "OpenRAGE installation failed. GTA V files were not modified.";
+            MessageBox.Show(exception.Message, "OpenRAGE installation failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void VerifyOpenRageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        try
+        {
+            await RefreshOpenRageToolStatusAsync();
+            StatusText.Text = _openRageReady
+                ? "OpenRAGE checksum, executable and version verification passed."
+                : "OpenRAGE is not ready. Review the tool status before proceeding.";
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void PreviewOpenRageOivButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+
+        if (!_openRageReady)
+        {
+            await RefreshOpenRageToolStatusAsync();
+            if (!_openRageReady)
+                return;
+        }
+
+        if (_lastImportedOivPath is null || _lastOivArchiveSha256 is null ||
+            _lastImportedOivPackageDirectory is null || _lastOivInspection is null)
+        {
+            StatusText.Text = "Import an OIV package for review before requesting an OpenRAGE preview.";
+            return;
+        }
+
+        if (!_lastOivInspection.IsGtaVTarget || _lastOivInspection.IsExplicitlyEnhanced ||
+            _lastOivInspection.UnsupportedCommands.Count > 0 ||
+            _lastOivInspection.PayloadSourceIssues.Count > 0)
+        {
+            MessageBox.Show(
+                "The OIV manifest is not safe for this GTA V Legacy preview. It must target GTA V, must not explicitly target Enhanced, and must not contain unrecognised commands or unresolved payload sources.",
+                "OIV manifest preflight blocked",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!_lastOivInspection.IsExplicitlyLegacy && !_lastOivInspection.IsAnyGameVersion)
+        {
+            var targetAnswer = MessageBox.Show(
+                "This OIV does not explicitly identify GTA V Legacy compatibility. Confirm that the author supports your exact Legacy game build before continuing.",
+                "Confirm OIV Legacy compatibility",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (targetAnswer != MessageBoxResult.Yes)
+                return;
+        }
+
+        _openRageBusy = true;
+        _reviewedOpenRageInspection = null;
+        RefreshSessionState();
+        OpenRageOutputText.Text = "Rechecking imported archive hashes and asking OpenRAGE to inspect the OIV...";
+        StatusText.Text = "Running OpenRAGE OIV dry-run preview. No files will be installed.";
+        try
+        {
+            var inventory = await new ImportedModLibraryService().VerifyAsync(
+                PackageLibraryRoot, _lastImportedOivPackageDirectory);
+            if (!inventory.IsValid)
+                throw new InvalidDataException(
+                    "The retained OIV or extracted file inventory failed SHA-256 verification:" +
+                    Environment.NewLine + string.Join(Environment.NewLine, inventory.Errors.Take(12)));
+
+            if (!string.Equals(inventory.OriginalArchiveSha256, _lastOivArchiveSha256,
+                    StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(inventory.ArchiveSha256, _lastOivArchiveSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                // ImportedModLibraryEntry exposes the manifest digest, which is also
+                // checked against the retained source archive by VerifyAsync.
+                throw new InvalidDataException("The imported OIV SHA-256 no longer matches the archive reviewed in the Hub.");
+            }
+
+            var installation = GetOpenRageGameInstallation();
+            var preview = await _openRageToolchainService.InspectOivAsync(
+                installation, _lastImportedOivPath);
+
+            if (!string.Equals(preview.PackageSha256, _lastOivArchiveSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("OpenRAGE preview inspected a different OIV archive than the one retained in the Hub.");
+
+            _reviewedOpenRageInspection = preview;
+            var sections = new List<string>
+            {
+                "OIV SHA-256: " + preview.PackageSha256,
+                "Install blockers: " + preview.Blockers.Count,
+                "Warnings: " + preview.Warnings.Count,
+                "Game-folder executable/file changes: " + preview.GameFolderChanges.Count,
+                "",
+                "OPENRAGE PREVIEW OUTPUT:",
+                preview.Output
+            };
+            if (preview.Blockers.Count > 0)
+                sections.Add("BLOCKERS:" + Environment.NewLine + string.Join(Environment.NewLine, preview.Blockers));
+            if (preview.Warnings.Count > 0)
+                sections.Add("WARNINGS:" + Environment.NewLine + string.Join(Environment.NewLine, preview.Warnings));
+            if (preview.GameFolderChanges.Count > 0)
+                sections.Add("GAME-FOLDER CHANGES:" + Environment.NewLine + string.Join(Environment.NewLine, preview.GameFolderChanges));
+
+            OpenRageOutputText.Text = string.Join(Environment.NewLine, sections);
+            InstallReviewedOpenRageOivButton.IsEnabled = preview.IsInstallable;
+            StatusText.Text = preview.IsInstallable
+                ? "OpenRAGE dry-run completed. Review every proposed operation before installing."
+                : "OpenRAGE blocked this OIV. Resolve the blockers before installation.";
+        }
+        catch (Exception exception)
+        {
+            _reviewedOpenRageInspection = null;
+            OpenRageOutputText.Text = "OIV preview failed:" + Environment.NewLine + exception;
+            StatusText.Text = "OpenRAGE preview failed. No installation was attempted.";
+            MessageBox.Show(exception.Message, "OpenRAGE OIV preview failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void InstallReviewedOpenRageOivButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+
+        var reviewed = _reviewedOpenRageInspection;
+        if (!_openRageReady || reviewed is null || !reviewed.IsInstallable ||
+            _lastImportedOivPath is null || _lastOivArchiveSha256 is null ||
+            !string.Equals(reviewed.PackagePath, _lastImportedOivPath, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(reviewed.PackageSha256, _lastOivArchiveSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "No current, installable OpenRAGE preview is available. Preview the retained OIV again.";
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            "OpenRAGE found no blocking OIV operations. The selected prebuilt OIV will now be installed into the selected GTA V Legacy mods folder. The Hub re-runs the dry-run and verifies the exact archive hash immediately before installation. Continue?",
+            "Install reviewed OIV",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        var allowGameFolderFiles = false;
+        if (reviewed.RequiresExecutableConsent)
+        {
+            var executableConfirm = MessageBox.Show(
+                "This OIV proposes files outside the OpenIV mods folder, including game-folder executable/plugin files. These files can affect the base game and require additional review. Explicitly allow these changes?",
+                "Additional game-folder file consent",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (executableConfirm != MessageBoxResult.Yes)
+                return;
+            allowGameFolderFiles = true;
+        }
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        try
+        {
+            var inventory = await new ImportedModLibraryService().VerifyAsync(
+                PackageLibraryRoot, _lastImportedOivPackageDirectory!);
+            if (!inventory.IsValid)
+                throw new InvalidDataException("The retained OIV inventory is no longer valid. No installation was attempted.");
+
+            if (!string.Equals(reviewed.PackageSha256, _lastOivArchiveSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The OIV changed after preview. Re-import and preview it before installation.");
+
+            var result = await _openRageToolchainService.InstallOivAsync(
+                GetOpenRageGameInstallation(),
+                reviewed,
+                userConfirmed: true,
+                allowGameFolderFiles: allowGameFolderFiles);
+
+            OpenRageOutputText.Text =
+                "OpenRAGE install command completed (exit code " + result.ExitCode + ")." +
+                Environment.NewLine + "Duration: " + result.Duration +
+                Environment.NewLine + result.StandardOutput +
+                (string.IsNullOrWhiteSpace(result.StandardError) ? string.Empty :
+                    Environment.NewLine + result.StandardError) +
+                Environment.NewLine + Environment.NewLine +
+                "This confirms the external installer command completed. It is not proof of gameplay compatibility; test the mod in Story Mode and verify rollback.";
+            _reviewedOpenRageInspection = null;
+            InstallReviewedOpenRageOivButton.IsEnabled = false;
+            StatusText.Text = "OpenRAGE reported a successful OIV install operation. Verify gameplay and installed-file state before marking the mod tested.";
+        }
+        catch (Exception exception)
+        {
+            OpenRageOutputText.Text = "OpenRAGE OIV installation failed or was blocked:" +
+                                      Environment.NewLine + exception;
+            StatusText.Text = "OpenRAGE OIV installation did not complete. Inspect its output and rollback records.";
+            MessageBox.Show(exception.Message, "OpenRAGE OIV installation failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void ListOpenRageOivButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+        if (!_openRageReady)
+        {
+            await RefreshOpenRageToolStatusAsync();
+            if (!_openRageReady) return;
+        }
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _openRageToolchainService.ListInstalledOivPackagesAsync(
+                GetOpenRageGameInstallation());
+            OpenRageOutputText.Text = result.StandardOutput +
+                (string.IsNullOrWhiteSpace(result.StandardError) ? string.Empty :
+                    Environment.NewLine + result.StandardError);
+            StatusText.Text = "OpenRAGE installed-package list refreshed. This is installer metadata; verify file integrity separately.";
+        }
+        catch (Exception exception)
+        {
+            OpenRageOutputText.Text = exception.ToString();
+            StatusText.Text = "OpenRAGE could not list installed OIV packages.";
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void UninstallOpenRageOivButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+        if (!_openRageReady)
+        {
+            await RefreshOpenRageToolStatusAsync();
+            if (!_openRageReady) return;
+        }
+
+        var groupName = OpenRageUninstallGroupBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(groupName) ||
+            groupName.Equals("Enter exact OpenRAGE package group", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "Enter the exact package group name shown by LIST INSTALLED OIVS.";
+            return;
+        }
+
+        var answer = MessageBox.Show(
+            "OpenRAGE will uninstall the package group '" + groupName +
+            "' using its own recorded uninstall data. Continue?",
+            "Uninstall OIV package",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes)
+            return;
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _openRageToolchainService.UninstallOivPackageAsync(
+                GetOpenRageGameInstallation(), groupName, userConfirmed: true);
+            OpenRageOutputText.Text = result.StandardOutput +
+                (string.IsNullOrWhiteSpace(result.StandardError) ? string.Empty :
+                    Environment.NewLine + result.StandardError);
+            StatusText.Text = "OpenRAGE uninstall command completed. Launch GTA V and verify the restored state.";
+            _reviewedOpenRageInspection = null;
+        }
+        catch (Exception exception)
+        {
+            OpenRageOutputText.Text = exception.ToString();
+            StatusText.Text = "OpenRAGE could not uninstall the selected package group.";
+            MessageBox.Show(exception.Message, "OpenRAGE uninstall failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void UndoOpenRageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanRunOpenRage())
+            return;
+        if (!_openRageReady)
+        {
+            await RefreshOpenRageToolStatusAsync();
+            if (!_openRageReady) return;
+        }
+
+        var answer = MessageBox.Show(
+            "OpenRAGE will undo its latest recorded change for this GTA V installation. This may reverse a mod operation. Continue only after backing up your game and save data.",
+            "Undo latest OpenRAGE change",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.Yes)
+            return;
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        try
+        {
+            var result = await _openRageToolchainService.UndoLatestOpenRageChangeAsync(
+                GetOpenRageGameInstallation(), userConfirmed: true);
+            OpenRageOutputText.Text = result.StandardOutput +
+                (string.IsNullOrWhiteSpace(result.StandardError) ? string.Empty :
+                    Environment.NewLine + result.StandardError);
+            StatusText.Text = "OpenRAGE undo command completed. Verify the game and its mod state before continuing.";
+            _reviewedOpenRageInspection = null;
+        }
+        catch (Exception exception)
+        {
+            OpenRageOutputText.Text = exception.ToString();
+            StatusText.Text = "OpenRAGE could not undo the latest recorded change.";
+            MessageBox.Show(exception.Message, "OpenRAGE undo failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
     private void LocateButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning()) return;
@@ -845,6 +1276,18 @@ public partial class MainWindow : Window
         GetOivInstallerButton.IsEnabled = true;
         RefreshOivInstallHistoryButton.IsEnabled =
             !running && _recoveryCompleted && _gameExecutable is not null;
+        DownloadOpenRageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy;
+        VerifyOpenRageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy;
+        PreviewOpenRageOivButton.IsEnabled =
+            !running && _recoveryCompleted && !_openRageBusy && _openRageReady &&
+            _gameExecutable is not null && _lastImportedOivPath is not null &&
+            _lastOivArchiveSha256 is not null && _lastImportedOivPackageDirectory is not null;
+        InstallReviewedOpenRageOivButton.IsEnabled =
+            !running && _recoveryCompleted && !_openRageBusy && _openRageReady &&
+            _reviewedOpenRageInspection is { IsInstallable: true };
+        ListOpenRageOivButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy && _openRageReady;
+        UninstallOpenRageOivButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy && _openRageReady;
+        UndoOpenRageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy && _openRageReady;
         // Never launch from the dashboard until profile validation and transactional
         // deployment are wired into this exact path.
         LaunchButton.IsEnabled = false;
@@ -860,6 +1303,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _processTimer.Stop();
+        _packageAcquisitionService.Dispose();
         base.OnClosed(e);
     }
 }
