@@ -179,6 +179,83 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
     }
 
     [Fact]
+    public void ExtractCandidatesFromJson_AddsSeparateModelIdentifierEvidence()
+    {
+        const string json = """
+        {
+          "$type": "CPopulationGroup",
+          "animalModels": [
+            {
+              "$type": "CAnimalModel",
+              "modelName": "a_c_deer",
+              "modelHash": "0x12345678",
+              "speciesName": "deer"
+            }
+          ]
+        }
+        """;
+
+        var candidates = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+            json,
+            "popgroups.ymt",
+            "x64v.rpf/common/data/popgroups.ymt",
+            @"C:\Games\GTA V\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64));
+
+        Assert.Contains(candidates, item =>
+            item.Category == "ModelIdentifier" && item.CandidateValue == "a_c_deer");
+        Assert.Contains(candidates, item =>
+            item.Category == "ModelIdentifier" && item.CandidateValue == "0x12345678");
+        Assert.Contains(candidates, item =>
+            item.Category == "Population" && item.CandidateValue == "a_c_deer");
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJsonWithStatus_ReportsWhenNodeLimitTruncatesTraversal()
+    {
+        const string json = """
+        {
+          "animalModels": [
+            { "modelName": "a_c_deer" }
+          ]
+        }
+        """;
+
+        var result = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJsonWithStatus(
+            json,
+            "animals.ymt",
+            "x64v.rpf/common/data/animals.ymt",
+            @"C:\Games\GTA V\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64),
+            maximumNodesPerPayload: 2);
+
+        Assert.False(result.TraversalComplete);
+        Assert.Equal(2, result.NodesVisited);
+        Assert.Contains(result.Candidates, item => item.Category == "ModelIdentifier");
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJsonWithStatus_ReportsCompleteTraversalBelowNodeLimit()
+    {
+        const string json = """{"label":"ordinary text"}""";
+
+        var result = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJsonWithStatus(
+            json,
+            "generic.ymt",
+            "x64v.rpf/common/data/generic.ymt",
+            @"C:\Games\GTA V\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64),
+            maximumNodesPerPayload: 5);
+
+        Assert.True(result.TraversalComplete);
+        Assert.Equal(2, result.NodesVisited);
+        Assert.Empty(result.Candidates);
+    }
+
+    [Fact]
     public void ExtractCandidatesFromJson_DoesNotInventCandidatesForUnmatchedValues()
     {
         const string json = """{"$type":"CGeneric","label":"ordinary text","number":7}""";
