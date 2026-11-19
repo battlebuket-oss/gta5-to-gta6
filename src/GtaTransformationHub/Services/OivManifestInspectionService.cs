@@ -78,6 +78,13 @@ public static class OivManifestInspectionService
         if (!string.IsNullOrWhiteSpace(tag))
             modVersion += " " + tag;
 
+        var gameVersionNode = root.DescendantsAndSelf()
+            .FirstOrDefault(element => NameIs(element, "gameversion"));
+        var gameVersionText = gameVersionNode?.Value.Trim();
+        if (string.IsNullOrWhiteSpace(gameVersionText))
+            gameVersionText = tag;
+        var gameVersionRequirement = ClassifyGameVersionRequirement(gameVersionText);
+
         ValidateColors(colors);
         var licence = metadata.Elements().FirstOrDefault(element => NameIs(element, "licence"))?.Value.Trim() ?? string.Empty;
         var operations = new List<OivOperationSummary>();
@@ -103,6 +110,8 @@ public static class OivManifestInspectionService
             name,
             author,
             modVersion,
+            tag ?? string.Empty,
+            gameVersionRequirement,
             licence,
             string.Equals(target, "Five", StringComparison.OrdinalIgnoreCase),
             operations,
@@ -355,6 +364,23 @@ public static class OivManifestInspectionService
         return string.Join("/", segments);
     }
 
+    private static string ClassifyGameVersionRequirement(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Unspecified";
+
+        var normalized = value.Trim();
+        if (normalized.Contains("enhanced", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Contains("gen9", StringComparison.OrdinalIgnoreCase))
+            return "Enhanced";
+        if (normalized.Contains("legacy", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Contains("gen8", StringComparison.OrdinalIgnoreCase))
+            return "Legacy";
+        if (normalized.Equals("any", StringComparison.OrdinalIgnoreCase))
+            return "Any";
+        return "Unspecified";
+    }
+
     private static string CombineTargetPaths(string parent, string child) =>
         string.IsNullOrEmpty(parent) ? child : parent + "/" + child;
 
@@ -421,14 +447,28 @@ public sealed record OivManifestInspectionResult(
     string Name,
     string Author,
     string ModVersion,
+    string VersionTag,
+    string GameVersionRequirement,
     string Licence,
     bool IsGtaVTarget,
     IReadOnlyList<OivOperationSummary> Operations,
     IReadOnlyList<string> UnsupportedCommands,
     IReadOnlyList<string> PayloadSourceIssues)
 {
+    public bool IsExplicitlyLegacy =>
+        string.Equals(GameVersionRequirement, "Legacy", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsExplicitlyEnhanced =>
+        string.Equals(GameVersionRequirement, "Enhanced", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsAnyGameVersion =>
+        string.Equals(GameVersionRequirement, "Any", StringComparison.OrdinalIgnoreCase);
+
     public bool RequiresManualReview =>
-        !IsGtaVTarget || UnsupportedCommands.Count > 0 || PayloadSourceIssues.Count > 0;
+        !IsGtaVTarget ||
+        GameVersionRequirement is not ("Legacy" or "Any") ||
+        UnsupportedCommands.Count > 0 ||
+        PayloadSourceIssues.Count > 0;
 
     public int FileAddCount => Operations.Count(operation =>
         operation.Command is "add" or "replace");
