@@ -473,7 +473,7 @@ public partial class MainWindow : Window
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = "https://github.com/crxhvrd/CodeWalkerProjects/releases/latest",
+                FileName = "https://www.gta5-mods.com/tools/oiv-package-installer",
                 UseShellExecute = true
             });
         }
