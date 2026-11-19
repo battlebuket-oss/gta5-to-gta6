@@ -43,6 +43,62 @@ public partial class MainWindow : Window
         }
         RefreshSessionState();
     }
+    private async void ImportArchiveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted)
+            return;
+
+        var archiveDialog = new OpenFileDialog
+        {
+            Title = "Select a GTA V mod archive",
+            Filter = "Mod archives (*.zip;*.oiv)|*.zip;*.oiv",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (archiveDialog.ShowDialog() != true)
+            return;
+
+        var metadataDialog = new ModImportDialog { Owner = this };
+        if (metadataDialog.ShowDialog() != true || metadataDialog.Metadata is null)
+            return;
+
+        ImportArchiveButton.IsEnabled = false;
+        StatusText.Text = "Inspecting archive and extracting into the local research library...";
+        try
+        {
+            var importRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "GtaTransformationHub", "Packages");
+            var result = await new ModArchiveImportService().ImportAsync(
+                archiveDialog.FileName, importRoot, metadataDialog.Metadata);
+
+            StatusText.Text = "Imported " + metadataDialog.Metadata.Name +
+                              " for review. No GTA V files were changed; package status remains Researching.";
+            DetectionText.Text = "Research package stored at: " + result.PackageDirectory;
+            MessageBox.Show(
+                "Archive imported and hashed successfully.\n\n" +
+                "Files: " + result.Files.Count + "\n" +
+                "SHA-256: " + result.ArchiveSha256 + "\n\n" +
+                "This import is quarantined for inspection only. It has NOT been approved or installed.",
+                "Mod archive imported",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Archive import failed. No game files were changed.";
+            MessageBox.Show(
+                "The archive was not imported.\n\n" + ex.Message,
+                "Mod archive import failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            RefreshSessionState();
+        }
+    }
+
     private void LocateButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning()) return;
@@ -118,6 +174,7 @@ public partial class MainWindow : Window
     {
         var running = IsGameRunning();
         LocateButton.IsEnabled = !running && _recoveryCompleted;
+        ImportArchiveButton.IsEnabled = !running && _recoveryCompleted;
         RefreshButton.IsEnabled = !running && _recoveryCompleted;
         // Never launch from the dashboard until profile validation and transactional
         // deployment are wired into this exact path.
