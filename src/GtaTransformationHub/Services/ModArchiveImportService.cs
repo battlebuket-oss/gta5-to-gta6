@@ -210,7 +210,7 @@ public sealed class ModArchiveImportService
             rawPath.StartsWith("/", StringComparison.Ordinal) ||
             rawPath.StartsWith("\\\\", StringComparison.Ordinal) ||
             Path.IsPathRooted(rawPath) ||
-            rawPath.Contains('\\0'))
+            rawPath.Contains('\0'))
             throw new InvalidDataException("The archive contains an absolute, empty, or overlong path.");
 
         var normalized = rawPath.Replace('\\', '/');
