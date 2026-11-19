@@ -104,6 +104,53 @@ public sealed class PackageSignatureServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task VerifyAsync_V3SignatureAuthenticatesUiReplacementContract()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+
+        var manifest = CreateManifest() with
+        {
+            SignatureVersion = 3,
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true,
+            Ui = CreateUiDescriptor()
+        };
+        var signed = Sign(manifest, rsa, fingerprint);
+        Assert.Equal(PackageSignatureStatus.TrustedPublisher, (await service.VerifyAsync(signed)).Status);
+
+        var tampered = signed with
+        {
+            Ui = signed.Ui! with { Surfaces = new[] { "map" } }
+        };
+        Assert.Equal(PackageSignatureStatus.Invalid, (await service.VerifyAsync(tampered)).Status);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_V2SignatureCannotAuthenticateUiMetadata()
+    {
+        using var rsa = RSA.Create(2048);
+        var pem = rsa.ExportSubjectPublicKeyInfoPem();
+        var fingerprint = PackageSignatureService.ComputePublisherFingerprint(pem);
+        var store = new TrustedPublisherStore(_trustPath);
+        await store.AddAsync("Test Publisher", pem, fingerprint);
+        var service = new PackageSignatureService(store);
+
+        var v2 = CreateManifest() with
+        {
+            SignatureVersion = 2,
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true
+        };
+        var signed = Sign(v2, rsa, fingerprint) with { Ui = CreateUiDescriptor() };
+        Assert.Equal(PackageSignatureStatus.Invalid, (await service.VerifyAsync(signed)).Status);
+    }
+
+    [Fact]
     public async Task VerifyAsync_ReportsUnknownPublisherWithoutTrustingIt()
     {
         using var rsa = RSA.Create(2048);
@@ -167,6 +214,20 @@ public sealed class PackageSignatureServiceTests : IDisposable
         Array.Empty<string>(),
         new[] { "en-US" },
         "https://example.com/test-evidence");
+
+    private static UiPackageDescriptor CreateUiDescriptor() => new(
+        new[] { "hud", "radial" },
+        "GameScript",
+        new[] { "KeyboardMouse", "Controller" },
+        new[] { "1920x1080", "2560x1440" },
+        new[] { "KeyboardNavigation", "ControllerNavigation", "VisibleFocus", "HighContrast", "SubtitleSafeArea" },
+        true,
+        true,
+        true,
+        true,
+        true,
+        "https://example.com/ui-compatibility-evidence",
+        "https://example.com/ui-rollback-evidence");
 
     private static PackageManifest Sign(PackageManifest manifest, RSA privateKey, string fingerprint)
     {
