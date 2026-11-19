@@ -433,5 +433,5 @@ public sealed record OivManifestInspectionResult(
         operation.Command == "archive");
 
     public int PatchOperationCount => Operations.Count(operation =>
-        operation.Command.Contains(':', StringComparison.Ordinal));
+        operation.Command.Contains(":", StringComparison.Ordinal));
 }
