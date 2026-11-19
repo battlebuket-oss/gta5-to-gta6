@@ -38,11 +38,11 @@ The generated SQLite database and JSON scan report are hashed and their paths ar
 
 The Hub also has an optional bounded metadata-discovery pass. It runs rage-cli's nested-RPF `search` command for a focused set of candidate patterns:
 
-- Generic metadata/container types: `.ymt`, `.meta`, `.ytyp`, `.ymap` and `.ymf`.
+- Generic metadata/container types: `.ymt`, `.meta`, `.ytyp`, `.ymap`, `.ymf` and `.pso`.
 - Population/model-set names: `popgroups`, `popcycle` and `pedmodelsets`.
 - Ecology and water-related names: `water`, `animal`, `fish`, `vegetation`, `flora` and `fauna`.
 
-Each pattern is capped at 200 hits to bound memory and output. The JSON report records the pattern, nested archive path, resource name/type/size and JOAAT hashes, the selected GTA5.exe SHA-256, the rage-cli version and SHA-256, and SHA-256 fingerprints for each referenced source RPF. Repeated hits from overlapping patterns are grouped.
+Each pattern is capped at 10,000 hits. Searches can run for up to 15 minutes per pattern, and captured stdout/stderr are each bounded to 16 MiB. A hit-cap, truncated output, unreadable archive, or parse/fingerprint error marks the discovery report incomplete. The JSON report records the pattern, nested archive path, resource name/type/size and JOAAT hashes, the selected GTA5.exe SHA-256, the rage-cli version and SHA-256, and SHA-256 fingerprints for each referenced source RPF. Repeated hits from overlapping patterns are grouped.
 
 A search that reaches a hit cap, has truncated output, cannot parse JSON, or reports unreadable/skipped archives is marked incomplete. The report is stored under the same executable-fingerprint-specific catalogue directory. The search does not extract or modify game files.
 
@@ -50,13 +50,13 @@ A search that reaches a hit cap, has truncated output, cannot parse JSON, or rep
 
 ## Selective metadata payload dumps
 
-After a discovery report has been created, the Hub can dump up to 50 supported metadata candidates from that report to JSON. It rechecks that the report matches the selected GTA5.exe fingerprint and the pinned rage-cli version/digest, and re-hashes each source RPF before and after extraction.
+After a discovery report has been created, the Hub can dump supported metadata candidates from that report to JSON in indexed batches of up to 50 candidates. The offset is zero-based and the Hub advances it only through candidates for which a verified JSON payload was saved. If one candidate fails, the next offset points to the first candidate without a saved payload; later successful candidates may be reprocessed when the failed range is retried. Each batch creates a separate index report recording the total candidate count, starting offset, next offset and per-payload candidate index. The same discovery report is selected again for the next batch; enter the next offset shown in the Hub. It rechecks that the report matches the selected GTA5.exe fingerprint and the pinned rage-cli version/digest, and re-hashes each source RPF before and after extraction.
 
 For a nested resource, the Hub follows the exact RPF chain recorded by the search result. It extracts only the next nested `.rpf` layer into a temporary staging folder, opens that extracted archive, and repeats until it reaches the resource. It then calls rage-cli `resource dump --archive ... --json --output ...` for the leaf resource. It does **not** use recursive extraction, which would read every leaf in the archive.
 
 Supported candidate extensions are `.ymt`, `.meta`, `.ytyp`, `.ymap`, `.ymf`, `.pso` and `.xml` when the search result identifies the entry as a resource. Candidate ordering gives priority to names containing population/model-set, animal/fish, vegetation/flora/fauna and water terms. Unsupported or unparseable resources are reported as errors rather than silently ignored.
 
-Safety limits: 50 candidate dumps per run, 512 MB of nested RPF extraction per candidate, 128 MB per JSON dump and 512 MB aggregate JSON output. The index report includes the outer source RPF hash, each extracted nested-RPF hash, dumped JSON path/hash/size and parse root type. Temporary extracted RPF layers are removed after each candidate.
+Safety limits: 50 candidate dumps per batch, 512 MB of nested RPF extraction per candidate, 128 MB per JSON dump and 512 MB aggregate JSON output per batch. Candidate batches can be repeated until the candidate list is exhausted; output/index reports remain fingerprint-bound to the same GTA5.exe and discovery report. The index report includes the outer source RPF hash, each extracted nested-RPF hash, dumped JSON path/hash/size and parse root type. Temporary extracted RPF layers are removed after each candidate.
 
 Outputs are stored under:
 
@@ -72,7 +72,7 @@ The JSON dumps are inspection artifacts for building and validating the semantic
 
 Upstream rage-cli's `catalog build` indexes supported drawables, fragments, drawable dictionaries, dictionary entries, texture dictionaries and textures in game load order. It can inspect nested RPF archives and read retail archive keys using the user's own GTA5.exe.
 
-The current Hub integration does **not** yet turn the drawable/texture catalogue or the bounded set of metadata JSON dumps into a complete ecological inventory. Candidate discovery is limited to the listed filename patterns and hit caps; the payload dumper processes at most 50 selected resources. Resources outside those patterns, beyond hit caps, unsupported by rage-cli or not successfully dumped remain unexamined. The pipeline does not yet enumerate and semantically verify every terrestrial animal, fish, marine animal, terrestrial plant, tree, aquatic plant, spawn/population record, habitat, animation behaviour or water-simulation definition. The output does not establish that a package preserves those identities.
+The current Hub integration does **not** yet turn the drawable/texture catalogue or the bounded set of metadata JSON dumps into a complete ecological inventory. Candidate discovery is limited to the listed filename patterns and a 10,000-hit cap per pattern; the payload dumper processes at most 50 selected resources per batch. Repeated batches cover the candidate array captured in one discovery report, but a capped pattern still requires a new discovery method/run to enumerate beyond its cap. Resources outside those patterns, beyond hit caps, unsupported by rage-cli or not successfully dumped remain unexamined. The pipeline does not yet enumerate and semantically verify every terrestrial animal, fish, marine animal, terrestrial plant, tree, aquatic plant, spawn/population record, habitat, animation behaviour or water-simulation definition. The output does not establish that a package preserves those identities.
 
 In particular, a successful asset catalogue build is not permission to install any animal, vegetation, water or population-data package. The ecological preflight remains fail-closed.
 
