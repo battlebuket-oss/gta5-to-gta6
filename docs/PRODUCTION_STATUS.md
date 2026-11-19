@@ -35,8 +35,8 @@ This document distinguishes implemented development-branch functions from releas
 | RSA publisher signatures | Implemented for package manifests using RSA-2048+, SHA-256 and PKCS#1 v1.5 |
 | Local trusted-publisher key store | Implemented with independent fingerprint matching and an add-key dialog |
 | Signature-aware package preflight | Implemented; unsigned and unknown-publisher packages warn, invalid trusted-key signatures reject |
-| Windows x64 CI build, test and publish workflow | Configured; one earlier full run passed build, tests and self-contained publish; latest head has not yet been verified |
-| Per-user Windows x64 installer definition | Implemented with Inno Setup; installer compilation and clean-machine installation still require a successful Windows workflow run |
+| Windows x64 CI build, test and publish workflow | Verified on commit `3ecaedbf7122763d45b1ddfa31a03704335c119a`: strict build succeeded, 212 automated tests passed (0 failed/0 skipped), self-contained win-x64 publish and artifact upload passed |
+| Per-user Windows x64 installer | Verified package `0.1.0-dev.187`: Inno Setup compilation, silent install/uninstall smoke test, SHA-256 manifest and artifact upload passed. The binary and installer are unsigned because no signing certificate secrets are configured |
 | Real-game gameplay/performance/rollback test protocol | Test plan and evidence requirements documented; no real GTA V gameplay or performance run has been executed from this environment |
 | Vanilla ecology identity validation | Preservation rules and semantic comparator exist; complete exact-build inventory and real-game package validation remain blocked |
 | Release packaging workflow | Implemented: self-contained publish, test gate, installer compilation, SHA-256 checksums and tag-based GitHub release |
