@@ -88,12 +88,12 @@ try {
     Invoke-CatalogueCase -Name 'missing-profile-package-rejected' -Catalogue $missingProfilePackage -ShouldPass $false
 
     $unqualifiedApproval = Copy-Catalogue $valid
-    $unqualifiedApproval.packages[0].status = 'Approved'
+    $unqualifiedApproval.packages[0].status = 'Tested'
     $unqualifiedApproval.packages[0] | Add-Member -NotePropertyName sha256 -NotePropertyValue $null -Force
     $unqualifiedApproval.packages[0] | Add-Member -NotePropertyName minimumGameBuild -NotePropertyValue '1.0.0.0' -Force
     $unqualifiedApproval.packages[0] | Add-Member -NotePropertyName maximumGameBuild -NotePropertyValue '1.0.9.0' -Force
     $unqualifiedApproval.packages[0] | Add-Member -NotePropertyName installAdapter -NotePropertyValue 'Not implemented' -Force
-    Invoke-CatalogueCase -Name 'unqualified-approved-package-rejected' -Catalogue $unqualifiedApproval -ShouldPass $false
+    Invoke-CatalogueCase -Name 'tested-package-without-evidence-rejected' -Catalogue $unqualifiedApproval -ShouldPass $false
 
     Write-Host 'All catalogue validator tests passed.'
 } finally {
