@@ -24,7 +24,6 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _processTimer;
     private readonly PackageAcquisitionService _packageAcquisitionService;
     private readonly OpenRageToolchainService _openRageToolchainService;
-    private readonly GtaViInspiredHudRootPluginService _hudRootPluginService = new();
     private OpenRageOivInspection? _reviewedOpenRageInspection;
     private bool _openRageReady;
     private bool _openRageBusy;
@@ -1226,133 +1225,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void DeployHudRootPluginsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!CanRunOpenRage())
-            return;
-
-        if (!string.Equals(_lastImportedOivPackageId, "gta-vi-inspired-hud-single-player",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            StatusText.Text = "Select the GTA VI-Inspired HUD Legacy OIV before deploying its root plugins.";
-            return;
-        }
-
-        _openRageBusy = true;
-        RefreshSessionState();
-        try
-        {
-            var installation = GetOpenRageGameInstallation();
-            var inspection = await _hudRootPluginService.InspectAsync(installation);
-            if (!inspection.AllSourcesPresent)
-            {
-                HudRootPluginStatusText.Text =
-                    "The OIV-created mods folder is missing: " +
-                    string.Join(", ", inspection.MissingSourceFiles) +
-                    ". Install the selected Legacy OIV into the mods folder first.";
-                StatusText.Text = "HUD root-plugin deployment is blocked because the two source files are not both present.";
-                MessageBox.Show(
-                    HudRootPluginStatusText.Text,
-                    "HUD root plugins not found",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            var fileSummary = string.Join(Environment.NewLine, inspection.Files.Select(file =>
-                file.FileName + " | source SHA-256 " + file.SourceSha256 +
-                (file.DestinationMatchesSource
-                    ? " | already current"
-                    : file.DestinationPresent
-                        ? " | different root file will be backed up and replaced"
-                        : " | new root file")));
-
-            var question = "The Hub will copy exactly two author-documented files from the OpenIV mods folder to the GTA V root beside GTA5.exe:\n\n" +
-                           fileSummary +
-                           "\n\nThe copy is journalled and can be rolled back. Rollback refuses to overwrite a file changed after deployment. Continue?";
-            if (inspection.HasConflictingDestinations)
-            {
-                question += "\n\nWARNING: Existing files with different hashes will be replaced only after backing them up. Confirm that these are not files owned by another mod.";
-            }
-
-            var answer = MessageBox.Show(
-                question,
-                "Deploy GTA VI HUD root plugins",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-            if (answer != MessageBoxResult.Yes)
-                return;
-
-            var result = await _hudRootPluginService.DeployAsync(
-                installation,
-                allowReplacingDifferentRootFiles: inspection.HasConflictingDestinations);
-
-            HudRootPluginStatusText.Text = result.AlreadyCurrent
-                ? "Both HUD root plugins already match the selected OIV. No files were changed."
-                : "Deployed " + result.FilesApplied + " root plugin file(s) through transaction " +
-                  result.TransactionId + ". Backups and rollback journal are stored locally.";
-
-            StatusText.Text = result.AlreadyCurrent
-                ? "HUD root plugins are already current."
-                : "HUD root plugins deployed transactionally. Verify Story Mode startup and keep the rollback available.";
-        }
-        catch (Exception exception)
-        {
-            HudRootPluginStatusText.Text = "HUD root-plugin deployment failed or was blocked: " + exception.Message;
-            StatusText.Text = "HUD root-plugin deployment did not complete.";
-            MessageBox.Show(exception.Message, "HUD root-plugin deployment failed",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        finally
-        {
-            _openRageBusy = false;
-            RefreshSessionState();
-        }
-    }
-
-    private async void RollbackHudRootPluginsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!CanRunOpenRage())
-            return;
-
-        if (!string.Equals(_lastImportedOivPackageId, "gta-vi-inspired-hud-single-player",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            StatusText.Text = "Select the GTA VI-Inspired HUD Legacy OIV before rolling back its root plugins.";
-            return;
-        }
-
-        var answer = MessageBox.Show(
-            "The Hub will roll back only its latest recorded ViMinimap.asi and ViPreload.asi root-plugin transaction. If either file changed after deployment, rollback will stop and preserve it. Continue?",
-            "Roll back GTA VI HUD root plugins",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (answer != MessageBoxResult.Yes)
-            return;
-
-        _openRageBusy = true;
-        RefreshSessionState();
-        try
-        {
-            await _hudRootPluginService.RollbackLatestAsync(GetOpenRageGameInstallation());
-            HudRootPluginStatusText.Text =
-                "The last Hub-managed root-plugin transaction was rolled back. Original files were restored where present.";
-            StatusText.Text = "HUD root-plugin rollback completed. Verify the game state before launching.";
-        }
-        catch (Exception exception)
-        {
-            HudRootPluginStatusText.Text = "HUD root-plugin rollback failed or was blocked: " + exception.Message;
-            StatusText.Text = "HUD root-plugin rollback did not complete. Files were left unchanged when preflight failed.";
-            MessageBox.Show(exception.Message, "HUD root-plugin rollback failed",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        finally
-        {
-            _openRageBusy = false;
-            RefreshSessionState();
-        }
-    }
-
     private async void ListOpenRageOivButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanRunOpenRage())
@@ -1623,15 +1495,6 @@ public partial class MainWindow : Window
         InstallReviewedOpenRageOivButton.IsEnabled =
             !running && _recoveryCompleted && !_openRageBusy && _openRageReady &&
             _reviewedOpenRageInspection is { IsInstallable: true };
-        var isHudOivSelected = string.Equals(
-            _lastImportedOivPackageId, "gta-vi-inspired-hud-single-player",
-            StringComparison.OrdinalIgnoreCase);
-        DeployHudRootPluginsButton.IsEnabled =
-            !running && _recoveryCompleted && !_openRageBusy &&
-            _gameExecutable is not null && isHudOivSelected;
-        RollbackHudRootPluginsButton.IsEnabled =
-            !running && _recoveryCompleted && !_openRageBusy &&
-            _gameExecutable is not null && isHudOivSelected;
         ListOpenRageOivButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy && _openRageReady;
         UninstallOpenRageOivButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy && _openRageReady;
         UndoOpenRageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy && _openRageReady;
