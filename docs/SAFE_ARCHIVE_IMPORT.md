@@ -17,8 +17,10 @@ Import is **not installation**. It does not modify the GTA V installation, execu
 - Reject symlinks, reparse points, special Unix file types, malformed directory entries, and file/directory path collisions.
 - Extract into a newly created staging directory under the import root, then move the complete directory into its deterministic package location.
 - Hash the same open archive stream that is parsed, and hash every extracted file.
-- For OIV, parse `assembly.xml` with DTD processing prohibited and external XML resolution disabled. Accept package-format versions 2.0–2.2, validate the GUID and GTA target metadata, and enumerate `add`, `replace`, `delete`, nested `archive`, `xml`, `text`, and `defragmentation` operations.
-- Validate source/destination paths and check whether declared payload sources exist under the OIV `content/` directory. Unknown commands and unresolved sources are flagged for manual review. A clean structural report only means that the known manifest operations and payload paths could be parsed; licence, game-build, dependency, runtime and rollback compatibility must still be reviewed by a person.
+- For OIV, parse `assembly.xml` with DTD processing prohibited and external XML resolution disabled. Validate the 2.x package envelope (2.0–2.2), GUID, metadata, required colour settings, and `content/` folder.
+- Enumerate root file operations (`add`, `replace`, `delete`), nested `archive` and defragmentation operations, XML and PSO XPath patches, and text-file patch commands (`add`, `insert`, `replace`, `delete`). Check required attributes and accepted enum values for each operation.
+- Validate source/destination paths and check whether declared payload sources exist under the OIV `content/` directory. Unknown commands, non-RPF7 archive types, and unresolved sources are flagged for manual review.
+- Reference used for the read-only parser: [OpenIV Package Format 2.2 specification](https://github.com/OpenIV-Team/OpenIV-PackageFormat/blob/master/specification/versions/2.2.md) and [format overview](https://github.com/OpenIV-Team/OpenIV-PackageFormat). A clean structural report only means that the known manifest operations and payload paths could be parsed; licence, game-build, dependency, runtime and rollback compatibility must still be reviewed by a person.
 - On failure, remove the staging directory when possible. If cleanup itself fails, preserve the original error and leave the staging folder for manual inspection.
 
 ## Remaining work before installation
