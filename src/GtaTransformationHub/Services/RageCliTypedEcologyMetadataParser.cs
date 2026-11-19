@@ -92,6 +92,7 @@ public sealed record WaterGeometryFileDefinition(
     string SourceArchivePath,
     string SourceArchiveSha256,
     string DumpJsonSha256,
+    bool StructuredParseComplete,
     IReadOnlyList<WaterQuadGeometryDefinition> WaterQuads,
     IReadOnlyList<WaterCalmingQuadDefinition> CalmingQuads,
     IReadOnlyList<WaterWaveQuadDefinition> WaveQuads);
@@ -390,6 +391,7 @@ public static class RageCliTypedEcologyMetadataParser
             sourceArchivePath,
             sourceArchiveSha256,
             dumpJsonSha256,
+            warnings.Count == 0,
             waterQuads,
             calmingQuads,
             waveQuads);
@@ -467,8 +469,9 @@ public static class RageCliTypedEcologyMetadataParser
             return false;
         if (value.ValueKind == JsonValueKind.Object)
         {
-            if (!TryGetProperty(value, "value", out value))
+            if (!TryGetProperty(value, "value", out var nested))
                 return false;
+            value = nested;
         }
 
         if (value.ValueKind == JsonValueKind.Number)
@@ -486,8 +489,9 @@ public static class RageCliTypedEcologyMetadataParser
             return false;
         if (value.ValueKind == JsonValueKind.Object)
         {
-            if (!TryGetProperty(value, "value", out value))
+            if (!TryGetProperty(value, "value", out var nested))
                 return false;
+            value = nested;
         }
 
         if (value.ValueKind == JsonValueKind.Number)
@@ -503,8 +507,9 @@ public static class RageCliTypedEcologyMetadataParser
             return false;
         if (value.ValueKind == JsonValueKind.Object)
         {
-            if (!TryGetProperty(value, "value", out value))
+            if (!TryGetProperty(value, "value", out var nested))
                 return false;
+            value = nested;
         }
 
         if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
@@ -561,11 +566,6 @@ public static class RageCliTypedEcologyMetadataParser
         value = default;
         return false;
     }
-
-    private static bool IsAnimalDomain(string pedType, string creatureMetadata, string animalAudio) =>
-        ContainsAny(pedType, "ANIMAL", "FISH", "MARINE") ||
-        !string.IsNullOrWhiteSpace(creatureMetadata) ||
-        !string.IsNullOrWhiteSpace(animalAudio);
 
     private static bool ContainsAny(string value, params string[] tokens) =>
         tokens.Any(token => value.Contains(token, StringComparison.OrdinalIgnoreCase));
