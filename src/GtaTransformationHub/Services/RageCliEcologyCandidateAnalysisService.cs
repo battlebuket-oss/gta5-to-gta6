@@ -344,7 +344,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
                 candidates,
                 warnings,
                 MaximumCandidates,
-                MaximumNodesPerPayload);
+                MaximumNodesPerPayload,
+                out _);
             if (!payloadTraversalComplete)
                 nodeLimitReached = true;
 
@@ -561,35 +562,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var complete = ExtractCandidates(
             0, document.RootElement, resourceName, internalArchivePath, sourceArchivePath,
             sourceArchiveSha256, dumpJsonSha256, candidates, warnings, MaximumCandidates,
-            maximumNodesPerPayload);
-        var nodesVisited = warnings.Any(item => item.Contains("node cap", StringComparison.OrdinalIgnoreCase))
-            ? maximumNodesPerPayload
-            : CountCandidateJsonNodes(document.RootElement, maximumNodesPerPayload);
+            maximumNodesPerPayload, out var nodesVisited);
         return new EcologyCandidateExtractionResult(candidates, complete, nodesVisited);
-    }
-
-    private static int CountCandidateJsonNodes(JsonElement root, int maximumNodes)
-    {
-        var count = 0;
-        void Visit(JsonElement element)
-        {
-            if (count >= maximumNodes)
-                return;
-            count++;
-            if (element.ValueKind == JsonValueKind.Object)
-            {
-                foreach (var property in element.EnumerateObject())
-                    Visit(property.Value);
-            }
-            else if (element.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in element.EnumerateArray())
-                    Visit(item);
-            }
-        }
-
-        Visit(root);
-        return count;
     }
 
     private static bool ExtractCandidates(
@@ -603,7 +577,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         ICollection<EcologyMetadataCandidate> output,
         ICollection<string> warnings,
         int maximumCandidates,
-        int maximumNodes)
+        int maximumNodes,
+        out int nodesVisited)
     {
         var nodes = 0;
         var nodeLimitReached = false;
@@ -614,7 +589,9 @@ public sealed class RageCliEcologyCandidateAnalysisService
             if (++nodes > maximumNodes)
             {
                 nodeLimitReached = true;
-                warnings.Add("The JSON walker reached the one-million-node cap for '" + resourceName + "'.");
+                warnings.Add("The JSON walker reached the configured node limit of " +
+                             maximumNodes.ToString(System.Globalization.CultureInfo.InvariantCulture) +
+                             " for '" + resourceName + "'.");
                 return;
             }
             if (output.Count >= maximumCandidates)
@@ -634,7 +611,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
                         continue;
                     var childPath = path + "/" + EscapeJsonPointer(property.Name);
                     Visit(property.Value, childPath, localType, property.Name, localContext);
-                    if (nodes > MaximumNodesPerPayload || output.Count >= maximumCandidates)
+                    if (nodeLimitReached || output.Count >= maximumCandidates)
                         break;
                 }
                 return;
