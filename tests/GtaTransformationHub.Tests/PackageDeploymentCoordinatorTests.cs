@@ -75,7 +75,7 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
             PackageFormat = "OIV-2.2",
             CompatibilityVerified = true
         };
-        var archivePath = CreateArchive(manifest, ("mods/oiv-sample.dat", content));
+        var archivePath = CreateArchive(manifest, ("mods/sample.dat", content));
         var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(archivePath);
         var installation = new GameInstallation(
             _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
