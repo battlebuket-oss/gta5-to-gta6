@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.IO;
 using GtaTransformationHub.Services;
 using Xunit;
