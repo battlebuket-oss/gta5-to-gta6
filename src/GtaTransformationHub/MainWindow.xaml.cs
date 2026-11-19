@@ -543,7 +543,11 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var process = new OivInstallerLauncherService().OpenPackageInInstaller(
+            OpenImportedOivButton.IsEnabled = false;
+            StatusText.Text = "Verifying the external installer and configuring its target as the selected GTA V Legacy folder...";
+            OivEngineStatusText.Text = "Configuring CodeWalker for the verified Legacy installation. The Hub is not installing a mod.";
+
+            var process = await new OivInstallerLauncherService().OpenPackageInInstallerAsync(
                 _oivInstallerExecutable,
                 _oivInstallerSha256,
                 _lastImportedOivPath,
