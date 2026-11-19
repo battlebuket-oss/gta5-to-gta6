@@ -219,7 +219,7 @@ public sealed class EcologyInventoryEvidenceService
             throw new InvalidDataException(
                 label + " snapshot targets GTA V build " + snapshot.GameBuild +
                 ", but the selected installation is build " + expectedBuild + ".");
-        if (!snapshot.GameExecutableSha256.Equals(expectedExecutableSha256, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(snapshot.GameExecutableSha256, expectedExecutableSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
                 label + " snapshot GTA5.exe SHA-256 does not match the selected game executable.");
         if (string.IsNullOrWhiteSpace(snapshot.ExtractorId) ||
