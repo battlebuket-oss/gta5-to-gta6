@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private readonly RageCliNamesHarvestService _rageCliNamesHarvestService;
     private readonly RageCliEcologyCandidateAnalysisService _rageCliEcologyCandidateAnalysisService;
     private readonly EcologyInventoryEvidenceService _ecologyInventoryEvidenceService = new();
+    private readonly EcologyInventoryCurationService _ecologyInventoryCurationService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -1443,6 +1444,103 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void CreateEcologyCurationWorkspaceButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null)
+            return;
+
+        var evidenceRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GtaTransformationHub", "ecology-evidence", "candidate-analysis");
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select an ecology candidate analysis report for this GTA V build",
+            Filter = "Ecology candidate analysis report (ecology-candidates-*.json)|ecology-candidates-*.json",
+            InitialDirectory = Directory.Exists(evidenceRoot) ? evidenceRoot : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        EcologyCurationStatusText.Text = "Checking candidate report, batch indexes, discovery report, source RPFs and metadata payload hashes...";
+        try
+        {
+            var workspace = await _ecologyInventoryCurationService.CreateWorkspaceFromAnalysisReportAsync(
+                _installation, dialog.FileName);
+            EcologyCurationStatusText.Text =
+                "Curation workspace loaded with " + workspace.Candidates.Count +
+                " candidate evidence rows. Review each item and enter normalized identities manually.";
+            var window = new EcologyInventoryCurationWindow(
+                _installation, workspace, _ecologyInventoryCurationService)
+            {
+                Owner = this
+            };
+            window.ShowDialog();
+        }
+        catch (Exception exception)
+        {
+            EcologyCurationStatusText.Text = "Could not create the curation workspace: " + exception.Message;
+            MessageBox.Show(exception.Message, "Ecology curation workspace",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
+    private async void OpenEcologyCurationDraftButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null)
+            return;
+
+        var draftRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GtaTransformationHub", "ecology-evidence", "curation-drafts");
+        var dialog = new OpenFileDialog
+        {
+            Title = "Open an ecology curation draft for this GTA V build",
+            Filter = "Ecology curation draft (ecology-curation-*.json)|ecology-curation-*.json",
+            InitialDirectory = Directory.Exists(draftRoot) ? draftRoot : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        EcologyCurationStatusText.Text = "Revalidating the saved draft against the selected GTA5.exe, source RPFs and JSON payloads...";
+        try
+        {
+            var workspace = await _ecologyInventoryCurationService.LoadDraftAsync(
+                _installation, dialog.FileName);
+            EcologyCurationStatusText.Text =
+                "Exact-build curation draft loaded. Candidate rows: " + workspace.Candidates.Count + ".";
+            var window = new EcologyInventoryCurationWindow(
+                _installation, workspace, _ecologyInventoryCurationService)
+            {
+                Owner = this
+            };
+            window.ShowDialog();
+        }
+        catch (Exception exception)
+        {
+            EcologyCurationStatusText.Text = "Could not open the curation draft: " + exception.Message;
+            MessageBox.Show(exception.Message, "Ecology curation draft",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private void CancelAssetCatalogueButton_Click(object sender, RoutedEventArgs e)
     {
         if (_assetCatalogueCancellation is null)
@@ -1975,6 +2073,8 @@ public partial class MainWindow : Window
             !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath) &&
             _assetCatalogueCancellation is null;
         CompareEcologyInventoryButton.IsEnabled = canConfigure && _installation is not null;
+        CreateEcologyCurationWorkspaceButton.IsEnabled = canConfigure && _installation is not null;
+        OpenEcologyCurationDraftButton.IsEnabled = canConfigure && _installation is not null;
         CancelAssetCatalogueButton.IsEnabled = _operationInProgress &&
                                                _assetCatalogueCancellation is not null;
 
