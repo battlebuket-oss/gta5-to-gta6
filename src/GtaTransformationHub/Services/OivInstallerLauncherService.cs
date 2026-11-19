@@ -60,11 +60,31 @@ public sealed class OivInstallerLauncherService
         string packagePath,
         string gameExecutablePath,
         string expectedArchiveSha256,
+        bool allowUnspecifiedLegacyTarget = false) =>
+        OpenPackageInInstaller(
+            installerExecutablePath,
+            expectedInstallerSha256: null,
+            packagePath,
+            expectedArchiveSha256,
+            gameExecutablePath,
+            allowUnspecifiedLegacyTarget);
+
+    public Process OpenPackageInInstaller(
+        string installerExecutablePath,
+        string? expectedInstallerSha256,
+        string packagePath,
+        string expectedArchiveSha256,
+        string gameExecutablePath,
         bool allowUnspecifiedLegacyTarget = false)
     {
         _processMonitor.EnsureConfigurationUnlocked();
 
         var installer = InspectInstallerExecutable(installerExecutablePath);
+        if (expectedInstallerSha256 is not null &&
+            (!IsSha256(expectedInstallerSha256) ||
+             !installer.Sha256.Equals(expectedInstallerSha256, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("The selected OIV installer changed after it was approved. Re-select the external installer.");
+
         _ = new GameInstallationDetector().Inspect(gameExecutablePath);
 
         // Re-hash and re-parse the retained package immediately before handoff. Do not
