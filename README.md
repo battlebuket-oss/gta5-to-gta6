@@ -11,12 +11,12 @@ The current development branch includes:
 - Fail-closed process monitoring for GTA V Legacy and Enhanced process names.
 - Local ZIP package import with a root-level gta-hub-manifest.json.
 - Direct user-supplied HTTPS ZIP/OIV downloads with redirect validation, DNS checks at socket-connect time, bounded streaming and SHA-256 calculation.
-- Restricted OpenIV OIV 2.2 import for direct loose-file add operations only; RPF edits, patch operations and other commands are rejected.
+- Optional external OpenRAGE v0.4.0 integration for user-supplied OpenIV OIV packages: official release archive SHA-256 and executable/version verification, GTA V Legacy key setup, OIV dry-run preview, upstream blocker enforcement, exact OIV hash binding across preview/install, direct game-folder-file consent, and OpenRAGE list/uninstall/undo. OpenRAGE retains its own separate journal and GPL-3.0-only licence; it is not bundled into the Hub.
 - Ecology preservation contracts, aquatic/underwater asset classification and fail-closed preflight for terrestrial and aquatic animals, plants, water, models, textures, maps, animations and metadata.
 - Parser-independent ecological inventory comparison for vanilla species/model identity, habitats, population entries and water-body simulation/interaction identity; it permits distinct append-only new species and water rendering-profile upgrades.
 - Optional GTA V asset inspection using a user-selected rage-cli v0.28.1 Windows x64 binary. The Hub checks the exact release SHA-256 and version, then runs a strict read-only model/texture catalogue scan without bundling or downloading the third-party executable.
 - Bounded nested-RPF metadata discovery for population/model-set, animal/fish, vegetation/flora/fauna and water-related metadata candidates; reports exact executable/source-archive fingerprints and marks capped or unreadable searches incomplete.
-- Selective nested-RPF metadata extraction and rage-cli JSON dumps for up to 50 supported candidate resources, with per-layer archive hashes, JSON validation and strict per-file/aggregate size limits. Temporary extraction is deleted after each candidate.
+- Selective nested-RPF metadata extraction and rage-cli JSON dumps for up to 50 supported candidate resources per batch, with resumable global candidate offsets, per-layer archive hashes, JSON validation and strict per-file/aggregate size limits. Multiple batches can be merged for heuristic candidate analysis. Temporary extraction is deleted after each candidate.
 - Aquatic-path classification for fish, marine life, seagrass, kelp, coral/reef assets, underwater assets, water bodies and shoreline vegetation.
 - Shared mutation serialization across deployment, removal and rollback, plus protected paths for executables, RPF archives and save/profile folders.
 - Story Mode save-folder archive backups and conservative hardware/performance guidance.
@@ -47,12 +47,11 @@ The current CI checks must complete successfully before this branch is eligible 
 
 1. Build and run the WPF application on Windows with the .NET 8 SDK.
 2. Select the GTA V Legacy GTA5.exe. The app checks file metadata and a numeric product/file version; it does not yet verify the executable's Authenticode signature.
-3. Obtain a package ZIP from the genuine author/source page and inspect its licence and contents.
-4. Import the ZIP. The archive must follow the format in [Package authoring](docs/PACKAGE_AUTHORING.md).
-5. Select the package, run preflight, review the source and licence, and acknowledge the third-party execution risk.
-6. Apply the package. The Hub copies only declared files and records a transaction.
-7. Use Remove selected to remove files only when the Hub can match an active deployment record and the package hash.
-8. Use Rollback latest to reverse the most recent deployment or removal in the current application session.
+3. Obtain a mod from its genuine author/source page and inspect its licence, exact Legacy edition, supported GTA V build and dependencies.
+4. For a Hub-manifest ZIP, import it and follow [Package authoring](docs/PACKAGE_AUTHORING.md). For a prebuilt OpenIV OIV, use the separate OpenRAGE OIV panel, download/verify the upstream tool, select the local OIV, read the complete preview and install only after the explicit confirmations.
+5. For Hub ZIP packages, select the package, run preflight, review source/licence and acknowledge third-party execution risk.
+6. Apply the Hub ZIP package. The Hub copies only declared files and records its own transaction. OIV files are instead installed and journaled by OpenRAGE.
+7. Use Remove selected/Rollback latest only for Hub-managed ZIP transactions. Use the OpenRAGE package list/uninstall/undo controls for OpenRAGE OIV packages.
 
 Direct executable launch may require Steam or Rockstar Games Launcher. The launch path still requires real-world verification across supported installation types.
 
@@ -62,9 +61,9 @@ Direct executable launch may require Steam or Rockstar Games Launcher. The launc
 - Unsigned and unknown-publisher packages remain importable but warn during preflight; an invalid signature from a trusted key is rejected. There is not yet a signed central catalogue or signed application-update channel.
 - The Hub downloads only when the user supplies a direct HTTPS ZIP/OIV URL. It does not scrape HTML pages, bypass host-controlled download flows or crawl mod-host APIs.
 - The Hub does not sandbox DLL, ASI or script files when the game loads them. Only install files from sources you trust.
-- The Hub does not execute third-party installers, modify a running game, inject into a process, bypass DRM/anti-cheat or support GTA Online.
-- Current mod catalogue entries are research-only. No third-party mod is approved for one-click installation. All ecology- and water-sensitive packages are currently blocked. The optional rage-cli model/texture catalogue, bounded metadata-discovery report and selective JSON payload dumps are extraction building blocks only; discovery has fixed filename patterns/hit caps and the dumper handles at most 50 candidate resources. They do not create a complete species, population, habitat or water-system inventory. Full exact-build archive coverage, semantic interpretation, trusted terrestrial/aquatic inventories, water-system baselines and package-preflight evidence integration remain outstanding.
-- OIV support is intentionally limited to direct loose-file add operations. RPF editing, XML/GFX, ASI-specific and other host-specific adapters are not implemented. OIV packages remain blocked until exact-build compatibility is independently verified.
+- The Hub does not run arbitrary third-party mod setup executables or scripts. The optional OpenRAGE CLI is a pinned external OIV file-operation tool; its operation plan is previewed and upstream blockers are enforced. The Hub does not modify a running game, inject into a process, bypass DRM/anti-cheat or support GTA Online.
+- Current mod catalogue entries are research-only. No third-party mod is marked Tested or preselected in the RTX 4050 profile. The OIV picker can install a user-supplied OIV after preview and explicit consent, but it does not turn a Researching catalogue entry into an approved compatible package. All ecology- and water-sensitive packages remain blocked. The optional rage-cli extraction/heuristic candidate pipeline does not create a complete species, population, habitat or water-system inventory. Full exact-build archive coverage, semantic interpretation, trusted terrestrial/aquatic inventories, water-system baselines and package-preflight evidence integration remain outstanding.
+- OpenRAGE support applies to OIV packages and only to the operations accepted by the pinned upstream tool. An OIV preview blocker is not bypassed. Arbitrary ZIP/RAR script bundles, standalone ASI/DLL packages, unsupported PSO operations and manual folder layouts are not automatically installed by OpenRAGE. Loose files that would be placed directly in the GTA V game folder require a separate acknowledgement. OIV preview is not a real-game compatibility test.
 
 Do not use the development build on your only game installation. Test against a disposable copy and back up your game files and saves first.
 
@@ -80,7 +79,13 @@ A Windows x64 self-contained publish and per-user Inno Setup installer are defin
 
 See [Production readiness status](docs/PRODUCTION_STATUS.md) for implemented functions, outstanding engineering work and mandatory release gates.
 
-Outstanding work includes a signed central catalogue/update channel, full OIV/RPF and game-specific adapters, validated GTA V Legacy terrestrial/aquatic asset extractors, trusted species and water-system baselines, and package-preflight evidence integration for the semantic inventory comparator, a tested mod compatibility matrix, the actual in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
+Outstanding work includes a signed central catalogue/update channel, adapters for non-OIV ZIP/RAR/ASI/DLL/manual layouts and unsupported archive operations, validated GTA V Legacy terrestrial/aquatic asset extractors, trusted species and water-system baselines, package-preflight evidence integration for the semantic inventory comparator, a tested mod compatibility matrix, the actual in-game UI transformation, game-side accessibility, repeatable performance tests, full launcher testing, Windows code signing and real-installation rollback validation.
+
+## RTX 4050 mod-stack plan
+
+See [RTX 4050 mod-stack plan](docs/RTX4050_MOD_STACK.md) for the recommended one-per-slot HUD, weather, water, grass and wildlife alternatives. The profile is a research/test plan for 1080p and 6 GB VRAM, not a validated performance guarantee; 8K water textures and experimental ray tracing are excluded from the default direction.
+
+The OIV workflow is documented in [OpenRAGE OIV integration](docs/OPENRAGE_OIV_INTEGRATION.md). OpenRAGE manages its own OIV journal, separate from Hub ZIP transactions.
 
 ## Flora, fauna and water requirements
 
