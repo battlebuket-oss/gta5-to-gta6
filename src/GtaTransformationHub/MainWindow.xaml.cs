@@ -12,7 +12,9 @@ public partial class MainWindow : Window
 {
     private string? _gameExecutable;
     private string? _oivInstallerExecutable;
+    private string? _oivInstallerSha256;
     private string? _lastImportedOivPath;
+    private string? _lastOivArchiveSha256;
     private string? _lastImportedOivPackageDirectory;
     private OivManifestInspectionResult? _lastOivInspection;
     private bool _recoveryCompleted;
@@ -339,13 +341,18 @@ public partial class MainWindow : Window
 
             if (string.Equals(Path.GetExtension(archiveDialog.FileName), ".oiv", StringComparison.OrdinalIgnoreCase))
             {
+                if (result.OriginalArchivePath is null || result.OivInspection is null)
+                    throw new InvalidDataException("The imported OIV was not retained with its inspection record.");
+
                 _lastImportedOivPath = result.OriginalArchivePath;
+                _lastOivArchiveSha256 = result.ArchiveSha256;
                 _lastImportedOivPackageDirectory = result.PackageDirectory;
                 _lastOivInspection = result.OivInspection;
             }
             else
             {
                 _lastImportedOivPath = null;
+                _lastOivArchiveSha256 = null;
                 _lastImportedOivPackageDirectory = null;
                 _lastOivInspection = null;
             }
@@ -431,6 +438,7 @@ public partial class MainWindow : Window
         {
             var installer = new OivInstallerLauncherService().InspectInstallerExecutable(dialog.FileName);
             _oivInstallerExecutable = installer.ExecutablePath;
+            _oivInstallerSha256 = installer.Sha256;
             OivEngineStatusText.Text =
                 "Selected " + Path.GetFileName(installer.ExecutablePath) +
                 " | file version " + (string.IsNullOrWhiteSpace(installer.FileVersion) ? "unreported" : installer.FileVersion) +
@@ -441,6 +449,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _oivInstallerExecutable = null;
+            _oivInstallerSha256 = null;
             OivEngineStatusText.Text = "External OIV engine selection failed: " + ex.Message;
             StatusText.Text = "The selected external installer was rejected.";
         }
@@ -456,7 +465,9 @@ public partial class MainWindow : Window
             return;
         if (string.IsNullOrWhiteSpace(_gameExecutable) ||
             string.IsNullOrWhiteSpace(_oivInstallerExecutable) ||
+            string.IsNullOrWhiteSpace(_oivInstallerSha256) ||
             string.IsNullOrWhiteSpace(_lastImportedOivPath) ||
+            string.IsNullOrWhiteSpace(_lastOivArchiveSha256) ||
             string.IsNullOrWhiteSpace(_lastImportedOivPackageDirectory) ||
             _lastOivInspection is null)
         {
@@ -534,7 +545,9 @@ public partial class MainWindow : Window
 
             var process = new OivInstallerLauncherService().OpenPackageInInstaller(
                 _oivInstallerExecutable,
+                _oivInstallerSha256,
                 _lastImportedOivPath,
+                _lastOivArchiveSha256,
                 _gameExecutable,
                 inspection,
                 allowUnspecifiedLegacyTarget: allowUnspecified);
@@ -654,7 +667,9 @@ public partial class MainWindow : Window
             !running && _recoveryCompleted &&
             _gameExecutable is not null &&
             _oivInstallerExecutable is not null &&
+            _oivInstallerSha256 is not null &&
             _lastImportedOivPath is not null &&
+            _lastOivArchiveSha256 is not null &&
             _lastOivInspection is not null;
         GetOivInstallerButton.IsEnabled = true;
         // Never launch from the dashboard until profile validation and transactional
