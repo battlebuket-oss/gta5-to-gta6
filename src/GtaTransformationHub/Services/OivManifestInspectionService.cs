@@ -78,12 +78,14 @@ public static class OivManifestInspectionService
         if (!string.IsNullOrWhiteSpace(tag))
             modVersion += " " + tag;
 
-        var gameVersionNode = root.DescendantsAndSelf()
+        // OpenIV OIV 2.x defines a GTA game target ("Five"), but does not standardise
+        // a Legacy/Enhanced edition field. The package version <tag> is not a game-edition
+        // declaration, so never infer edition compatibility from it.
+        var gameVersionNode = root.Elements()
             .FirstOrDefault(element => NameIs(element, "gameversion"));
-        var gameVersionText = gameVersionNode?.Value.Trim();
-        if (string.IsNullOrWhiteSpace(gameVersionText))
-            gameVersionText = tag;
-        var gameVersionRequirement = ClassifyGameVersionRequirement(gameVersionText);
+        var gameVersionRequirement = gameVersionNode is null
+            ? "Unspecified"
+            : ClassifyGameVersionRequirement(gameVersionNode.Value.Trim());
 
         ValidateColors(colors);
         var licence = metadata.Elements().FirstOrDefault(element => NameIs(element, "licence"))?.Value.Trim() ?? string.Empty;
@@ -246,7 +248,8 @@ public static class OivManifestInspectionService
                     AddOperation(operations, new OivOperationSummary("text:replace", containingArchive, target, null));
                     break;
                 case "delete":
-                    _ = RequiredAttribute(element, "line");
+                    if (string.IsNullOrWhiteSpace(element.Value))
+                        throw new InvalidDataException("An OIV text delete command must contain the line or mask to delete.");
                     ValidateTextCondition(RequiredAttribute(element, "condition"));
                     AddOperation(operations, new OivOperationSummary("text:delete", containingArchive, target, null));
                     break;
@@ -280,8 +283,8 @@ public static class OivManifestInspectionService
         var append = (string?)element.Attribute("append");
         if (string.IsNullOrWhiteSpace(append))
         {
-            if (formatVersion == "2.2")
-                throw new InvalidDataException("OIV 2.2 XML add commands must specify an append value.");
+            // The specification marks append as required, but its own 2.2 example contains
+            // an add command without it. Preserve the inventory and require human review.
             return;
         }
 
