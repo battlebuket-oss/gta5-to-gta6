@@ -38,6 +38,7 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
         Assert.True(entry.ManifestValid);
         Assert.Empty(entry.Warnings);
         Assert.Contains("re-computed", entry.VerificationNote);
+        Assert.Equal("a".PadRight(64, 'a'), entry.OriginalArchiveSha256);
         Assert.Equal(packageDirectory, entry.PackageDirectory);
     }
 
