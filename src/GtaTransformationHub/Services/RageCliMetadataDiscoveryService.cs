@@ -47,9 +47,9 @@ public sealed class RageCliMetadataDiscoveryService
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(15);
     private const long MaximumReportBytes = 64L * 1024 * 1024;
 
-    // Search by supported metadata container extension in one pass per file type.
-    // Ecology keywords are prioritized after parsing the hit list; separate keyword
-    // searches would rescan every nested RPF archive and return the same files repeatedly.
+    // Meta/PSO containers are searched by extension. Native water XML and the
+    // population cycle DAT are separate raw resources; the Hub does not send them
+    // through the Meta/PSO JSON dumper.
     public static readonly IReadOnlyList<string> EcologyMetadataPatterns = new[]
     {
         "*.ymt",
@@ -58,7 +58,8 @@ public sealed class RageCliMetadataDiscoveryService
         "*.ymap",
         "*.ymf",
         "*.pso",
-        "*.xml"
+        "*water*.xml",
+        "*popcycle.dat"
     };
 
     private readonly RageCliToolchainService _toolchain;
