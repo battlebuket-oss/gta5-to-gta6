@@ -67,10 +67,14 @@ public sealed class ModArchiveImportService
         try
         {
             var files = new List<ImportedModFile>();
+            OivManifestInspectionResult? oivInspection = null;
             using (var archive = new ZipArchive(archiveStream, ZipArchiveMode.Read, leaveOpen: true))
             {
                 if (archive.Entries.Count == 0 || archive.Entries.Count > _limits.MaximumEntries)
                     throw new InvalidDataException("The archive is empty or exceeds the configured entry limit.");
+
+                if (extension.Equals(".oiv", StringComparison.OrdinalIgnoreCase))
+                    oivInspection = OivManifestInspectionService.Inspect(archive);
 
                 var nodes = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
                 long declaredTotal = 0;
@@ -151,7 +155,8 @@ public sealed class ModArchiveImportService
                 archiveHash,
                 DateTimeOffset.UtcNow,
                 CatalogueStatus.Researching,
-                files);
+                files,
+                oivInspection);
 
             var manifestPath = Path.Combine(staging, "package-manifest.json");
             await using (var manifestStream = new FileStream(
@@ -347,7 +352,8 @@ public sealed record ImportedModManifest(
     string ArchiveSha256,
     DateTimeOffset ImportedAt,
     CatalogueStatus Status,
-    IReadOnlyList<ImportedModFile> Files);
+    IReadOnlyList<ImportedModFile> Files,
+    OivManifestInspectionResult? OivInspection = null);
 
 public sealed record ModArchiveImportLimits(
     int MaximumEntries = 2500,
