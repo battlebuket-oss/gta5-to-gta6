@@ -33,6 +33,7 @@ sample-package.zip
   "exclusiveGroup": "optional-mutually-exclusive-group",
   "signingKeyId": null,
   "signature": null,
+  "signatureVersion": 2,
   "files": [
     {
       "sourcePath": "package/mods/sample.dat",
@@ -114,3 +115,39 @@ The signature authenticates the manifest and declared file hashes. The importer 
 The Hub's SHA-256 checks detect corruption but do not authenticate an author on their own. Publisher signatures can authenticate a package manifest only when the publisher public key was independently verified and added to the local trust store.
 
 The Hub does not sandbox third-party code loaded by GTA V. Users must obtain archives from genuine author sources and inspect package contents and licence terms. Do not use this format to distribute copyrighted assets unless the author licence expressly permits redistribution.
+
+
+## Signature versions
+
+- **Version 1** preserves the original canonical payload for legacy manifests that contain only the original package identity, dependencies, conflicts, exclusive group, publisher key fingerprint, and file manifest.
+- **Version 2** additionally signs impact areas, compatibility-verification state, package format, ecological preservation metadata, and the complete Story Mode descriptor. New publishers should use version 2.
+- A version-1 signature is rejected when version-2-only metadata is present. This prevents a signed legacy manifest from having compatibility, ecology, or Story Mode claims altered without invalidating its signature.
+- The signature version is declared as `signatureVersion` in `gta-hub-manifest.json`. It defaults to 1 when omitted for backward compatibility. Use `2` for new signed packages.
+
+## Story Mode package metadata
+
+Story packages must include `impactAreas: ["story"]` and a `storyContent` object. The descriptor contains:
+
+```json
+{
+  "signatureVersion": 2,
+  "impactAreas": ["story"],
+  "storyContent": {
+    "contentType": "MissionPack",
+    "missionIds": ["mission-01", "mission-02"],
+    "protagonistRequirements": ["Any"],
+    "startLocations": ["downtown-bank"],
+    "progressionNamespace": "community-story-progression",
+    "saveCompatibility": "SeparateNamespace",
+    "requiresSaveBackup": true,
+    "preservesOriginalCampaign": true,
+    "voiceLanguages": [],
+    "subtitleLanguages": ["en-US"],
+    "testEvidenceUri": "https://author.example.com/test-evidence"
+  }
+}
+```
+
+Supported `contentType` values are `Campaign`, `MissionPack`, `SideMission`, `CharacterArc`, `ActivityPack`, and `AmbientEvent`. Supported `saveCompatibility` values are `SeparateNamespace`, `NoPersistentData`, and `UsesVanillaSave`. A package that uses the vanilla save must set `requiresSaveBackup` to true. Every story package must declare that it preserves the original GTA V campaign.
+
+These fields are a metadata and safety contract. They do not create missions, guarantee a save-isolated runtime implementation, or prove gameplay compatibility. A story package remains subject to source, licence, exact-build, dependency, hash, install/rollback and real-game validation.
