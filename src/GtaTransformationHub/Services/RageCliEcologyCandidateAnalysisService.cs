@@ -4,6 +4,7 @@ using System.Text.Json;
 namespace GtaTransformationHub.Services;
 
 public sealed record EcologyMetadataCandidate(
+    int CandidateIndex,
     string Category,
     string ResourceName,
     string InternalArchivePath,
@@ -73,6 +74,11 @@ public sealed class RageCliEcologyCandidateAnalysisService
         IReadOnlyList<string> Errors,
         IReadOnlyList<RageCliMetadataPayload> Payloads);
 
+    private sealed record LoadedMetadataDumpIndex(
+        string Path,
+        string Sha256,
+        MetadataDumpIndexReport Index);
+
     private sealed record DiscoveryProvenanceReport(
         int SchemaVersion,
         string ToolVersion,
@@ -89,8 +95,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         string GameExecutableSha256,
         string ToolVersion,
         string ToolSha256,
-        string DumpIndexFileName,
-        string DumpIndexSha256,
+        IReadOnlyList<string> DumpIndexFileNames,
+        IReadOnlyList<string> DumpIndexSha256,
         string DiscoveryReportFileName,
         string DiscoveryReportSha256,
         int PayloadsReviewed,
@@ -117,92 +123,186 @@ public sealed class RageCliEcologyCandidateAnalysisService
             "GtaTransformationHub", "ecology-evidence", "candidate-analysis"));
     }
 
-    public async Task<EcologyMetadataCandidateAnalysisResult> AnalyzeAsync(
+    public Task<EcologyMetadataCandidateAnalysisResult> AnalyzeAsync(
         string rageExecutablePath,
         GameInstallation installation,
         string metadataDumpIndexPath,
+        CancellationToken cancellationToken = default) =>
+        AnalyzeAsync(
+            rageExecutablePath,
+            installation,
+            new[] { metadataDumpIndexPath },
+            cancellationToken);
+
+    public async Task<EcologyMetadataCandidateAnalysisResult> AnalyzeAsync(
+        string rageExecutablePath,
+        GameInstallation installation,
+        IReadOnlyList<string> metadataDumpIndexPaths,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(installation);
+        if (metadataDumpIndexPaths is null || metadataDumpIndexPaths.Count == 0 ||
+            metadataDumpIndexPaths.Count > MaximumDiscoveredCandidates / RageCliMetadataPayloadService.MaximumCandidatesToDump)
+            throw new ArgumentException("Select between 1 and 3,000 metadata dump batch indexes.", nameof(metadataDumpIndexPaths));
+
         var tool = await _toolchain.ValidateExecutableAsync(rageExecutablePath, cancellationToken);
         var (gameExecutable, gameRoot) = ValidateInstallation(installation);
         var gameHash = await RageCliToolchainService.ComputeSha256Async(gameExecutable, cancellationToken);
         var buildDirectory = RageCliToolchainService.BuildDirectoryNameFromExecutableHash(gameHash);
-
         var metadataDirectory = Path.Combine(_dataRoot, "metadata-dumps", buildDirectory);
-        var safeIndexPath = ValidateOwnedFile(metadataDirectory, metadataDumpIndexPath, MaximumIndexBytes, "metadata dump index");
-        var indexHash = await RageCliToolchainService.ComputeSha256Async(safeIndexPath, cancellationToken);
-        var index = await ReadJsonAsync<MetadataDumpIndexReport>(safeIndexPath, cancellationToken);
 
-        ValidateIndexProvenance(index, installation.BuildVersion, gameHash, tool);
-        if (string.IsNullOrWhiteSpace(index.DiscoveryReportPath))
-            throw new InvalidDataException("The metadata dump index has no discovery report path.");
+        var loadedIndexes = new List<LoadedMetadataDumpIndex>();
+        var seenIndexPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var indexPath in metadataDumpIndexPaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var safeIndexPath = ValidateOwnedFile(
+                metadataDirectory, indexPath, MaximumIndexBytes, "metadata dump index");
+            if (!seenIndexPaths.Add(safeIndexPath))
+                throw new InvalidDataException("The same metadata dump index was selected more than once.");
+
+            var indexHash = await RageCliToolchainService.ComputeSha256Async(safeIndexPath, cancellationToken);
+            var index = await ReadJsonAsync<MetadataDumpIndexReport>(safeIndexPath, cancellationToken);
+            ValidateIndexProvenance(index, installation.BuildVersion, gameHash, tool);
+
+            if (index.Payloads is null || index.Payloads.Any(payload => payload is null))
+                throw new InvalidDataException("A metadata dump index has no valid payload collection.");
+
+            var batchErrors = ValidateDumpBatchContract(
+                index.SchemaVersion,
+                index.CandidateCount,
+                index.StartingCandidateIndex,
+                index.NextCandidateIndex,
+                index.SelectedCandidateCount,
+                index.MoreBatchesAvailable,
+                index.BatchComplete,
+                index.Payloads.Select(payload => payload.CandidateIndex).ToArray(),
+                index.Errors);
+            if (batchErrors.Count > 0)
+                throw new InvalidDataException(
+                    "A metadata dump index has an invalid resumable-batch contract: " +
+                    string.Join(" ", batchErrors));
+
+            loadedIndexes.Add(new LoadedMetadataDumpIndex(safeIndexPath, indexHash, index));
+        }
+
+        var firstIndex = loadedIndexes[0].Index;
+        var totalCandidateCount = firstIndex.CandidateCount;
+        var discoveryReportPath = Path.GetFullPath(firstIndex.DiscoveryReportPath);
+        var discoveryReportSha256 = firstIndex.DiscoveryReportSha256;
+
+        foreach (var loaded in loadedIndexes.Skip(1))
+        {
+            if (loaded.Index.CandidateCount != totalCandidateCount ||
+                !Path.GetFullPath(loaded.Index.DiscoveryReportPath).Equals(
+                    discoveryReportPath, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(
+                    loaded.Index.DiscoveryReportSha256, discoveryReportSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException(
+                    "All selected metadata dump batches must belong to the same exact discovery report and candidate list.");
+            }
+        }
 
         var discoveryDirectory = Path.Combine(_dataRoot, "catalogue", buildDirectory);
-        var discoveryPath = ValidateOwnedFile(
-            discoveryDirectory, index.DiscoveryReportPath, 64L * 1024 * 1024,
+        var safeDiscoveryPath = ValidateOwnedFile(
+            discoveryDirectory, discoveryReportPath, 64L * 1024 * 1024,
             "metadata discovery report");
-        var discoveryHash = await RageCliToolchainService.ComputeSha256Async(discoveryPath, cancellationToken);
-        if (!discoveryHash.Equals(index.DiscoveryReportSha256, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The metadata discovery report changed after the dump index was created.");
+        var discoveryHash = await RageCliToolchainService.ComputeSha256Async(safeDiscoveryPath, cancellationToken);
+        if (!discoveryHash.Equals(discoveryReportSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The metadata discovery report changed after the dump batches were created.");
 
-        var discovery = await ReadJsonAsync<DiscoveryProvenanceReport>(discoveryPath, cancellationToken);
+        var discovery = await ReadJsonAsync<DiscoveryProvenanceReport>(safeDiscoveryPath, cancellationToken);
         ValidateDiscoveryProvenance(discovery, installation.BuildVersion, gameHash, tool);
 
-        if (index.Payloads is null || index.Payloads.Any(payload => payload is null))
-            throw new InvalidDataException("The metadata dump index has no valid payload collection.");
-
-        var batchErrors = ValidateDumpBatchContract(
-            index.SchemaVersion,
-            index.CandidateCount,
-            index.StartingCandidateIndex,
-            index.NextCandidateIndex,
-            index.SelectedCandidateCount,
-            index.MoreBatchesAvailable,
-            index.BatchComplete,
-            index.Payloads.Select(payload => payload.CandidateIndex).ToArray(),
-            index.Errors);
-
-        if (batchErrors.Count > 0)
-            throw new InvalidDataException(
-                "The metadata dump index has an invalid resumable-batch contract: " +
-                string.Join(" ", batchErrors));
-
         var warnings = new List<string>();
-        if (index.MoreBatchesAvailable)
-            warnings.Add("Additional metadata batches remain. Continue from candidate offset " +
-                         index.NextCandidateIndex.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".");
-        if (!index.BatchComplete)
-            warnings.Add("This metadata batch is incomplete. Successful payloads are analysed, but failed candidates must be retried.");
-        if (index.Errors is { Count: > 0 })
-            warnings.AddRange(index.Errors.Take(100));
+        foreach (var loaded in loadedIndexes)
+        {
+            if (loaded.Index.Errors is { Count: > 0 })
+                warnings.AddRange(loaded.Index.Errors.Take(100));
+            if (!loaded.Index.BatchComplete)
+                warnings.Add(
+                    "Batch starting at candidate " + loaded.Index.StartingCandidateIndex +
+                    " was not complete; later retry batches may supply its missing records.");
+        }
+
         if (discovery.Errors is { Count: > 0 })
             warnings.AddRange(discovery.Errors.Take(100));
         if (discovery.PatternResults is null ||
-            discovery.PatternResults.Any(result => result is null ||
-                result.HitLimit || result.OutputTruncated || result.HasArchiveErrors))
+            discovery.PatternResults.Any(result => result.HitLimit || result.OutputTruncated || result.HasArchiveErrors))
             warnings.Add("One or more discovery patterns hit a limit, truncated output or had archive errors.");
+
+        var payloadsByCandidateIndex = new Dictionary<int, RageCliMetadataPayload>();
+        foreach (var loaded in loadedIndexes)
+        {
+            foreach (var payload in loaded.Index.Payloads)
+            {
+                if (payload.CandidateIndex < 0 || payload.CandidateIndex >= totalCandidateCount)
+                    throw new InvalidDataException("A payload candidate index is outside the discovered candidate set.");
+
+                if (payloadsByCandidateIndex.TryGetValue(payload.CandidateIndex, out var existing))
+                {
+                    if (!existing.DumpJsonSha256.Equals(payload.DumpJsonSha256, StringComparison.OrdinalIgnoreCase) ||
+                        !existing.SourceArchiveSha256.Equals(payload.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase) ||
+                        !existing.InternalPath.Equals(payload.InternalPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidDataException(
+                            "Overlapping retry batches contain conflicting evidence for candidate " +
+                            payload.CandidateIndex + ".");
+                    }
+                    continue;
+                }
+
+                payloadsByCandidateIndex.Add(payload.CandidateIndex, payload);
+            }
+        }
+
+        var candidateCoverageComplete = payloadsByCandidateIndex.Count == totalCandidateCount;
+        if (candidateCoverageComplete)
+        {
+            for (var candidateIndex = 0; candidateIndex < totalCandidateCount; candidateIndex++)
+            {
+                if (!payloadsByCandidateIndex.ContainsKey(candidateIndex))
+                {
+                    candidateCoverageComplete = false;
+                    break;
+                }
+            }
+        }
+        if (!candidateCoverageComplete)
+            warnings.Add(
+                "The selected batch indexes cover " + payloadsByCandidateIndex.Count +
+                " of " + totalCandidateCount +
+                " distinct candidate indexes. Select the remaining or retry batches before treating the dump set as complete.");
 
         var candidates = new List<EcologyMetadataCandidate>();
         var payloadsReviewed = 0;
+        long totalInputJsonBytes = 0;
+        var outputCandidateCapReached = false;
         var payloadDirectory = Path.Combine(_dataRoot, "metadata-dumps", buildDirectory);
+        var verifiedSourceHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var payload in index.Payloads)
+        foreach (var pair in payloadsByCandidateIndex.OrderBy(item => item.Key))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (payload is null ||
-                string.IsNullOrWhiteSpace(payload.SourceArchivePath) ||
-                string.IsNullOrWhiteSpace(payload.DumpJsonPath) ||
-                string.IsNullOrWhiteSpace(payload.ResourceName) ||
-                string.IsNullOrWhiteSpace(payload.InternalPath) ||
-                !IsSha256(payload.SourceArchiveSha256) ||
-                !IsSha256(payload.DumpJsonSha256) ||
-                payload.DumpJsonBytes <= 0)
-                throw new InvalidDataException("The metadata payload is missing one or more required provenance fields.");
-            var sourceArchive = ValidateSourceArchive(gameRoot, payload.SourceArchivePath);
-            var currentArchiveHash = await RageCliToolchainService.ComputeSha256Async(sourceArchive, cancellationToken);
-            if (!currentArchiveHash.Equals(payload.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase))
-                throw new IOException("The original source RPF changed after metadata extraction: " + payload.InternalPath);
+            var payload = pair.Value;
+            if (!IsSha256(payload.SourceArchiveSha256) || !IsSha256(payload.DumpJsonSha256))
+                throw new InvalidDataException("The metadata payload is missing a valid source or dump SHA-256.");
+
+            var sourceArchive = Path.GetFullPath(payload.SourceArchivePath);
+            if (!verifiedSourceHashes.TryGetValue(sourceArchive, out var currentArchiveHash))
+            {
+                sourceArchive = ValidateSourceArchive(gameRoot, sourceArchive);
+                currentArchiveHash = await RageCliToolchainService.ComputeSha256Async(sourceArchive, cancellationToken);
+                if (!currentArchiveHash.Equals(payload.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new IOException("An original source RPF changed after metadata extraction: " + payload.InternalPath);
+                verifiedSourceHashes.Add(sourceArchive, currentArchiveHash);
+            }
+            else if (!currentArchiveHash.Equals(payload.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("A repeated source RPF has inconsistent recorded fingerprints.");
+            }
 
             var jsonPath = ValidateOwnedFile(
                 payloadDirectory, payload.DumpJsonPath, RageCliMetadataPayloadService.MaximumDumpJsonBytes,
@@ -210,9 +310,17 @@ public sealed class RageCliEcologyCandidateAnalysisService
             var jsonInfo = new FileInfo(jsonPath);
             if (jsonInfo.Length != payload.DumpJsonBytes)
                 throw new InvalidDataException("A metadata JSON payload size no longer matches its dump index.");
+            totalInputJsonBytes = checked(totalInputJsonBytes + jsonInfo.Length);
+            if (totalInputJsonBytes > 4L * 1024 * 1024 * 1024)
+                throw new InvalidDataException("The selected metadata batches exceed the 4 GB analysis input limit.");
+
             var jsonHash = await RageCliToolchainService.ComputeSha256Async(jsonPath, cancellationToken);
             if (!jsonHash.Equals(payload.DumpJsonSha256, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("A metadata JSON payload changed after it was indexed: " + payload.InternalPath);
+
+            payloadsReviewed++;
+            if (outputCandidateCapReached)
+                continue;
 
             await using var stream = new FileStream(
                 jsonPath, FileMode.Open, FileAccess.Read, FileShare.Read,
@@ -224,6 +332,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
 
             var before = candidates.Count;
             ExtractCandidates(
+                payload.CandidateIndex,
                 document.RootElement,
                 payload.ResourceName,
                 payload.InternalPath,
@@ -233,16 +342,17 @@ public sealed class RageCliEcologyCandidateAnalysisService
                 candidates,
                 warnings,
                 MaximumCandidates);
-            payloadsReviewed++;
+
             if (candidates.Count == MaximumCandidates)
             {
-                warnings.Add("The semantic candidate review reached its 10,000-record output cap.");
-                break;
+                outputCandidateCapReached = true;
+                warnings.Add("The semantic candidate review reached its 10,000-record output cap. Remaining payloads were hash-verified but not semantically walked.");
             }
-
-            if (candidates.Count == before)
+            else if (candidates.Count == before)
+            {
                 warnings.Add("No field names matched the current ecology candidate rules for resource '" +
                              payload.ResourceName + "'. Review the raw JSON manually.");
+            }
         }
 
         var gameHashAfter = await RageCliToolchainService.ComputeSha256Async(gameExecutable, cancellationToken);
@@ -254,30 +364,16 @@ public sealed class RageCliEcologyCandidateAnalysisService
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        var payloadIndexes = index.Payloads
-            .Select(payload => payload.CandidateIndex)
-            .OrderBy(value => value)
-            .ToArray();
-        var currentIndexCoversEveryCandidate =
-            index.CandidateCount > 0 &&
-            payloadIndexes.Length == index.CandidateCount &&
-            payloadIndexes.SequenceEqual(Enumerable.Range(0, index.CandidateCount));
-
-        if (!currentIndexCoversEveryCandidate)
-            warnings.Add(
-                "This index contains only one bounded batch. It does not include all prior batches, so the full candidate set has not been analyzed in this report.");
-
-        var indexComplete = currentIndexCoversEveryCandidate &&
-                            index.BatchComplete &&
-                            !index.MoreBatchesAvailable &&
-                            index.Errors is { Count: 0 } &&
-                            discovery.Errors is { Count: 0 } &&
-                            discovery.PatternResults is { Count: > 0 } &&
-                            discovery.PatternResults.All(item =>
-                                !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors);
+        var discoveryComplete = discovery.Errors is { Count: 0 } &&
+                                discovery.PatternResults is { Count: > 0 } &&
+                                discovery.PatternResults.All(item =>
+                                    !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors);
+        var allBatchesComplete = loadedIndexes.All(item =>
+            item.Index.BatchComplete && item.Index.Errors is { Count: 0 });
+        var inputIndexComplete = candidateCoverageComplete && allBatchesComplete && discoveryComplete;
 
         const string limitation =
-            "Candidates are heuristic field/path matches from the bounded metadata resources that were successfully dumped. " +
+            "Candidates are heuristic field/path matches from the metadata resources that were successfully dumped. " +
             "They may include false positives and may miss data stored in unsearched or unsupported resources. " +
             "No species, habitat, population or water identity is certified by this report. " +
             "CompletenessVerified and PackageEligibilityUnlocked are always false.";
@@ -297,13 +393,13 @@ public sealed class RageCliEcologyCandidateAnalysisService
             gameHash,
             tool.Version,
             tool.Sha256,
-            Path.GetFileName(safeIndexPath),
-            indexHash,
-            Path.GetFileName(discoveryPath),
+            loadedIndexes.Select(item => Path.GetFileName(item.Path)).ToArray(),
+            loadedIndexes.Select(item => item.Sha256).ToArray(),
+            Path.GetFileName(safeDiscoveryPath),
             discoveryHash,
             payloadsReviewed,
             candidates.Count,
-            indexComplete,
+            inputIndexComplete && !outputCandidateCapReached,
             CompletenessVerified: false,
             PackageEligibilityUnlocked: false,
             limitation,
@@ -344,7 +440,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
             payloadsReviewed,
             candidates.Count,
             categoryCounts,
-            indexComplete,
+            inputIndexComplete && !outputCandidateCapReached,
             CompletenessVerified: false,
             PackageEligibilityUnlocked: false,
             warnings,
@@ -400,12 +496,13 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var candidates = new List<EcologyMetadataCandidate>();
         var warnings = new List<string>();
         ExtractCandidates(
-            document.RootElement, resourceName, internalArchivePath, sourceArchivePath,
+            0, document.RootElement, resourceName, internalArchivePath, sourceArchivePath,
             sourceArchiveSha256, dumpJsonSha256, candidates, warnings, MaximumCandidates);
         return candidates;
     }
 
     private static void ExtractCandidates(
+        int candidateIndex,
         JsonElement root,
         string resourceName,
         string internalArchivePath,
@@ -500,6 +597,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
                     continue;
 
                 output.Add(new EcologyMetadataCandidate(
+                    candidateIndex,
                     category,
                     resourceName,
                     internalArchivePath,
