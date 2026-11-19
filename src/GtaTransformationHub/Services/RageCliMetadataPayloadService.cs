@@ -329,7 +329,7 @@ public sealed class RageCliMetadataPayloadService
             throw new IOException("GTA5.exe changed during metadata extraction. The result index was rejected.");
 
         var indexReport = new MetadataDumpIndexReport(
-            SchemaVersion: 2,
+            SchemaVersion: 3,
             ToolVersion: verifiedTool.Version,
             ToolSha256: verifiedTool.Sha256,
             GameBuild: installation.BuildVersion,
@@ -341,7 +341,7 @@ public sealed class RageCliMetadataPayloadService
             StartingCandidateIndex: batch.StartingCandidateIndex,
             NextCandidateIndex: GetNextCandidateIndex(batch, payloads),
             SelectedCandidateCount: selected.Length,
-            CandidateCapReached: hasMoreBatches,
+            MoreBatchesAvailable: hasMoreBatches,
             BatchComplete: errors.Count == 0 && payloads.Count == selected.Length,
             Errors: errors,
             Payloads: payloads);
@@ -700,7 +700,7 @@ public sealed class RageCliMetadataPayloadService
         int StartingCandidateIndex,
         int NextCandidateIndex,
         int SelectedCandidateCount,
-        bool CandidateCapReached,
+        bool MoreBatchesAvailable,
         bool BatchComplete,
         IReadOnlyList<string> Errors,
         IReadOnlyList<RageCliMetadataPayload> Payloads);
