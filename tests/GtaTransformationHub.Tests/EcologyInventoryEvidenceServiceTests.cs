@@ -155,6 +155,58 @@ public sealed class EcologyInventoryEvidenceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CompareAndRecordAsync_RejectsDifferentSemanticExtractorVersions()
+    {
+        Directory.CreateDirectory(_root);
+        var gameRoot = Path.Combine(_root, "game");
+        Directory.CreateDirectory(gameRoot);
+        var executable = Path.Combine(gameRoot, "GTA5.exe");
+        await File.WriteAllTextAsync(executable, "selected executable");
+        var build = "1.0.3889.0";
+        var executableHash = await GameExecutableFingerprintService.ComputeSha256Async(executable);
+        var baseline = CreateSnapshot(build, executableHash);
+        var candidate = baseline with { ExtractorVersion = "2.0.0" };
+        var baselinePath = Path.Combine(_root, "vanilla.json");
+        var candidatePath = Path.Combine(_root, "candidate.json");
+        await WriteSnapshotAsync(baselinePath, baseline);
+        await WriteSnapshotAsync(candidatePath, candidate);
+
+        var installation = new GameInstallation(gameRoot, executable, build, build, build);
+        var service = new EcologyInventoryEvidenceService(Path.Combine(_root, "evidence"));
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            service.CompareAndRecordAsync(baselinePath, candidatePath, installation));
+
+        Assert.Contains("same semantic extractor ID and version", exception.Message);
+    }
+
+    [Fact]
+    public async Task CompareAndRecordAsync_RejectsChangedOriginalSourceArchiveFingerprintSet()
+    {
+        Directory.CreateDirectory(_root);
+        var gameRoot = Path.Combine(_root, "game");
+        Directory.CreateDirectory(gameRoot);
+        var executable = Path.Combine(gameRoot, "GTA5.exe");
+        await File.WriteAllTextAsync(executable, "selected executable");
+        var build = "1.0.3889.0";
+        var executableHash = await GameExecutableFingerprintService.ComputeSha256Async(executable);
+        var baseline = CreateSnapshot(build, executableHash);
+        var candidate = baseline with { SourceArchiveSha256 = new[] { HashB } };
+        var baselinePath = Path.Combine(_root, "vanilla.json");
+        var candidatePath = Path.Combine(_root, "candidate.json");
+        await WriteSnapshotAsync(baselinePath, baseline);
+        await WriteSnapshotAsync(candidatePath, candidate);
+
+        var installation = new GameInstallation(gameRoot, executable, build, build, build);
+        var service = new EcologyInventoryEvidenceService(Path.Combine(_root, "evidence"));
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            service.CompareAndRecordAsync(baselinePath, candidatePath, installation));
+
+        Assert.Contains("same original GTA V source-archive fingerprint set", exception.Message);
+    }
+
+    [Fact]
     public async Task CompareAndRecordAsync_RejectsMalformedJson()
     {
         Directory.CreateDirectory(_root);
