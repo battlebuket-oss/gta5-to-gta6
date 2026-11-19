@@ -31,7 +31,7 @@ Even if the semantic diff is clean, the app does not promote, approve or unblock
 }
 ```
 
-The selected game build must be the exact numeric build shown by the Hub. The executable digest must be computed from the exact `GTA5.exe` selected in the app. Every source archive hash must identify a GTA V archive read by the adapter. The adapter ID/version and source hashes are provenance hints, not a claim that all source content was enumerated.
+The selected game build must be the exact numeric build shown by the Hub. The executable digest must be computed from the exact `GTA5.exe` selected in the app. Every source archive hash must identify a GTA V archive read by the adapter. Baseline and candidate snapshots must use the same extractor ID/version and the same set of original source-archive hashes; a comparison across adapters or a changed original archive set is rejected. The adapter ID/version and source hashes are provenance hints, not a claim that all source content was enumerated.
 
 ## Species record
 
