@@ -475,16 +475,33 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var fileContext = (resourceName ?? string.Empty).ToLowerInvariant();
         var normalizedFieldName = (fieldName ?? string.Empty).ToLowerInvariant();
 
-        if (ContainsAny(pathContext, "water", "ocean", "river", "lake", "wave", "underwater", "shoreline", "waterbody"))
+        // Resolve specific aquatic life before generic water-system records so
+        // underwater plants and animals are not collapsed into a generic "Water" tag.
+        if (ContainsAny(pathContext,
+                "aquaticplant", "underwaterplant", "marineplant", "seagrass", "kelp", "algae", "seaweed"))
+            return "AquaticPlant";
+        if (ContainsAny(pathContext,
+                "aquaticanimal", "underwateranimal", "marineanimal", "fish", "shark", "whale",
+                "dolphin", "stingray", "octopus", "squid", "marine", "sea_life", "seal"))
+            return "AquaticAnimal";
+
+        if (ContainsAny(pathContext, "habitat", "biome", "ecology", "zone"))
+            return "Habitat";
+        if (ContainsAny(pathContext,
+                "waterbody", "waterconfig", "waterprofile", "waveheight", "waveamplitude",
+                "ocean", "river", "lake", "water", "shoreline", "waterlevel"))
             return "Water";
         if (ContainsAny(pathContext, "population", "popgroup", "popcycle", "modelset", "spawn", "pedgroup"))
             return "Population";
-        if (ContainsAny(pathContext, "habitat", "biome", "ecology", "zone"))
-            return "Habitat";
-        if (ContainsAny(pathContext, "vegetation", "flora", "plant", "tree", "grass", "reed", "seagrass", "kelp"))
-            return "Plant";
-        if (ContainsAny(pathContext, "animal", "fauna", "wildlife", "fish", "marine", "bird", "deer", "coyote", "boar", "shark", "whale"))
-            return "Animal";
+
+        if (ContainsAny(pathContext,
+                "terrestrialplant", "vegetation", "flora", "plant", "tree", "grass", "reed", "shrub"))
+            return "TerrestrialPlant";
+        if (ContainsAny(pathContext,
+                "terrestrialanimal", "fauna", "wildlife", "animal", "bird", "deer", "coyote", "boar",
+                "cougar", "mountainlion", "dog", "cat", "rabbit", "pig"))
+            return "TerrestrialAnimal";
+
         if (ContainsAny(normalizedFieldName, "modelname", "model_name", "archetype", "speciesmodel") &&
             ContainsAny(fileContext, "animal", "fauna", "wildlife", "fish", "plant", "flora", "vegetation"))
             return "ModelIdentifier";
