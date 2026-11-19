@@ -23,6 +23,18 @@ Import is **not installation**. It does not modify the GTA V installation, execu
 - Reference used for the read-only parser: [OpenIV Package Format 2.2 specification](https://github.com/OpenIV-Team/OpenIV-PackageFormat/blob/master/specification/versions/2.2.md) and [format overview](https://github.com/OpenIV-Team/OpenIV-PackageFormat). A clean structural report only means that the known manifest operations and payload paths could be parsed; licence, game-build, dependency, runtime and rollback compatibility must still be reviewed by a person.
 - On failure, remove the staging directory when possible. If cleanup itself fails, preserve the original error and leave the staging folder for manual inspection.
 
+## External OIV review handoff
+
+For a user-imported OIV, the Hub can optionally open the retained source package in the separate CodeWalker OIV Package Installer. This is a **manual review handoff**, not a Hub deployment adapter.
+
+1. The user obtains the CodeWalker OIV installer from its [release page](https://github.com/crxhvrd/CodeWalkerProjects/releases/latest) and selects `CodeWalker.OIVInstaller.exe` in the Hub. The Hub records its file version and SHA-256. The publisher signature is not verified by the Hub; use only a trusted release source.
+2. The Hub verifies the imported package library inventory, checks the retained `.oiv` source hash, re-parses `assembly.xml`, and confirms the manifest still matches the inspection shown to the user.
+3. Before opening the GUI, the Hub asks CodeWalker to set its default game folder to the selected GTA V Legacy installation using `--set-game`, then reads it back using `--get-game`. If the returned folder does not match, the handoff stops.
+4. CodeWalker opens the OIV for review. The user must inspect the package and choose whether to click Install. The Hub does not execute OIV operations, click Install, alter RPF files itself, or assert that installation succeeded.
+5. The package remains `Researching` in the Hub. A successful handoff or a successful third-party installer message does not approve the package, verify in-game behaviour, prove rollback, or enable a profile.
+
+The external installer is not bundled with the Hub. The OIV inspector supports manifest formats 2.0–2.2 and reports the operations it can parse; it does not independently inspect the contents of every RPF archive or establish that each operation is safe for the user's game build.
+
 ## Remaining work before installation
 
 - Parse/inspect RPF payload contents and establish a package-specific OpenIV deployment adapter. The current OIV inspector reads operation metadata only; it does not edit, unpack, or write RPF archives and does not execute OIV commands.
