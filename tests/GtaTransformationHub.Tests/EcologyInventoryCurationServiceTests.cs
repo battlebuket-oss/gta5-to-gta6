@@ -32,8 +32,7 @@ public sealed class EcologyInventoryCurationServiceTests
         Assert.Contains(snapshot.Species, item =>
             item.Domain == "AquaticPlant" && item.ModelIdentifiers.Contains("prop_seaweed_kelp"));
         Assert.Contains(result.Warnings, warning =>
-            warning.Contains("CompletenessVerified=false", StringComparison.OrdinalIgnoreCase) ||
-            warning.Contains("does not prove", StringComparison.OrdinalIgnoreCase));
+            warning.Contains("not proof of exhaustive coverage", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
