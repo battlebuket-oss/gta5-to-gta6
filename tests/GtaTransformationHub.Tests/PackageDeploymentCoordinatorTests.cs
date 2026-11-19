@@ -78,7 +78,7 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
             Ui = CreateUiDescriptor("1.0.3888.0", new string('B', 64))
         };
         var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(
-            CreateArchive(manifest, ("mods/ui.dat", content)));
+            CreateArchive(manifest, ("mods/sample.dat", content)));
         var installation = new GameInstallation(
             _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
         var coordinator = new PackageDeploymentCoordinator(
@@ -91,7 +91,7 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
     }
 
     [Fact]
-    public async Task Validate_RejectsNullUiFingerprintWithoutThrowing()
+    public async Task Import_RejectsNullUiFingerprintBeforePackageCanBeSelected()
     {
         var content = System.Text.Encoding.UTF8.GetBytes("ui payload");
         var descriptor = CreateUiDescriptor("1.0.3889.0", new string('A', 64)) with
@@ -106,18 +106,14 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
             SignatureVersion = 3,
             Ui = descriptor
         };
-        var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(
-            CreateArchive(manifest, ("mods/ui.dat", content)));
-        var installation = new GameInstallation(
-            _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
-        var coordinator = new PackageDeploymentCoordinator(
-            new TransactionalDeploymentService(dataRoot: _transactionRoot), _stagingRoot);
+        var archivePath = CreateArchive(manifest, ("mods/sample.dat", content));
+        var archiveService = new PackageArchiveService(_packagesRoot);
 
-        var report = await coordinator.ValidateAsync(installation, new[] { imported });
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            archiveService.ImportAsync(archivePath));
 
-        Assert.False(report.IsValid);
-        Assert.Contains(report.Errors, error => error.Contains("must declare the exact numeric GTA V Legacy build"));
-        Assert.Contains(report.Errors, error => error.Contains("must declare the GTA5.exe SHA-256"));
+        Assert.Contains("exact numeric GTA V Legacy build", exception.Message);
+        Assert.Contains("GTA5.exe SHA-256", exception.Message);
     }
 
     [Fact]
