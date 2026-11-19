@@ -97,6 +97,22 @@ On a disposable game copy:
 
 A rollback pass requires exact hash equality for protected files and a successful game launch after restoration.
 
+
+## 6A. In-app evidence recorder
+
+The Windows Hub includes a tester-facing compatibility/performance evidence window. It records 19 required scenarios: cold launch/launcher hand-off; Story Mode load/save/reload; protagonist switching; dense-city driving; countryside/wildlife; weather/day-night; water/shoreline; underwater ecosystem; animal/population behaviour; police/combat; mission/cutscene/subtitles; pause/map/settings; keyboard/mouse; controller; exit/relaunch; crash recovery; uninstall/rollback; repeatable benchmark; and 60-minute stability soak.
+
+Each evidence record is bound to:
+- exact numeric GTA V Legacy build and the selected `GTA5.exe` SHA-256,
+- each selected package ID/name/version and imported archive SHA-256,
+- signature status, test profile label, timestamp and tester-entered environment,
+- benchmark warm-up/repeat count, average FPS, 1% low, P95/P99 frame time, peak RAM/VRAM and optional temperatures,
+- soak duration in minutes and per-scenario result/notes.
+
+A Passed benchmark requires a completed warm-up, at least three repeats, positive FPS/frame-time/RAM/VRAM metrics. A Passed soak requires at least 60 minutes. Incomplete, failed and blocked scenarios remain explicit. When no Hub packages are selected, the Hub calls the record a **user-declared vanilla baseline** and displays a confirmation because it cannot automatically identify every external manual mod or loader.
+
+The evidence service stores records locally and can filter them by exact executable fingerprint. It does not execute the gameplay tests, collect sensor telemetry automatically, verify the truth of tester input, or promote packages/catalogue entries. Manual execution on a disposable game copy remains required.
+
 ## 7. Release evidence
 
 Each supported game build and approved package combination must have a signed-off record containing:
