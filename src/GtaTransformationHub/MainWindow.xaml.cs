@@ -774,10 +774,19 @@ public partial class MainWindow : Window
             .ToArray();
 
         var profileName = packages.Length == 0
-            ? "Vanilla baseline"
-            : ProfileSelector.SelectedItem is ModProfile profile
-                ? profile.Name
-                : "Current selection";
+            ? "User-declared vanilla baseline"
+            : "Selected package stack";
+
+        if (packages.Length == 0)
+        {
+            var baselineConfirmation = MessageBox.Show(
+                "No Hub-managed packages are selected. This evidence record will be labelled as a user-declared vanilla baseline. The Hub cannot detect every manually installed third-party mod or external loader. Continue only if the game is actually running without those modifications.",
+                "Confirm vanilla baseline",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (baselineConfirmation != MessageBoxResult.Yes)
+                return;
+        }
 
         _operationInProgress = true;
         RefreshSessionState();
