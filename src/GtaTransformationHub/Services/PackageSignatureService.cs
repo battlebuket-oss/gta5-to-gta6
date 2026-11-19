@@ -306,6 +306,12 @@ public sealed class PackageSignatureService
             return JsonSerializer.SerializeToUtf8Bytes(canonicalV2);
         }
 
+        if (manifest.Ui is not null &&
+            (string.IsNullOrWhiteSpace(manifest.Ui.VerifiedGameBuild) ||
+             string.IsNullOrWhiteSpace(manifest.Ui.VerifiedGta5ExeSha256)))
+            throw new InvalidDataException(
+                "Signature version 3 requires a numeric tested game build and GTA5.exe SHA-256 in the UI descriptor.");
+
         var ui = manifest.Ui is null ? null : new CanonicalUi(
             manifest.Ui.Surfaces?.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>(),
             manifest.Ui.ImplementationType,
