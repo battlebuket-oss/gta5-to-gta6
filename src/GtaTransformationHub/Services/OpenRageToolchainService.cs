@@ -14,6 +14,7 @@ public sealed record OpenRageToolchainInfo(
 
 public sealed record OpenRageOivInspection(
     string PackagePath,
+    string PackageSha256,
     string Output,
     IReadOnlyList<string> Warnings,
     IReadOnlyList<string> Blockers,
@@ -207,6 +208,7 @@ public sealed class OpenRageToolchainService
         var safePackage = ValidateOivPackagePath(packagePath);
         var tool = await ValidateInstalledAsync(cancellationToken);
         await EnsureGameKeysAsync(tool, installation, cancellationToken);
+        var packageHashBefore = await ComputeSha256Async(safePackage, cancellationToken);
 
         var result = await _processRunner.RunAsync(
             tool.ExecutablePath,
@@ -217,12 +219,17 @@ public sealed class OpenRageToolchainService
         if (result.ExitCode != 0 || result.StandardOutputTruncated || result.StandardErrorTruncated)
             throw BuildCommandException("OpenRAGE could not inspect the OIV package.", result);
 
+        var packageHashAfter = await ComputeSha256Async(safePackage, cancellationToken);
+        if (!packageHashBefore.Equals(packageHashAfter, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The OIV package changed during OpenRAGE's preview; the inspection was rejected.");
+
         var output = CombineOutput(result.StandardOutput, result.StandardError);
         var blockers = ParseLinesWithPrefix(output, "BLOCKED:");
         var warnings = ParseLinesWithPrefix(output, "warning:");
         var gameFolderChanges = ParseGameFolderChanges(output);
         return new OpenRageOivInspection(
             safePackage,
+            packageHashAfter,
             output,
             warnings,
             blockers,
@@ -232,15 +239,25 @@ public sealed class OpenRageToolchainService
 
     public async Task<OpenRageCommandResult> InstallOivAsync(
         GameInstallation installation,
-        string packagePath,
+        OpenRageOivInspection reviewedInspection,
         bool userConfirmed,
         bool allowGameFolderFiles,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(reviewedInspection);
         if (!userConfirmed)
             throw new InvalidOperationException("Installing an OIV requires explicit user confirmation.");
+        if (!IsSha256(reviewedInspection.PackageSha256))
+            throw new InvalidDataException("The reviewed OIV package has no valid SHA-256 fingerprint.");
 
-        var inspection = await InspectOivAsync(installation, packagePath, cancellationToken);
+        // Repeat the dry run immediately before install and bind it to the exact file
+        // the user saw in the earlier preview. A package replaced between preview and
+        // install is rejected, and the read handle prevents concurrent modification
+        // while OpenRAGE parses and installs it.
+        var inspection = await InspectOivAsync(
+            installation, reviewedInspection.PackagePath, cancellationToken);
+        if (!inspection.PackageSha256.Equals(reviewedInspection.PackageSha256, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The OIV package changed after the user reviewed its preview. Inspect it again before installation.");
         if (!inspection.IsInstallable)
             throw new InvalidDataException(
                 "OpenRAGE blocked this OIV package:" + Environment.NewLine +
@@ -252,6 +269,14 @@ public sealed class OpenRageToolchainService
                 "Review the changes and explicitly acknowledge this additional risk before installation.");
 
         var tool = await ValidateInstalledAsync(cancellationToken);
+        await using var packageLock = new FileStream(
+            inspection.PackagePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var lockedPackageHash = Convert.ToHexString(
+            await SHA256.HashDataAsync(packageLock, cancellationToken));
+        if (!lockedPackageHash.Equals(reviewedInspection.PackageSha256, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("The OIV package changed immediately before install; no changes were made.");
+
         var result = await _processRunner.RunAsync(
             tool.ExecutablePath,
             BuildOivInstallArguments(installation.RootPath, inspection.PackagePath),
@@ -610,6 +635,9 @@ public sealed class OpenRageToolchainService
         string.IsNullOrWhiteSpace(stderr) ? stdout.Trim() :
         string.IsNullOrWhiteSpace(stdout) ? stderr.Trim() :
         stdout.Trim() + Environment.NewLine + stderr.Trim();
+
+    private static bool IsSha256(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length == 64 && value.All(Uri.IsHexDigit);
 
     private static string Limit(string value, int length) =>
         value.Length <= length ? value : value[..length] + " [TRUNCATED]";
