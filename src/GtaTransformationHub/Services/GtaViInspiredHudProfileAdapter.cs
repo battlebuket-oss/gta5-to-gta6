@@ -11,6 +11,15 @@ namespace GtaTransformationHub.Services;
 
 public sealed record OpenRageInstalledOivGroup(string Name, int RecordedChanges);
 
+public sealed record HudLoosePluginPresence(
+    bool ViMinimapPresent,
+    bool ViPreloadPresent,
+    IReadOnlyList<string> LocatedFiles)
+{
+    public bool AnyPresent => ViMinimapPresent || ViPreloadPresent;
+    public bool BothPresent => ViMinimapPresent && ViPreloadPresent;
+}
+
 public sealed record ManagedPackageApplyResult(
     bool Success,
     bool Changed,
@@ -89,6 +98,58 @@ public sealed class GtaViInspiredHudProfileAdapter
         return groups;
     }
 
+    public static HudLoosePluginPresence InspectLoosePlugins(GameInstallation installation)
+    {
+        ArgumentNullException.ThrowIfNull(installation);
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installation.RootPath));
+        var searchRoots = new[]
+        {
+            root,
+            Path.Combine(root, "mods")
+        };
+        var minimapLocations = new List<string>();
+        var preloadLocations = new List<string>();
+
+        foreach (var searchRoot in searchRoots)
+        {
+            if (!Directory.Exists(searchRoot))
+                continue;
+
+            if ((File.GetAttributes(searchRoot) & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("The HUD plugin inspection path contains a reparse-point directory.");
+
+            AddIfPresent(Path.Combine(searchRoot, "ViMinimap.asi"), minimapLocations);
+            AddIfPresent(Path.Combine(searchRoot, "ViPreload.asi"), preloadLocations);
+        }
+
+        return new HudLoosePluginPresence(
+            minimapLocations.Count > 0,
+            preloadLocations.Count > 0,
+            minimapLocations.Concat(preloadLocations).ToArray());
+    }
+
+    public static void ValidateJournalAndPluginPresence(
+        OpenRageInstalledOivGroup? journalGroup,
+        HudLoosePluginPresence presence)
+    {
+        ArgumentNullException.ThrowIfNull(presence);
+
+        if (journalGroup is null && presence.AnyPresent)
+        {
+            throw new InvalidDataException(
+                "The OpenRAGE journal does not list the HUD, but HUD-specific root plugin file(s) exist: " +
+                string.Join(", ", presence.LocatedFiles) +
+                ". This may be a manual OpenIV install or a partial install. The Hub refuses to report OFF or uninstall files it cannot attribute to its exact OpenRAGE package group.");
+        }
+
+        if (journalGroup is not null && !presence.BothPresent)
+        {
+            throw new InvalidDataException(
+                "OpenRAGE lists the HUD package group, but one or both required root plugins are missing. " +
+                "The installation state is inconsistent and has not been treated as ON.");
+        }
+    }
+
     public async Task<OpenRageInstalledOivGroup?> GetInstalledStateAsync(
         GameInstallation installation,
         string packageGroupName,
@@ -98,8 +159,21 @@ public sealed class GtaViInspiredHudProfileAdapter
         var result = await _openRage.ListInstalledOivPackagesAsync(
             installation, cancellationToken);
         var groups = ParseInstalledGroups(result.StandardOutput);
-        return groups.FirstOrDefault(group =>
-            string.Equals(group.Name, packageGroupName, StringComparison.OrdinalIgnoreCase));
+        var group = groups.FirstOrDefault(item =>
+            string.Equals(item.Name, packageGroupName, StringComparison.OrdinalIgnoreCase));
+
+        var loosePlugins = InspectLoosePlugins(installation);
+        ValidateJournalAndPluginPresence(group, loosePlugins);
+        return group;
+    }
+
+    private static void AddIfPresent(string path, ICollection<string> results)
+    {
+        if (!File.Exists(path))
+            return;
+        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("A HUD plugin file is a reparse point: " + Path.GetFileName(path));
+        results.Add(path);
     }
 
     public async Task<ManagedPackageApplyResult> ApplyAsync(
