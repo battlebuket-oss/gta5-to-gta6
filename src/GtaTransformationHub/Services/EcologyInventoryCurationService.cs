@@ -516,7 +516,7 @@ public sealed class EcologyInventoryCurationService
                 errors.Add("Species entries require a valid ID and one of the four supported terrestrial/aquatic domains.");
                 continue;
             }
-            var modelIds = ParseDelimitedIds(row.ModelIdentifiers, "species model identifiers", errors);
+            var modelIds = ParseModelIdentifiers(row.ModelIdentifiers, errors);
             var habitatIds = ParseDelimitedIds(row.HabitatIds, "species habitat IDs", errors);
             if (!IsValidId(row.BehaviourProfileId))
                 errors.Add("Species '" + row.Id + "' has an invalid behaviour profile ID.");
