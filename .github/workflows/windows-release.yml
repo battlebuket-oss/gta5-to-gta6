@@ -59,6 +59,10 @@ jobs:
         shell: pwsh
         run: ./scripts/Validate-Catalogue.ps1
 
+      - name: Test catalogue validation rules
+        shell: pwsh
+        run: ./scripts/Test-CatalogueValidator.ps1
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v6
         with:
