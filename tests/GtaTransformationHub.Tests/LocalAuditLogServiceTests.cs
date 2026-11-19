@@ -13,7 +13,7 @@ public sealed class LocalAuditLogServiceTests : IDisposable
     {
         var logDirectory = Path.Combine(_root, "logs");
         var service = new LocalAuditLogService(logDirectory);
-        var privatePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "private", "save.dat");
+        var privatePath = Path.Combine(_root, "private", "save.dat");
 
         service.Write(AuditLogLevel.Error, "TestPathRedaction", "A test failure referenced " + privatePath);
 
@@ -21,6 +21,37 @@ public sealed class LocalAuditLogServiceTests : IDisposable
         var content = File.ReadAllText(logFile);
         Assert.False(content.Contains(privatePath, StringComparison.OrdinalIgnoreCase));
         Assert.Contains("[PATH REDACTED]", content);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Users\Alice\Documents\save.dat")]
+    [InlineData(@"\\server\users\Alice\save.dat")]
+    [InlineData("/home/alice/.config/game/save.dat")]
+    [InlineData("/tmp/game-test/save.dat")]
+    public void Write_RedactsWindowsUncAndUnixAbsolutePaths(string privatePath)
+    {
+        var logDirectory = Path.Combine(_root, "cross-platform-logs");
+        var service = new LocalAuditLogService(logDirectory);
+
+        service.Write(AuditLogLevel.Warning, "CrossPlatformPath", "Path=" + privatePath);
+
+        var logFile = Assert.Single(Directory.GetFiles(logDirectory, "*.jsonl"));
+        var content = File.ReadAllText(logFile);
+        Assert.DoesNotContain(privatePath, content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("[PATH REDACTED]", content);
+    }
+
+    [Fact]
+    public void Write_DoesNotTreatHttpsUrlAsLocalAbsolutePath()
+    {
+        var logDirectory = Path.Combine(_root, "url-logs");
+        var service = new LocalAuditLogService(logDirectory);
+        const string url = "https://example.com/downloads/mod.zip";
+
+        service.Write(AuditLogLevel.Information, "UrlLog", "Source=" + url);
+
+        var logFile = Assert.Single(Directory.GetFiles(logDirectory, "*.jsonl"));
+        Assert.Contains(url, File.ReadAllText(logFile), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -44,10 +75,10 @@ public sealed class LocalAuditLogServiceTests : IDisposable
         var names = archive.Entries.Select(entry => entry.FullName).ToArray();
         Assert.Contains("diagnostics.json", names);
         Assert.Contains("manifest.json", names);
-        Assert.Single(names.Where(name => name.StartsWith("logs/", StringComparison.Ordinal)));
+        Assert.Single(names, name => name.StartsWith("logs/", StringComparison.Ordinal));
         Assert.DoesNotContain(names, name => name.Contains("story-save", StringComparison.OrdinalIgnoreCase));
 
-        var logEntry = Assert.Single(archive.Entries.Where(entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal)));
+        var logEntry = Assert.Single(archive.Entries, entry => entry.FullName.StartsWith("logs/", StringComparison.Ordinal));
         using var reader = new StreamReader(logEntry.Open());
         var logContent = reader.ReadToEnd();
         Assert.DoesNotContain(privateSave, logContent, StringComparison.OrdinalIgnoreCase);
