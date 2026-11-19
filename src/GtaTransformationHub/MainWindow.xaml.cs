@@ -11,6 +11,9 @@ namespace GtaTransformationHub;
 public partial class MainWindow : Window
 {
     private string? _gameExecutable;
+    private string? _oivInstallerExecutable;
+    private string? _lastImportedOivPath;
+    private OivManifestInspectionResult? _lastOivInspection;
     private bool _recoveryCompleted;
     private readonly DispatcherTimer _processTimer;
 
@@ -252,10 +255,22 @@ public partial class MainWindow : Window
             var result = await new ModArchiveImportService().ImportAsync(
                 archiveDialog.FileName, PackageLibraryRoot, metadataDialog.Metadata);
 
+            if (string.Equals(Path.GetExtension(archiveDialog.FileName), ".oiv", StringComparison.OrdinalIgnoreCase))
+            {
+                _lastImportedOivPath = Path.GetFullPath(archiveDialog.FileName);
+                _lastOivInspection = result.OivInspection;
+            }
+            else
+            {
+                _lastImportedOivPath = null;
+                _lastOivInspection = null;
+            }
+
             var inspectionDetails = result.OivInspection is null
                 ? "OIV manifest: not applicable (ZIP inventory only)."
                 : "OIV format: " + result.OivInspection.FormatVersion + "\n" +
                   "OIV target: " + result.OivInspection.Target + "\n" +
+                  "Game version marker: " + result.OivInspection.GameVersionRequirement + "\n" +
                   "Manifest package: " + result.OivInspection.Name + " (" + result.OivInspection.ModVersion + ")\n" +
                   "Operations: " + result.OivInspection.Operations.Count +
                   " | file adds/replacements: " + result.OivInspection.FileAddCount +
@@ -264,7 +279,7 @@ public partial class MainWindow : Window
                   " | patch commands: " + result.OivInspection.PatchOperationCount + "\n" +
                   "Payload issues: " + result.OivInspection.PayloadSourceIssues.Count +
                   " | unrecognised commands: " + result.OivInspection.UnsupportedCommands.Count + "\n" +
-                  "Manifest structural warnings: " + (result.OivInspection.RequiresManualReview ? "Present" : "None detected") + "\\n" +
+                  "Manifest structural warnings: " + (result.OivInspection.RequiresManualReview ? "Present" : "None detected") + "\n" +
                   "Licence, game-build, compatibility and runtime review is still required before approval.";
 
             await RefreshImportedPackageLibraryAsync();
@@ -293,6 +308,150 @@ public partial class MainWindow : Window
         finally
         {
             await RefreshImportedPackageLibraryAsync();
+            RefreshSessionState();
+        }
+    }
+
+    private void GetOivInstallerButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/crxhvrd/CodeWalkerProjects/releases/latest",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Could not open the external OIV installer release page: " + ex.Message;
+        }
+    }
+
+    private void SelectOivInstallerButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted)
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select CodeWalker OIV Package Installer",
+            Filter = "CodeWalker OIV installer (CodeWalker.OIVInstaller.exe)|CodeWalker.OIVInstaller.exe",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var installer = new OivInstallerLauncherService().InspectInstallerExecutable(dialog.FileName);
+            _oivInstallerExecutable = installer.ExecutablePath;
+            OivEngineStatusText.Text =
+                "Selected " + Path.GetFileName(installer.ExecutablePath) +
+                " | file version " + (string.IsNullOrWhiteSpace(installer.FileVersion) ? "unreported" : installer.FileVersion) +
+                " | SHA-256 " + installer.Sha256[..12] +
+                " | signature not verified by Hub";
+            StatusText.Text = "External OIV engine selected. The Hub will open packages for review; it will not silently install them.";
+        }
+        catch (Exception ex)
+        {
+            _oivInstallerExecutable = null;
+            OivEngineStatusText.Text = "External OIV engine selection failed: " + ex.Message;
+            StatusText.Text = "The selected external installer was rejected.";
+        }
+        finally
+        {
+            RefreshSessionState();
+        }
+    }
+
+    private void OpenImportedOivButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted)
+            return;
+        if (string.IsNullOrWhiteSpace(_gameExecutable) ||
+            string.IsNullOrWhiteSpace(_oivInstallerExecutable) ||
+            string.IsNullOrWhiteSpace(_lastImportedOivPath) ||
+            _lastOivInspection is null)
+        {
+            StatusText.Text = "Select and verify GTA V Legacy, select the external OIV engine, and import an OIV package first.";
+            return;
+        }
+
+        var inspection = _lastOivInspection;
+        if (!inspection.IsGtaVTarget)
+        {
+            MessageBox.Show("The imported package does not target GTA V. It will not be opened for this installation.",
+                "OIV target mismatch", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (inspection.IsExplicitlyEnhanced)
+        {
+            MessageBox.Show("This package explicitly targets GTA V Enhanced. The selected game is GTA V Legacy.",
+                "OIV edition mismatch", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (inspection.UnsupportedCommands.Count > 0 || inspection.PayloadSourceIssues.Count > 0)
+        {
+            MessageBox.Show(
+                "The OIV manifest has unresolved payload references or commands this Hub cannot inspect. " +
+                "The external installer handoff is blocked until those issues are resolved.\n\n" +
+                "Unrecognised commands: " + string.Join(", ", inspection.UnsupportedCommands.Take(8)) + "\n" +
+                "Payload issues: " + string.Join("\n", inspection.PayloadSourceIssues.Take(8)),
+                "OIV preflight blocked",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        var allowUnspecified = !inspection.IsExplicitlyLegacy && !inspection.IsAnyGameVersion;
+        if (allowUnspecified)
+        {
+            var answer = MessageBox.Show(
+                "The OIV package does not explicitly declare GTA V Legacy compatibility. " +
+                "Its target is GTA V, but the game-edition marker is missing or unrecognised.\n\n" +
+                "Continue only if the package author's instructions confirm it supports your exact GTA V Legacy build.",
+                "Confirm OIV Legacy compatibility",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (answer != MessageBoxResult.Yes)
+                return;
+        }
+
+        var finalAnswer = MessageBox.Show(
+            "The Hub will now open this OIV in the separate CodeWalker installer.\n\n" +
+            "The external installer will show its own package window. Review the author, files, game target and backup plan there, " +
+            "then click Install yourself. The Hub is not performing or verifying the installation.\n\n" +
+            "Continue?",
+            "Open OIV for manual installation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (finalAnswer != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            var process = new OivInstallerLauncherService().OpenPackageInInstaller(
+                _oivInstallerExecutable,
+                _lastImportedOivPath,
+                _gameExecutable,
+                inspection,
+                allowUnspecifiedLegacyTarget: allowUnspecified);
+            var processId = process.Id;
+            process.Dispose();
+            StatusText.Text = "OIV package opened in the external installer. No installation result has been confirmed by the Hub.";
+            OivEngineStatusText.Text = "External installer launched (process " + processId + "). Complete/review installation inside that application.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "The external OIV installer could not be started.";
+            OivEngineStatusText.Text = "OIV handoff failed: " + ex.Message;
+            MessageBox.Show(ex.Message, "External OIV installer error",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
             RefreshSessionState();
         }
     }
@@ -390,6 +549,14 @@ public partial class MainWindow : Window
         ImportArchiveButton.IsEnabled = !running && _recoveryCompleted;
         RefreshButton.IsEnabled = !running && _recoveryCompleted;
         RefreshLibraryButton.IsEnabled = !running && _recoveryCompleted;
+        SelectOivInstallerButton.IsEnabled = !running && _recoveryCompleted;
+        OpenImportedOivButton.IsEnabled =
+            !running && _recoveryCompleted &&
+            _gameExecutable is not null &&
+            _oivInstallerExecutable is not null &&
+            _lastImportedOivPath is not null &&
+            _lastOivInspection is not null;
+        GetOivInstallerButton.IsEnabled = true;
         // Never launch from the dashboard until profile validation and transactional
         // deployment are wired into this exact path.
         LaunchButton.IsEnabled = false;
