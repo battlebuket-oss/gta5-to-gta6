@@ -531,8 +531,10 @@ public partial class MainWindow : Window
 
         foreach (var element in EnumerateVisualTree(this).OfType<FrameworkElement>())
         {
-            if (element is Control or TextBlock)
-                _baseFontSizes.TryAdd(element, element.FontSize);
+            if (element is Control controlForFont)
+                _baseFontSizes.TryAdd(element, controlForFont.FontSize);
+            else if (element is TextBlock textBlockForFont)
+                _baseFontSizes.TryAdd(element, textBlockForFont.FontSize);
 
             if (element is TextBlock textBlock)
                 _baseTextBrushes.TryAdd(textBlock, textBlock.Foreground);
@@ -562,7 +564,13 @@ public partial class MainWindow : Window
             CaptureAccessibilityDefaults();
 
         foreach (var item in _baseFontSizes)
-            item.Key.FontSize = item.Value * preferences.TextScale;
+        {
+            var scaledFontSize = item.Value * preferences.TextScale;
+            if (item.Key is Control control)
+                control.FontSize = scaledFontSize;
+            else if (item.Key is TextBlock textBlock)
+                textBlock.FontSize = scaledFontSize;
+        }
 
         TextScaleValueText.Text = Math.Round(preferences.TextScale * 100).ToString("0") + "%";
 
