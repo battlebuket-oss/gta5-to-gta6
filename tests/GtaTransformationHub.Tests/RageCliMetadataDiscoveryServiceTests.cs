@@ -23,19 +23,15 @@ public sealed class RageCliMetadataDiscoveryServiceTests
     """;
 
     [Fact]
-    public void EcologyPatterns_CoverPopulationWaterAndTerrestrialAquaticLife()
+    public void EcologyPatterns_CoverSupportedMetadataContainers()
     {
         Assert.Contains("*.ymt", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
         Assert.Contains("*.meta", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*popgroups*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*popcycle*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*pedmodelsets*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*water*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*animal*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*fish*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*vegetation*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*flora*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*fauna*", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*.ytyp", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*.ymap", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*.ymf", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*.pso", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*.xml", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
     }
 
     [Fact]
