@@ -174,7 +174,21 @@ public static class EcologyInventoryDiffService
 
         if (snapshot.Species is null || snapshot.Habitats is null ||
             snapshot.PopulationEntries is null || snapshot.WaterBodies is null)
+        {
             errors.Add($"{label} inventory has a missing inventory collection.");
+            return;
+        }
+
+        // Empty inventories must never pass a semantic comparison. Otherwise two
+        // empty JSON files could produce a false "vanilla preserved" result.
+        if (snapshot.Species.Count == 0)
+            errors.Add($"{label} inventory has no species identities.");
+        if (snapshot.Habitats.Count == 0)
+            errors.Add($"{label} inventory has no habitat identities.");
+        if (snapshot.PopulationEntries.Count == 0)
+            errors.Add($"{label} inventory has no population entries.");
+        if (snapshot.WaterBodies.Count == 0)
+            errors.Add($"{label} inventory has no water-body identities.");
     }
 
     private static Dictionary<string, T> IndexById<T>(
