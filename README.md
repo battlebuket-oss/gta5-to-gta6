@@ -95,6 +95,9 @@ dotnet publish src/GtaTransformationHub/GtaTransformationHub.csproj --configurat
 
 ## Scope and policy
 
+- [Mod catalogue validation and approval gates](docs/MOD_CATALOGUE_VALIDATION.md)
+- [Story Mode content pipeline](docs/STORY_MODE_CONTENT_PIPELINE.md)
+
 - [Transformation scope](docs/TRANSFORMATION_SCOPE.md)
 - [Delivery roadmap](docs/DELIVERY_ROADMAP.md)
 - [Mod catalogue policy](docs/MOD_CATALOGUE_POLICY.md)
