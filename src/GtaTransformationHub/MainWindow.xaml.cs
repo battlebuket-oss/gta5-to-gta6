@@ -1553,7 +1553,7 @@ public partial class MainWindow : Window
             }
         }
 
-        var window = new ModCatalogueWindow(installedBuild) { Owner = this };
+        var window = new ModCatalogueWindow(installedBuild, _gameExecutable) { Owner = this };
         window.ShowDialog();
         StatusText.Text = "Mod profile window closed. Saved selections do not install files; use readiness checks before deployment.";
     }
