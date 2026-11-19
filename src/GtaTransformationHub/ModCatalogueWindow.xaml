@@ -36,14 +36,20 @@
 
     <Border Grid.Row="2" Background="#1B1F26" CornerRadius="9" Padding="12"
             Margin="0,0,0,12">
-      <DockPanel>
-        <TextBlock x:Name="SelectionSummaryText"
-                   Text="Loading catalogue and saved profile..."
-                   Foreground="#E5E7EB" VerticalAlignment="Center"/>
-        <TextBlock x:Name="ProfileStorageText" DockPanel.Dock="Right"
-                   Text="LOCAL PROFILE" Foreground="#8D96A5"
-                   FontSize="10" VerticalAlignment="Center" Margin="10,0,0,0"/>
-      </DockPanel>
+      <StackPanel>
+        <DockPanel>
+          <TextBlock x:Name="SelectionSummaryText"
+                     Text="Loading catalogue and saved profile..."
+                     Foreground="#E5E7EB" VerticalAlignment="Center"/>
+          <TextBlock x:Name="ProfileStorageText" DockPanel.Dock="Right"
+                     Text="LOCAL PROFILE" Foreground="#8D96A5"
+                     FontSize="10" VerticalAlignment="Center" Margin="10,0,0,0"/>
+        </DockPanel>
+        <TextBlock x:Name="AppliedStateText"
+                   Text="Installed game state has not been checked."
+                   Foreground="#ADB4C0" FontSize="10"
+                   TextWrapping="Wrap" Margin="0,7,0,0"/>
+      </StackPanel>
     </Border>
 
     <Border Grid.Row="3" Background="#1B1F26" CornerRadius="10" Padding="14">
@@ -78,12 +84,20 @@
                  Foreground="#ADB4C0" VerticalAlignment="Center"
                  TextWrapping="Wrap"/>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-        <Button Content="CHECK INSTALL READINESS" Click="CheckReadinessButton_Click"
-                Padding="13,9" Margin="8,0,8,0"
+        <Button x:Name="RefreshInstalledStateButton" Content="REFRESH INSTALLED STATE"
+                Click="RefreshInstalledStateButton_Click"
+                Padding="11,9" Margin="6,0,0,0"
+                Background="#343A45" Foreground="White"/>
+        <Button x:Name="ApplyProfileButton" Content="APPLY SELECTED PROFILE"
+                Click="ApplyProfileButton_Click"
+                Padding="12,9" Margin="6,0,0,0"
+                Background="#FF4655" Foreground="White" FontWeight="Bold"/>
+        <Button Content="CHECK READINESS" Click="CheckReadinessButton_Click"
+                Padding="11,9" Margin="6,0,0,0"
                 Background="#343A45" Foreground="White"/>
         <Button Content="CLOSE" Click="CloseButton_Click"
-                Padding="17,9" Background="#FF4655" Foreground="White"
-                FontWeight="Bold"/>
+                Padding="17,9" Margin="6,0,0,0"
+                Background="#343A45" Foreground="White"/>
       </StackPanel>
     </DockPanel>
   </Grid>
