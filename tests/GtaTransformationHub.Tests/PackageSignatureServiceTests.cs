@@ -227,7 +227,9 @@ public sealed class PackageSignatureServiceTests : IDisposable
         true,
         true,
         "https://example.com/ui-compatibility-evidence",
-        "https://example.com/ui-rollback-evidence");
+        "https://example.com/ui-rollback-evidence",
+        "1.0.1000.0",
+        new string('A', 64));
 
     private static PackageManifest Sign(PackageManifest manifest, RSA privateKey, string fingerprint)
     {
