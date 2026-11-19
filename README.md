@@ -25,6 +25,7 @@ The current development branch includes:
 - An in-game UI package contract for explicit screen surfaces, implementation type, input methods, resolution support, accessibility declarations, native-action preservation and compatibility/rollback evidence. Preflight rejects competing packages for the same UI surface.
 - Signature version 3 for UI replacement metadata; legacy signature v1/v2 payloads remain unchanged. UI packages require a locally trusted publisher key and compatibility attestation.
 - Persistent Hub accessibility preferences: high-contrast mode, 100–150% text scaling and a reduced-motion preference. These settings do not alter GTA V.
+- The selected GTA V Legacy installation is remembered locally and revalidated against its exact executable identity, numeric build and SHA-256 at startup.
 - Archive path, duplicate, link, undeclared-file and expansion-size checks.
 - SHA-256 and file-size verification for every manifest-declared file.
 - A local package library and persistent user profiles with exact package-version pins.
