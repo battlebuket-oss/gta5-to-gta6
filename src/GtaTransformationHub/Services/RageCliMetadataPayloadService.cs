@@ -285,8 +285,8 @@ public sealed class RageCliMetadataPayloadService
 
                 totalDumpJsonBytes += finalInfo.Length;
                 payloads.Add(new RageCliMetadataPayload(
-                    sourceArchive,
                     startingCandidateIndex + index,
+                    sourceArchive,
                     candidate.SourceArchiveSha256,
                     candidate.InternalPath,
                     candidate.Name,
