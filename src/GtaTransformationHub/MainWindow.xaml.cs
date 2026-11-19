@@ -755,6 +755,29 @@ public partial class MainWindow : Window
     }
 
 
+
+    private void OpenCompatibilityEvidenceFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folder = _compatibilityTestEvidenceService.EvidenceDirectory;
+            Directory.CreateDirectory(folder);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = "\"" + folder + "\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception exception)
+        {
+            CompatibilityTestEvidenceStatusText.Text =
+                "Could not open the local evidence folder: " + exception.Message;
+            App.Diagnostics.Write(AuditLogLevel.Warning, "CompatibilityEvidenceFolderOpenFailed",
+                "The local compatibility evidence folder could not be opened.", exception);
+        }
+    }
+
     private async void RecordCompatibilityTestEvidenceButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration() || _installation is null)
