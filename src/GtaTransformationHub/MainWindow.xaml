@@ -216,6 +216,10 @@
                       IsEnabled="False"
                       Click="UndoOpenRageLastChangeButton_Click"/>
             </WrapPanel>
+            <CheckBox x:Name="OpenRageLegacyCompatibilityConsentCheckBox"
+                      Content="I verified this package targets GTA V Legacy and the exact build shown above, reviewed the author licence/dependencies, and backed up this disposable game copy and Story Mode saves."
+                      IsThreeState="False"
+                      Margin="0,0,0,7"/>
             <CheckBox x:Name="OpenRageExecutableConsentCheckBox"
                       Content="I reviewed the OIV preview and allow any listed loose files to be written directly into the GTA V game folder (including possible ASI/DLL plugins)."
                       IsThreeState="False"
