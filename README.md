@@ -27,8 +27,10 @@ The application does not inject code into a running GTA V process, modify files 
 - Read-only OpenIV OIV `assembly.xml` inspection (format 2.0–2.2): metadata, nested archive operations, target/source paths, unresolved payload references, and unknown commands are summarized without executing or applying the package.
 - WPF import dialog connected to the quarantine importer. Imported packages stay in the local research library with status `Researching`; no GTA V game files are changed by import.
 - Catalogue validation now rejects unresolved or self-referencing package dependencies and profiles that reference missing package IDs.
+- PresentMon CSV analysis for GTA5.exe captures, with v1/v2 frame-time column support, mean/median/P95/P99 frame times, average FPS, estimated 1% low, dropped-frame count and optional CPU/GPU busy metrics; benchmark metadata and JSON reports are saved locally.
+- On-demand local package verification recomputes every extracted file's SHA-256 and checks for missing, modified or untracked files. The source archive is retained and hashed in the package library; this is local integrity checking, not a malware or provenance guarantee.
 
-The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The new archive importer is inspection-only and deliberately does not install anything. The application is **not production-ready**: RPF payload inspection and deployment adapters, root-level ASI/script-loader package handling, supported-build detection, full profile persistence/resolution, menu/HUD integration approval, in-game validation, RTX 4050 benchmarks, signed installer/update delivery, and clean-machine release testing remain outstanding.
+The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The new archive importer is inspection-only and deliberately does not install anything. The application is **not production-ready**: RPF payload inspection and deployment adapters, root-level ASI/script-loader package handling, supported-build compatibility approvals, full profile persistence/resolution, menu/HUD integration approval, in-game validation, signed installer/update delivery, and clean-machine release testing remain outstanding. The PresentMon analysis workflow is implemented, but no RTX 4050 gameplay benchmark has been recorded yet.
 
 ## Mod catalogue and redistribution
 
@@ -41,6 +43,7 @@ See:
 - [Safe archive import](docs/SAFE_ARCHIVE_IMPORT.md)
 - [Initial mod research shortlist](docs/MOD_RESEARCH_SHORTLIST.md)
 - [GTA VI-inspired experience coverage matrix](docs/GTA6_EXPERIENCE_COVERAGE_MATRIX.md)
+- [Performance benchmarking](docs/PERFORMANCE_BENCHMARKING.md)
 
 ## Product experience priorities
 
