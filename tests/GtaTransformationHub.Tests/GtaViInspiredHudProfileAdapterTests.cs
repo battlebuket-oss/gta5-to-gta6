@@ -102,6 +102,36 @@ public sealed class GtaViInspiredHudProfileAdapterTests
     }
 
     [Fact]
+    public void ValidateJournalAndPluginPresence_RejectsDuplicatePluginsAcrossRootAndMods()
+    {
+        var group = new OpenRageInstalledOivGroup("GTA VI HUD 2.8.2", 431);
+        var presence = new HudLoosePluginPresence(
+            true, true,
+            new[]
+            {
+                @"C:\\GTA5\\ViMinimap.asi",
+                @"C:\\GTA5\\mods\\ViMinimap.asi",
+                @"C:\\GTA5\\ViPreload.asi"
+            });
+
+        Assert.Throws<InvalidDataException>(() =>
+            GtaViInspiredHudProfileAdapter.ValidateJournalAndPluginPresence(
+                group, presence));
+    }
+
+    [Fact]
+    public void ValidateJournalAndPluginPresence_RejectsEmptyOpenRageChangeJournal()
+    {
+        var group = new OpenRageInstalledOivGroup("GTA VI HUD 2.8.2", 0);
+        var presence = new HudLoosePluginPresence(
+            true, true, new[] { "ViMinimap.asi", "ViPreload.asi" });
+
+        Assert.Throws<InvalidDataException>(() =>
+            GtaViInspiredHudProfileAdapter.ValidateJournalAndPluginPresence(
+                group, presence));
+    }
+
+    [Fact]
     public void ValidateJournalAndPluginPresence_AcceptsConsistentInstalledOrUninstalledState()
     {
         var group = new OpenRageInstalledOivGroup("GTA VI HUD 2.8.2", 431);
