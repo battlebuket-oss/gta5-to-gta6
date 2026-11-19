@@ -141,7 +141,8 @@
         </DockPanel>
       </Border>
 
-      <StackPanel Grid.Column="1">
+      <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
             <TextBlock Text="PROFILES" FontSize="15" FontWeight="SemiBold"/>
@@ -232,7 +233,17 @@
             <TextBlock x:Name="LockExplanationText" Text="Waiting for startup recovery." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>
           </StackPanel>
         </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,0">
+          <StackPanel>
+            <TextBlock Text="SUPPORT DIAGNOSTICS" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Export a local, redacted diagnostic bundle for troubleshooting. It contains recent application logs and basic system metadata only; it does not collect GTA V saves, game archives, mod binaries or environment secrets." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="ExportDiagnosticsButton" Content="Export support bundle" Padding="10,7" HorizontalAlignment="Left" Click="ExportDiagnosticsButton_Click"/>
+            <TextBlock x:Name="DiagnosticsStatusText" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
       </StackPanel>
+      </ScrollViewer>
     </Grid>
 
     <DockPanel Grid.Row="3" Margin="0,18,0,0">
