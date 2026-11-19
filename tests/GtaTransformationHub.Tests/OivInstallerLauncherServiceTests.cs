@@ -39,7 +39,7 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreateStartInfo_LaunchesTheInstallerWithoutAssumingAFileArgument()
+    public void CreateStartInfo_PreloadsTheRetainedPackageAsAPathSafeArgument()
     {
         var installer = Path.Combine(_root, "OIV Engine", "CodeWalker.OIVInstaller.exe");
         var package = Path.Combine(_root, "My Mods", "GTA VI HUD.oiv");
@@ -53,7 +53,8 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
         Assert.Equal(installer, info.FileName);
         Assert.Equal(Path.GetDirectoryName(installer), info.WorkingDirectory);
         Assert.False(info.UseShellExecute);
-        Assert.Empty(info.ArgumentList);
+        Assert.Single(info.ArgumentList);
+        Assert.Equal(Path.GetFullPath(package), info.ArgumentList[0]);
     }
 
     [Fact]
