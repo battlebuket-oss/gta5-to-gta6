@@ -49,6 +49,9 @@ This document distinguishes implemented development-branch functions from releas
 | GTA5.exe evidence fingerprint | Implemented SHA-256 calculation and validation for exact-build test records |
 | Saved game installation | Implemented local path/build/SHA-256 persistence; startup revalidates Rockstar Legacy identity, exact build and executable hash before restoring the selection |
 
+| Compatibility and performance evidence recorder | Implemented full package-stack evidence capture: 19 required scenarios spanning launch, story/save, character switching, city/rural ecology, water/underwater, police/combat, UI/input, recovery/rollback, benchmark and 60-minute soak. Records exact GTA5.exe SHA-256 and each selected package archive/version/signature. Performance passes require warm-up, at least 3 repeats, FPS/frame-time/RAM/VRAM data and a 60-minute soak. Saving evidence does not approve compatibility |
+| Compatibility evidence input safeguards | Vanilla baseline is explicitly labelled user-declared and requires confirmation; Hub cannot automatically detect external manual mods/loaders. Evidence remains tester-authored and non-authoritative until real-game review |
+
 ## Not yet production-ready
 
 | Area | Remaining work |
