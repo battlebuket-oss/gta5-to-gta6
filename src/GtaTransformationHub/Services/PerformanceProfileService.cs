@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 
 namespace GtaTransformationHub.Services;
 
@@ -6,7 +7,10 @@ public sealed record HardwareSnapshot(
     int LogicalProcessorCount,
     ulong TotalPhysicalMemoryMb,
     ulong AvailablePhysicalMemoryMb,
-    long? DedicatedGpuMemoryMb);
+    long? DedicatedGpuMemoryMb,
+    string CpuModel = "Unknown CPU",
+    IReadOnlyList<string>? GpuAdapters = null,
+    string? WindowsVersion = null);
 
 public sealed record PerformanceProfile(
     string Id,
@@ -33,7 +37,104 @@ public static class PerformanceProfileService
             Environment.ProcessorCount,
             succeeded ? memory.TotalPhysical / (1024 * 1024) : 0,
             succeeded ? memory.AvailablePhysical / (1024 * 1024) : 0,
-            manuallyConfirmedGpuMemoryMb);
+            manuallyConfirmedGpuMemoryMb,
+            ReadCpuModel(),
+            ReadGpuAdapters(),
+            Environment.OSVersion.VersionString);
+    }
+
+
+    public static string FormatHardwareEvidence(HardwareSnapshot hardware)
+    {
+        ArgumentNullException.ThrowIfNull(hardware);
+        var totalRam = hardware.TotalPhysicalMemoryMb > 0
+            ? (hardware.TotalPhysicalMemoryMb / 1024.0).ToString("0.0") + " GB"
+            : "Not detected";
+        var gpuNames = hardware.GpuAdapters is { Count: > 0 }
+            ? string.Join("; ", hardware.GpuAdapters)
+            : "Not detected — enter exact GPU model";
+        var vram = hardware.DedicatedGpuMemoryMb is > 0
+            ? (hardware.DedicatedGpuMemoryMb.Value / 1024.0).ToString("0.0") + " GB (manually confirmed)"
+            : "Not reliably detected — enter VRAM manually";
+
+        return string.Join(Environment.NewLine,
+            "Windows: " + (hardware.WindowsVersion ?? Environment.OSVersion.VersionString),
+            "Architecture: " + RuntimeInformation.OSArchitecture,
+            "Logical processors: " + hardware.LogicalProcessorCount,
+            "CPU: " + hardware.CpuModel,
+            "GPU adapter(s): " + gpuNames,
+            "Installed physical RAM: " + totalRam,
+            "GPU VRAM: " + vram,
+            "GPU driver version: enter / confirm in Device Manager",
+            "Launcher: enter Steam or Rockstar Games Launcher",
+            "Display / settings: enter resolution, refresh rate and graphics settings",
+            "Loaders / scripts: enter Script Hook V, SHVDN and other runtime versions");
+    }
+
+    private static string ReadCpuModel()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(
+                @"HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+                writable: false);
+            var value = key?.GetValue("ProcessorNameString") as string;
+            return string.IsNullOrWhiteSpace(value) ? "Unknown CPU" : value.Trim();
+        }
+        catch (Exception exception) when (
+            exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            return "CPU model could not be read from Windows registry";
+        }
+    }
+
+    private static IReadOnlyList<string> ReadGpuAdapters()
+    {
+        const string displayClassPath =
+            @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
+        var adapters = new List<string>();
+
+        try
+        {
+            using var displayClass = Registry.LocalMachine.OpenSubKey(displayClassPath, writable: false);
+            if (displayClass is null)
+                return adapters;
+
+            foreach (var subKeyName in displayClass.GetSubKeyNames())
+            {
+                if (subKeyName.Length != 4 || !subKeyName.All(char.IsAsciiDigit))
+                    continue;
+
+                try
+                {
+                    using var adapter = displayClass.OpenSubKey(subKeyName, writable: false);
+                    var description = adapter?.GetValue("DriverDesc") as string;
+                    if (string.IsNullOrWhiteSpace(description))
+                        description = adapter?.GetValue("Device Description") as string;
+                    if (string.IsNullOrWhiteSpace(description))
+                        continue;
+
+                    var driverVersion = adapter?.GetValue("DriverVersion") as string;
+                    var label = description.Trim();
+                    if (!string.IsNullOrWhiteSpace(driverVersion))
+                        label += " (driver " + driverVersion.Trim() + ")";
+                    if (!adapters.Contains(label, StringComparer.OrdinalIgnoreCase))
+                        adapters.Add(label);
+                }
+                catch (Exception exception) when (
+                    exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+                {
+                    // Skip unreadable adapter entries; never fail the evidence form.
+                }
+            }
+        }
+        catch (Exception exception) when (
+            exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            // GPU detection is best-effort. Manual entry remains available.
+        }
+
+        return adapters;
     }
 
     public static IReadOnlyList<PerformanceProfile> GetProfiles() =>
