@@ -70,6 +70,48 @@
             <TextBlock x:Name="OivEngineStatusText" Text="No external installer selected. The Hub does not bundle third-party installers." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
             <Button x:Name="RefreshOivInstallHistoryButton" Content="REFRESH OIV INSTALL RECORDS" Padding="10,7" Margin="0,8,0,0" HorizontalAlignment="Left" IsEnabled="False" Click="RefreshOivInstallHistoryButton_Click"/>
             <TextBlock x:Name="OivInstallHistoryText" Text="No CodeWalker OIV install records read. This checks installer backup logs only; it does not verify active mod files or gameplay." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+            <Expander Header="OPENRAGE OIV INSTALLER · VERIFIED UPSTREAM TOOL"
+                      Foreground="{StaticResource PrimaryText}" Margin="0,12,0,0"
+                      IsExpanded="False">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock x:Name="OpenRageToolStatusText"
+                           Text="OpenRAGE is not installed. Download and verify the pinned upstream v0.4.0 Windows x64 release."
+                           Foreground="{StaticResource SecondaryText}" FontSize="10"
+                           TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,8,0,0">
+                  <Button x:Name="DownloadOpenRageButton" Content="DOWNLOAD &amp; VERIFY OPENRAGE"
+                          Padding="9,7" Margin="0,0,6,6" Click="DownloadOpenRageButton_Click"/>
+                  <Button x:Name="VerifyOpenRageButton" Content="VERIFY TOOL"
+                          Padding="9,7" Margin="0,0,6,6" Click="VerifyOpenRageButton_Click"/>
+                  <Button x:Name="PreviewOpenRageOivButton" Content="PREVIEW IMPORTED OIV"
+                          Padding="9,7" Margin="0,0,6,6" Click="PreviewOpenRageOivButton_Click"/>
+                  <Button x:Name="InstallReviewedOpenRageOivButton" Content="INSTALL REVIEWED OIV"
+                          Padding="9,7" Margin="0,0,6,6" IsEnabled="False"
+                          Click="InstallReviewedOpenRageOivButton_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,2,0,0">
+                  <Button x:Name="ListOpenRageOivButton" Content="LIST INSTALLED OIVS"
+                          Padding="9,7" Margin="0,0,6,6" Click="ListOpenRageOivButton_Click"/>
+                  <Button x:Name="UndoOpenRageButton" Content="UNDO LATEST OPENRAGE CHANGE"
+                          Padding="9,7" Margin="0,0,6,6" Click="UndoOpenRageButton_Click"/>
+                </WrapPanel>
+                <DockPanel Margin="0,2,0,0">
+                  <TextBox x:Name="OpenRageUninstallGroupBox" Width="190"
+                           Text="Enter exact OpenRAGE package group"
+                           ToolTip="Enter the exact package group name returned by LIST INSTALLED OIVS."
+                           VerticalContentAlignment="Center" Margin="0,0,6,6"/>
+                  <Button x:Name="UninstallOpenRageOivButton" Content="UNINSTALL GROUP"
+                          Padding="9,7" Margin="0,0,0,6" Click="UninstallOpenRageOivButton_Click"/>
+                </DockPanel>
+                <TextBox x:Name="OpenRageOutputText" IsReadOnly="True"
+                         AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         Background="#17191F" Foreground="#D5D9E0"
+                         BorderThickness="0" MinHeight="55" MaxHeight="150"
+                         Padding="7" FontSize="10"
+                         Text="OpenRAGE preview/install results will appear here. Install requires an inspected OIV, clean archive hashes and explicit confirmation."/>
+              </StackPanel>
+            </Expander>
             <TextBlock Text="RTX 4050 / FRAME-TIME BENCHMARK" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,14,0,6"/>
             <TextBlock x:Name="BenchmarkSummaryText" Text="No PresentMon capture analysed yet. Capture baseline and modded runs using identical conditions." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
             <Button x:Name="ImportBenchmarkButton" Content="IMPORT PRESENTMON CSV" Padding="10,7" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ImportBenchmarkButton_Click"/>
