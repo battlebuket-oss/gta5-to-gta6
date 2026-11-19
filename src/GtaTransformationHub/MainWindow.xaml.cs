@@ -83,7 +83,8 @@ public partial class MainWindow : Window
                   " | archive edits: " + result.OivInspection.ArchiveEditCount + "\n" +
                   "Payload issues: " + result.OivInspection.PayloadSourceIssues.Count +
                   " | unrecognised commands: " + result.OivInspection.UnsupportedCommands.Count + "\n" +
-                  "Manual review required: " + (result.OivInspection.RequiresManualReview ? "Yes" : "No");
+                  "Manifest structural warnings: " + (result.OivInspection.RequiresManualReview ? "Present" : "None detected") + "\\n" +
+                  "Licence, game-build, compatibility and runtime review is still required before approval.";
 
             StatusText.Text = "Imported " + metadataDialog.Metadata.Name +
                               " for review. No GTA V files were changed; package status remains Researching.";
