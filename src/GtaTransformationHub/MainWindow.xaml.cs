@@ -1266,6 +1266,97 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void AnalyzeEcologyMetadataButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null ||
+            string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
+            return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select a metadata dump index for the current GTA V build",
+            Filter = "GTA Hub metadata dump index (metadata-dump-index-*.json)|metadata-dump-index-*.json",
+            InitialDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "GtaTransformationHub", "rage-cli", "metadata-dumps"),
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var confirmation = MessageBox.Show(
+            "The Hub will verify the dump index, discovery report, source RPF hashes, JSON dump hashes, exact GTA5.exe SHA-256 and pinned rage-cli release. It will then extract heuristic candidates from metadata fields that resemble species, models, population, habitats and water settings. The report is for manual review only: field-name matches may be false positives, missed resources remain possible, and ecology package deployment will stay blocked. Continue?",
+            "Analyze ecological metadata candidates",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _assetCatalogueCancellation?.Dispose();
+        _assetCatalogueCancellation = new CancellationTokenSource();
+        _operationInProgress = true;
+        RefreshSessionState();
+        EcologyCandidateAnalysisStatusText.Text = "Verifying provenance and analyzing the selected metadata JSON dumps...";
+        StatusText.Text = "Extracting ecology metadata candidates. No package eligibility is being changed.";
+
+        try
+        {
+            var result = await _rageCliEcologyCandidateAnalysisService.AnalyzeAsync(
+                _verifiedRageCliExecutablePath,
+                _installation,
+                dialog.FileName,
+                _assetCatalogueCancellation.Token);
+
+            var categorySummary = result.CategoryCounts.Count == 0
+                ? "No fields matched the current candidate rules."
+                : string.Join(", ", result.CategoryCounts
+                    .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                    .Select(item => item.Key + ": " + item.Value));
+
+            EcologyCandidateAnalysisStatusText.Text =
+                "Candidate report saved: " + result.ReportPath + Environment.NewLine +
+                "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
+                "Metadata payloads reviewed: " + result.PayloadsReviewed + Environment.NewLine +
+                "Heuristic candidate records: " + result.CandidateCount + Environment.NewLine +
+                categorySummary + Environment.NewLine +
+                "Input dump/discovery stage complete: " + (result.InputIndexWasComplete ? "No known caps/errors" : "INCOMPLETE / warnings present") + Environment.NewLine +
+                "Semantic inventory complete: No" + Environment.NewLine +
+                "Ecology package eligibility unlocked: No" +
+                (result.Warnings.Count == 0
+                    ? string.Empty
+                    : Environment.NewLine + "Review warnings: " + string.Join(" | ", result.Warnings.Take(4)));
+
+            StatusText.Text = "Ecology metadata candidate report created. It requires review and does not approve ecology packages.";
+            App.Diagnostics.Write(
+                result.InputIndexWasComplete ? AuditLogLevel.Information : AuditLogLevel.Warning,
+                "EcologyMetadataCandidateAnalysisCompleted",
+                "Analyzed exact-build metadata dumps. Payloads=" + result.PayloadsReviewed +
+                "; candidates=" + result.CandidateCount +
+                "; inputIndexComplete=" + result.InputIndexWasComplete +
+                "; semanticCompletenessVerified=false; packageEligibilityUnlocked=false.");
+        }
+        catch (OperationCanceledException)
+        {
+            EcologyCandidateAnalysisStatusText.Text = "Metadata candidate analysis was cancelled. No complete analysis report was accepted.";
+            StatusText.Text = "Ecology metadata candidate analysis cancelled.";
+        }
+        catch (Exception exception)
+        {
+            EcologyCandidateAnalysisStatusText.Text = "Metadata candidate analysis failed: " + exception.Message;
+            StatusText.Text = "No ecology candidate report was accepted.";
+            MessageBox.Show(exception.Message, "Ecology metadata candidate analysis",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _assetCatalogueCancellation?.Dispose();
+            _assetCatalogueCancellation = null;
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private async void CompareEcologyInventoryButton_Click(object sender, RoutedEventArgs e)
     {
         if (!CanChangeConfiguration() || _installation is null)
