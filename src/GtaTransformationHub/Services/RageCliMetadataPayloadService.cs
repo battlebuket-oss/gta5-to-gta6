@@ -302,7 +302,7 @@ public sealed class RageCliMetadataPayloadService
                 exception is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or
                 RageCliExecutionException or TimeoutException)
             {
-                errors.Add("Metadata dump failed for '" + candidate.InternalPath + "': " +
+                errors.Add("Metadata dump failed for candidate " + (startingCandidateIndex + index) + " ('" + candidate.InternalPath + "'): " +
                            LimitForMessage(exception.Message));
             }
             finally
@@ -339,7 +339,7 @@ public sealed class RageCliMetadataPayloadService
                 safeDiscoveryReport, cancellationToken),
             CandidateCount: eligible.Length,
             StartingCandidateIndex: batch.StartingCandidateIndex,
-            NextCandidateIndex: GetNextCandidateIndex(batch, errors, payloads, selected.Length),
+            NextCandidateIndex: GetNextCandidateIndex(batch, payloads),
             SelectedCandidateCount: selected.Length,
             CandidateCapReached: hasMoreBatches,
             BatchComplete: errors.Count == 0 && payloads.Count == selected.Length,
@@ -383,7 +383,7 @@ public sealed class RageCliMetadataPayloadService
                 item.TryGetProperty("OutputTruncated", out var truncated) && truncated.ValueKind == JsonValueKind.False &&
                 item.TryGetProperty("HasArchiveErrors", out var archiveErrors) && archiveErrors.ValueKind == JsonValueKind.False);
 
-        var nextCandidateIndex = GetNextCandidateIndex(batch, errors, payloads, selected.Length);
+        var nextCandidateIndex = GetNextCandidateIndex(batch, payloads);
         return new RageCliMetadataDumpResult(
             indexReportPath,
             indexHash,
@@ -418,12 +418,22 @@ public sealed class RageCliMetadataPayloadService
 
     private static int GetNextCandidateIndex(
         RageCliMetadataBatchWindow batch,
-        IReadOnlyCollection<string> errors,
-        IReadOnlyCollection<RageCliMetadataPayload> payloads,
-        int selectedCount) =>
-        errors.Count == 0 && payloads.Count == selectedCount
-            ? batch.NextCandidateIndex
-            : batch.StartingCandidateIndex;
+        IReadOnlyCollection<RageCliMetadataPayload> payloads)
+    {
+        var completedIndexes = payloads
+            .Select(payload => payload.CandidateIndex)
+            .ToHashSet();
+
+        for (var candidateIndex = batch.StartingCandidateIndex;
+             candidateIndex < batch.NextCandidateIndex;
+             candidateIndex++)
+        {
+            if (!completedIndexes.Contains(candidateIndex))
+                return candidateIndex;
+        }
+
+        return batch.NextCandidateIndex;
+    }
 
     public static RageCliNestedArchiveExtractionPlan BuildNestedArchiveExtractionPlan(
         string internalPath,
