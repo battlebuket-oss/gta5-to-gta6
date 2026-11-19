@@ -67,6 +67,60 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task Validate_RejectsUiPackageBoundToDifferentExactGameBuildAndExecutableHash()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("ui payload");
+        var manifest = CreateManifest(content) with
+        {
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true,
+            SignatureVersion = 3,
+            Ui = CreateUiDescriptor("1.0.3888.0", new string('B', 64))
+        };
+        var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(
+            CreateArchive(manifest, ("mods/ui.dat", content)));
+        var installation = new GameInstallation(
+            _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
+        var coordinator = new PackageDeploymentCoordinator(
+            new TransactionalDeploymentService(dataRoot: _transactionRoot), _stagingRoot);
+
+        var report = await coordinator.ValidateAsync(installation, new[] { imported });
+
+        Assert.False(report.IsValid);
+        Assert.Contains(report.Errors, error => error.Contains("different exact GTA5.exe build or SHA-256 fingerprint"));
+    }
+
+    [Fact]
+    public async Task Validate_RejectsNullUiFingerprintWithoutThrowing()
+    {
+        var content = System.Text.Encoding.UTF8.GetBytes("ui payload");
+        var descriptor = CreateUiDescriptor("1.0.3889.0", new string('A', 64)) with
+        {
+            VerifiedGameBuild = null!,
+            VerifiedGta5ExeSha256 = null!
+        };
+        var manifest = CreateManifest(content) with
+        {
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true,
+            SignatureVersion = 3,
+            Ui = descriptor
+        };
+        var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(
+            CreateArchive(manifest, ("mods/ui.dat", content)));
+        var installation = new GameInstallation(
+            _gameRoot, Path.Combine(_gameRoot, "GTA5.exe"), "1.0.3889.0", "1.0.3889.0", "1.0.3889.0");
+        var coordinator = new PackageDeploymentCoordinator(
+            new TransactionalDeploymentService(dataRoot: _transactionRoot), _stagingRoot);
+
+        var report = await coordinator.ValidateAsync(installation, new[] { imported });
+
+        Assert.False(report.IsValid);
+        Assert.Contains(report.Errors, error => error.Contains("must declare the exact numeric GTA V Legacy build"));
+        Assert.Contains(report.Errors, error => error.Contains("must declare the GTA5.exe SHA-256"));
+    }
+
+    [Fact]
     public async Task Validate_RejectsOivEvenWhenManifestClaimsCompatibilityVerified()
     {
         var content = System.Text.Encoding.UTF8.GetBytes("oiv imported loose file");
@@ -180,6 +234,18 @@ public sealed class PackageDeploymentCoordinatorTests : IDisposable
         var archivePath = CreateArchive(signed, ("mods/sample.dat", contentBytes));
         return await new PackageArchiveService(_packagesRoot).ImportAsync(archivePath);
     }
+
+    private static UiPackageDescriptor CreateUiDescriptor(string build, string executableSha256) => new(
+        new[] { "hud" },
+        "GameScript",
+        new[] { "KeyboardMouse", "Controller" },
+        new[] { "1920x1080" },
+        new[] { "KeyboardNavigation", "ControllerNavigation", "VisibleFocus" },
+        true, true, true, true, true,
+        "https://example.com/ui-compatibility",
+        "https://example.com/ui-rollback",
+        build,
+        executableSha256);
 
     private static PackageManifest CreateManifest(byte[] content) =>
         new(
