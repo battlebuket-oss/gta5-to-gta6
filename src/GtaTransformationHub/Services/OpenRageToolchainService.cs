@@ -372,6 +372,21 @@ public sealed class OpenRageToolchainService
         return new[] { "--game", Path.GetFullPath(gameRoot), "oiv", "uninstall", groupName, "--yes" };
     }
 
+    /// <summary>
+    /// OpenRAGE's OIV journal group is the OIV metadata name followed by a space
+    /// and the parsed metadata version. Keep this derivation identical so the Hub
+    /// can uninstall the exact package it previewed/installed without guessing.
+    /// </summary>
+    public static string BuildOivGroupName(string packageName, string packageVersion)
+    {
+        if (string.IsNullOrWhiteSpace(packageName) || string.IsNullOrWhiteSpace(packageVersion))
+            throw new ArgumentException("OIV package name and version are required to derive the OpenRAGE journal group.");
+
+        var groupName = packageName.Trim() + " " + packageVersion.Trim();
+        ValidatePackageGroupName(groupName);
+        return groupName;
+    }
+
     public static IReadOnlyList<string> BuildUndoArguments(string gameRoot) =>
         new[] { "--game", Path.GetFullPath(gameRoot), "undo" };
 
