@@ -74,6 +74,46 @@ public sealed class RageCliMetadataPayloadServiceTests
     }
 
     [Fact]
+    public void BuildResourceDumpArguments_AddsVerifiedNameDictionaryWhenProvided()
+    {
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GtaHubRageNamesArgs"));
+        var namesPath = Path.Combine(Path.GetTempPath(), "GtaHubRageNamesArgs", "names.txt");
+        File.WriteAllText(namesPath, "# build: 3889\\nprop_animal_deer\\n");
+
+        try
+        {
+            var args = RageCliMetadataPayloadService.BuildResourceDumpArguments(
+                @"C:\\Games\\GTA V\\GTA5.exe",
+                @"C:\\Users\\Test\\AppData\\Local\\nested.rpf",
+                "common/data/popgroups.ymt",
+                @"C:\\Users\\Test\\AppData\\Local\\popgroups.json",
+                namesPath);
+
+            var namesIndex = Array.IndexOf(args.ToArray(), "--names");
+            Assert.True(namesIndex >= 0);
+            Assert.Equal(Path.GetFullPath(namesPath), args[namesIndex + 1]);
+            Assert.Equal("--output", args[^2]);
+        }
+        finally
+        {
+            File.Delete(namesPath);
+        }
+    }
+
+    [Fact]
+    public void BuildResourceDumpArguments_RejectsMissingOrRedirectedNameDictionary()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "names.txt");
+        Assert.Throws<InvalidDataException>(() =>
+            RageCliMetadataPayloadService.BuildResourceDumpArguments(
+                @"C:\\Games\\GTA V\\GTA5.exe",
+                @"C:\\Users\\Test\\nested.rpf",
+                "common/data/popgroups.ymt",
+                @"C:\\Users\\Test\\popgroups.json",
+                missing));
+    }
+
+    [Fact]
     public void BuildResourceDumpArguments_UsesArchiveAndJsonOutput()
     {
         var args = RageCliMetadataPayloadService.BuildResourceDumpArguments(
