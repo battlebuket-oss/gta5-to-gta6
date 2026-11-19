@@ -1,9 +1,13 @@
+using GtaTransformationHub.Services;
+
 namespace GtaTransformationHub;
 
 public partial class App : System.Windows.Application
 {
     private System.Threading.Mutex? _instanceMutex;
     private bool _ownsMutex;
+
+    public static LocalAuditLogService Diagnostics { get; } = new();
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
@@ -23,11 +27,42 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            var exception = args.ExceptionObject as Exception;
+            Diagnostics.Write(
+                AuditLogLevel.Critical,
+                "AppDomainUnhandledException",
+                "An unhandled application-domain exception occurred. IsTerminating=" + args.IsTerminating,
+                exception);
+        };
+
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Diagnostics.Write(
+                AuditLogLevel.Critical,
+                "DispatcherUnhandledException",
+                "An unhandled UI-dispatcher exception occurred.",
+                args.Exception);
+            // Preserve WPF's default fail-fast behaviour for unhandled exceptions.
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            Diagnostics.Write(
+                AuditLogLevel.Error,
+                "UnobservedTaskException",
+                "An unobserved background-task exception was raised.",
+                args.Exception);
+        };
+
+        Diagnostics.Write(AuditLogLevel.Information, "ApplicationStarted", "Transformation Hub started.");
         base.OnStartup(e);
     }
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {
+        Diagnostics.Write(AuditLogLevel.Information, "ApplicationExit", "Transformation Hub is shutting down.");
         if (_ownsMutex)
             _instanceMutex?.ReleaseMutex();
 
