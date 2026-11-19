@@ -505,9 +505,9 @@ public partial class MainWindow : Window
         if (inspection.ManifestWarnings is { Count: > 0 })
         {
             var warningAnswer = MessageBox.Show(
-                "The OIV manifest contains structural warnings:\\n\\n" +
-                string.Join("\\n", inspection.ManifestWarnings.Take(8)) +
-                "\\n\\nThe Hub can inventory these operations but cannot prove how the external installer will handle them. " +
+                "The OIV manifest contains structural warnings:\n\n" +
+                string.Join("\n", inspection.ManifestWarnings.Take(8)) +
+                "\n\nThe Hub can inventory these operations but cannot prove how the external installer will handle them. " +
                 "Review the author's instructions before continuing.",
                 "OIV manifest warnings",
                 MessageBoxButton.YesNo,
