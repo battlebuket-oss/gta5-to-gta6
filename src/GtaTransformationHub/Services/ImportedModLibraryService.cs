@@ -346,7 +346,6 @@ public sealed class ImportedModLibraryService
                     warnings.Add("The retained source archive path is invalid: " + exception.Message);
                 }
             }
-            }
 
             var verificationNote = warnings.Count == 0
                 ? "Per-file SHA-256 values were re-computed and compared with the import manifest, including the retained source archive."
