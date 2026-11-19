@@ -104,6 +104,8 @@ jobs:
 
             & $signtool sign /fd SHA256 /td SHA256 /tr https://timestamp.digicert.com /sha1 $cert.Thumbprint /s My "artifacts/win-x64/GtaTransformationHub.exe"
             if ($LASTEXITCODE -ne 0) { throw "Signing the application executable failed." }
+            & $signtool verify /pa /v "artifacts/win-x64/GtaTransformationHub.exe"
+            if ($LASTEXITCODE -ne 0) { throw "Application signature verification failed." }
             "signed=true" >> $env:GITHUB_OUTPUT
           }
           finally {
