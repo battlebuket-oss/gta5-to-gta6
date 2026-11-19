@@ -58,6 +58,10 @@ Direct executable launch may require Steam or Rockstar Games Launcher. The launc
 
 Do not use the development build on your only game installation. Test against a disposable copy and back up your game files and saves first.
 
+## Real-game validation protocol
+
+The required gameplay, vanilla-identity, compatibility, performance and rollback test protocol is documented in [Gameplay and release test plan](docs/GAMEPLAY_COMPATIBILITY_PERFORMANCE_TEST_PLAN.md). It has **not** been executed against a real GTA V installation; all real-game results remain Not tested until evidence is recorded.
+
 ## Windows installer and release pipeline
 
 A Windows x64 self-contained publish and per-user Inno Setup installer are defined in `.github/workflows/windows-release.yml` and `installer/GtaTransformationHub.iss`. Manual workflow runs can produce unsigned development artifacts. Public tag releases require a configured Windows code-signing certificate; see [Windows release and signing procedure](docs/WINDOWS_RELEASE_AND_SIGNING.md). A generated installer is not evidence of real-game compatibility.
