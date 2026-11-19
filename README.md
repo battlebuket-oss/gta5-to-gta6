@@ -26,6 +26,7 @@ The current development branch includes:
 - Signature version 3 for UI replacement metadata; legacy signature v1/v2 payloads remain unchanged. UI packages require a locally trusted publisher key and compatibility attestation.
 - Persistent Hub accessibility preferences: high-contrast mode, 100–150% text scaling and a reduced-motion preference. These settings do not alter GTA V.
 - The selected GTA V Legacy installation is remembered locally and revalidated against its exact executable identity, numeric build and SHA-256 at startup.
+- A normalized ecology inventory comparison workflow validates user-supplied baseline/candidate snapshots against the selected GTA5.exe and records semantic diffs locally; it explicitly does not certify completeness or unlock ecology-sensitive packages.
 - Archive path, duplicate, link, undeclared-file and expansion-size checks.
 - SHA-256 and file-size verification for every manifest-declared file.
 - A local package library and persistent user profiles with exact package-version pins.
