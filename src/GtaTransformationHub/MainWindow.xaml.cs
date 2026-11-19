@@ -135,20 +135,6 @@ public partial class MainWindow : Window
             else
                 StatusText.Text = "Recovered " + recovered.Count + " interrupted deployment transaction(s).";
 
-            var installationRestore = await _gameInstallationStoreService.RestoreAsync(_gameInstallationService);
-            if (installationRestore.Restored && installationRestore.Installation is not null)
-            {
-                _installation = installationRestore.Installation;
-                GamePathText.Text = _installation.RootPath;
-                DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " restored and revalidated.";
-                StatusText.Text = installationRestore.Message;
-            }
-            else
-            {
-                _installation = null;
-                GamePathText.Text = "GTA V Legacy not located";
-                DetectionText.Text = installationRestore.Message;
-            }
         }
         catch (Exception exception)
         {
