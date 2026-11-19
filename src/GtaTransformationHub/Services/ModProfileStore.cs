@@ -75,7 +75,10 @@ public sealed class ModProfileStore
         {
             // Package IDs are canonical lower-case identifiers. Normalize pasted or
             // case-varied selections before validation and de-duplication.
-            var canonicalId = packageId?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(packageId))
+                throw new InvalidDataException("The profile contains an invalid package ID.");
+
+            var canonicalId = packageId.Trim().ToLowerInvariant();
             if (!PackageIdValidator.IsValid(canonicalId))
                 throw new InvalidDataException("The profile contains an invalid package ID.");
             selected.Add(canonicalId);
