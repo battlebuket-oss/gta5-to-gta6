@@ -79,6 +79,15 @@
                            Foreground="{StaticResource SecondaryText}" FontSize="10"
                            TextWrapping="Wrap"/>
                 <WrapPanel Margin="0,8,0,0">
+                  <Button x:Name="DownloadHudPackageButton"
+                          Content="GET OFFICIAL LEGACY HUD OIV · 2.8.2"
+                          Padding="9,7" Margin="0,0,6,6"
+                          Click="DownloadHudPackageButton_Click"/>
+                  <TextBlock Text="Author release · exact SHA-256 pinned · imports to research library only"
+                             Foreground="{StaticResource SecondaryText}" FontSize="10"
+                             TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,8,0,0">
                   <Button x:Name="DownloadOpenRageButton" Content="DOWNLOAD &amp; VERIFY OPENRAGE"
                           Padding="9,7" Margin="0,0,6,6" Click="DownloadOpenRageButton_Click"/>
                   <Button x:Name="VerifyOpenRageButton" Content="VERIFY TOOL"
