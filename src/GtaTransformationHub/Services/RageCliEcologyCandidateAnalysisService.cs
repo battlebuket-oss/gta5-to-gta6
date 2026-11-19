@@ -133,7 +133,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
 
         var discoveryDirectory = Path.Combine(_dataRoot, "catalogue", buildDirectory);
         var discoveryPath = ValidateOwnedFile(
-            discoveryDirectory, index.DiscoveryReportPath, RageCliMetadataDiscoveryService.MaximumHitsPerPattern * 1024L * 1024L,
+            discoveryDirectory, index.DiscoveryReportPath, 64L * 1024 * 1024,
             "metadata discovery report");
         var discoveryHash = await RageCliToolchainService.ComputeSha256Async(discoveryPath, cancellationToken);
         if (!discoveryHash.Equals(index.DiscoveryReportSha256, StringComparison.OrdinalIgnoreCase))
@@ -222,9 +222,9 @@ public sealed class RageCliEcologyCandidateAnalysisService
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        var indexComplete = warnings.Count == 0 &&
-                            index.Errors.Count == 0 &&
-                            discovery.Errors.Count == 0 &&
+        var indexComplete = index.Errors is { Count: 0 } &&
+                            discovery.Errors is { Count: 0 } &&
+                            discovery.PatternResults is { Count: > 0 } &&
                             discovery.PatternResults.All(item =>
                                 !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors) &&
                             !index.CandidateCapReached &&
@@ -312,22 +312,21 @@ public sealed class RageCliEcologyCandidateAnalysisService
         string jsonPath,
         string fieldName)
     {
-        var context = (resourceName + "/" + structureType + "/" + jsonPath + "/" + fieldName)
-            .ToLowerInvariant();
+        var pathContext = (structureType + "/" + jsonPath + "/" + fieldName).ToLowerInvariant();
+        var fileContext = resourceName.ToLowerInvariant();
 
-        if (ContainsAny(context, "water", "ocean", "river", "lake", "wave", "underwater", "shoreline", "waterbody"))
+        if (ContainsAny(pathContext, "water", "ocean", "river", "lake", "wave", "underwater", "shoreline", "waterbody"))
             return "Water";
-        if (ContainsAny(context, "population", "popgroup", "popcycle", "modelset", "spawn", "pedgroup"))
+        if (ContainsAny(pathContext, "population", "popgroup", "popcycle", "modelset", "spawn", "pedgroup"))
             return "Population";
-        if (ContainsAny(context, "habitat", "biome", "ecology", "zone"))
+        if (ContainsAny(pathContext, "habitat", "biome", "ecology", "zone"))
             return "Habitat";
-        if (ContainsAny(context, "vegetation", "flora", "plant", "tree", "grass", "reed", "seagrass", "kelp"))
+        if (ContainsAny(pathContext, "vegetation", "flora", "plant", "tree", "grass", "reed", "seagrass", "kelp"))
             return "Plant";
-        if (ContainsAny(context, "animal", "fauna", "wildlife", "fish", "marine", "bird", "deer", "coyote", "boar", "shark", "whale"))
+        if (ContainsAny(pathContext, "animal", "fauna", "wildlife", "fish", "marine", "bird", "deer", "coyote", "boar", "shark", "whale"))
             return "Animal";
-
         if (ContainsAny(fieldName.ToLowerInvariant(), "modelname", "model_name", "archetype", "speciesmodel") &&
-            ContainsAny(context, "animal", "fauna", "wildlife", "fish", "plant", "flora", "vegetation"))
+            ContainsAny(fileContext, "animal", "fauna", "wildlife", "fish", "plant", "flora", "vegetation"))
             return "ModelIdentifier";
 
         return null;
@@ -382,12 +381,13 @@ public sealed class RageCliEcologyCandidateAnalysisService
                     typeElement.ValueKind == JsonValueKind.String)
                     localType = typeElement.GetString() ?? structureType;
 
+                var localContext = inheritedContext + "/" + localType + "/" + path;
                 foreach (var property in element.EnumerateObject())
                 {
                     if (property.NameEquals("$type"))
                         continue;
                     var childPath = path + "/" + EscapeJsonPointer(property.Name);
-                    Visit(property.Value, childPath, localType, property.Name, inheritedContext);
+                    Visit(property.Value, childPath, localType, property.Name, localContext);
                     if (nodes > MaximumNodesPerPayload || output.Count >= maximumCandidates)
                         break;
                 }
@@ -412,7 +412,10 @@ public sealed class RageCliEcologyCandidateAnalysisService
                     JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False))
                 return;
 
-            var category = ClassifyCandidateField(resourceName, structureType, path, fieldName);
+            var currentCategory = ClassifyCandidateField(string.Empty, structureType, path, fieldName);
+            var inheritedCategory = ClassifyCandidateField(string.Empty, inheritedContext, path, fieldName);
+            var category = currentCategory ?? inheritedCategory ??
+                           ClassifyCandidateField(resourceName, structureType, path, fieldName);
             if (category is null)
                 return;
 
@@ -531,7 +534,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var fullRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         var fullPath = Path.GetFullPath(path);
         var prefix = fullRoot + Path.DirectorySeparatorChar;
-        if (!fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        if (!fullPath.Equals(fullRoot, StringComparison.OrdinalIgnoreCase) &&
+            !fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("A provenance path escapes its expected local directory.");
     }
 
@@ -557,10 +561,10 @@ public sealed class RageCliEcologyCandidateAnalysisService
     {
         var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         var fullLeaf = Path.GetFullPath(leaf);
-        Directory.CreateDirectory(rootPath);
-        EnsureContained(Path.GetPathRoot(rootPath)!, rootPath);
-        var relative = Path.GetRelativePath(Path.GetPathRoot(rootPath)!, rootPath);
-        var current = Path.GetPathRoot(rootPath)!;
+        var filesystemRoot = Path.GetPathRoot(rootPath)
+            ?? throw new IOException("The candidate evidence directory has no filesystem root.");
+        var current = filesystemRoot;
+        var relative = Path.GetRelativePath(filesystemRoot, rootPath);
         foreach (var segment in relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, segment);
