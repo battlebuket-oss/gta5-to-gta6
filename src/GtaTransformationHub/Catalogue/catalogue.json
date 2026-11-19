@@ -62,6 +62,10 @@
     {
       "id": "interface",
       "name": "Interface, HUD and navigation"
+    },
+    {
+      "id": "water",
+      "name": "Water, oceans and underwater environment"
     }
   ],
   "packages": [
@@ -416,6 +420,159 @@
         "A separate mod specifically built against the Pause Menu Library API",
         "User must obtain PauseMenuLibrary.asi from the author source; Hub must not bundle it"
       ]
+    },
+    {
+      "id": "animal-blips-legacy",
+      "name": "Animal Blips (Legacy and Enhanced)",
+      "category": "wildlife",
+      "author": "Trevor789GSF",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1439",
+      "licence": "No upload permission; modification and asset use require author permission. Link to the author listing only.",
+      "version": "3.1 (6 October 2026)",
+      "minimumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "maximumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "User-acquired ScriptHookVDotNet script package; safe managed script deployment and exact dependency verification not implemented",
+      "restoreStrategy": "Back up and restore only the exact script files/INI files after archive inspection; do not remove shared dependencies",
+      "performanceTier": "Unknown; animal scan/update cost and impact on busy scenes not measured",
+      "notes": "Adds map blips to animals and configurable animal health/armour/invincibility behaviour. It does not add or spawn new animal species. The author forbids re-upload and requires permission for modifications/assets. Use only as an optional locator/utility after exact Legacy runtime testing; it does not satisfy the fauna-expansion requirement.",
+      "externalRequirements": [
+        "Script Hook V",
+        "Script Hook V .NET Nightly for GTA V Legacy",
+        "OpenIV 4.1 listed by the author"
+      ],
+      "exclusiveGroup": "animal-location-overlay"
+    },
+    {
+      "id": "wildlife-mod-2-2",
+      "name": "WildLife Mod",
+      "category": "wildlife",
+      "author": "Loosekid187",
+      "sourceUri": "https://www.gta5-mods.com/scripts/wildlife-mod",
+      "licence": "Author permission and asset-use terms require review; no redistribution by the Hub",
+      "version": "2.2 (25 August 2026)",
+      "minimumGameBuild": "Not verified for GTA V Legacy; source description says Enhanced",
+      "maximumGameBuild": "Not verified for GTA V Legacy; source description says Enhanced",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-wildlife-and-ambient-spawn-frameworks"
+      ],
+      "status": "Blocked",
+      "installAdapter": "Not eligible for GTA V Legacy deployment until author publishes explicit Legacy support and exact runtime requirements are verified",
+      "restoreStrategy": "No install plan approved",
+      "performanceTier": "High/unknown; mass NPC and animal spawning, companions, AI tasks and repeated event spawning require profiling",
+      "notes": "The source describes animal skins and spawning lions, sharks, hawks, monkeys and animal events, alongside zombie/vampire/robot/chaos systems. However, its own description calls it an experience for GTA V Enhanced and lists ScriptHookVDotNet v3.6, so it is blocked for this Legacy-only project until explicit Legacy compatibility is confirmed. It is a scripted spawn/chaos package, not a validated ambient ecosystem or comprehensive fauna pack.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet v3.6 or newer",
+        "LemonUI for SHVDN3 (source says included)"
+      ]
+    },
+    {
+      "id": "upscaled-water-overhaul-legacy",
+      "name": "Upscaled Water Overhaul (8K) — Legacy",
+      "category": "water",
+      "author": "Glitches (uploaded by UnknownGlitcha)",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1085",
+      "licence": "No upload permission; modification and asset use require author permission; no redistribution or conversion by the Hub",
+      "version": "3.01 (10 February 2025)",
+      "minimumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "maximumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-water-texture-overhauls",
+        "other-water-system-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV/RPF water-texture adapter required; not implemented",
+      "restoreStrategy": "Back up exact affected water and graphics texture archives before a transactional replacement; verify official uninstaller or restore exact originals",
+      "performanceTier": "High memory risk; advertises 8K water textures and 2560x1440 reflections; 6GB VRAM impact is unknown",
+      "notes": "The Legacy listing describes water ripples, waves, shore foam, reflections, underwater fog and top/bottom water textures, with many textures upscaled to 4K/8K. It is a texture/visual overhaul, not a new water-physics engine or underwater vegetation pack. The author's page claims a small FPS cost, but the Hub will not adopt that claim without independent frame-time/VRAM benchmarks. Given the RTX 4050 6GB target, do not put 8K assets in the recommended profile before a lower-resolution alternative and real tests are available.",
+      "externalRequirements": [
+        "OpenIV",
+        "Optional: Rainfall Rehaul"
+      ],
+      "exclusiveGroup": "water-texture-overhaul"
+    },
+    {
+      "id": "indian-ocean-clear-water",
+      "name": "Indian Ocean (Clear Ocean Water)",
+      "category": "water",
+      "author": "Amateurish",
+      "sourceUri": "https://www.gta5-mods.com/misc/indian-ocean-water-mod",
+      "licence": "Author terms and permission to redistribute or modify require review",
+      "version": "1.3 (21 January 2017)",
+      "minimumGameBuild": "Not specified; legacy-era package, current build unverified",
+      "maximumGameBuild": "Not specified; legacy-era package, current build unverified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-water-clarity-and-wave-configuration-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "Inspect actual package contents and affected water configuration files before implementing a transactional config adapter",
+      "restoreStrategy": "Back up each modified water clarity/wave configuration file and restore exact originals",
+      "performanceTier": "Unknown; visual and streaming impact not measured",
+      "notes": "Author describes selectable ocean water clarity and wave-size settings. It changes configuration/appearance rather than adding marine species, underwater plants or a new simulation. The original upload is from 2017; verify current Legacy compatibility and inspect archive contents before consideration.",
+      "externalRequirements": [
+        "Inspect author package's included install instructions"
+      ]
+    },
+    {
+      "id": "hd-vegetation-upscale",
+      "name": "HD Vegetation Upscale",
+      "category": "world",
+      "author": "Glitches (uploaded by UnknownGlitcha)",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1095",
+      "licence": "Author has not specified asset origins or redistribution permission; do not bundle without permission",
+      "version": "1.0 (1 December 2024)",
+      "minimumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "maximumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-vegetation-texture-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV texture/archive adapter required; not implemented",
+      "restoreStrategy": "Per-file backup and transactionally restore every replaced foliage/underwater texture",
+      "performanceTier": "Medium/high memory risk unknown; advertised 2560x1440 textures require VRAM and streaming tests",
+      "notes": "Source describes upscaling existing vegetation to 2560x1440, including underwater vegetation textures. This does not add new plant species, new underwater meshes or new ecological behaviour. Verify asset provenance, archive contents, exact Legacy build and 6GB VRAM impact.",
+      "externalRequirements": [
+        "OpenIV",
+        "Optional: Forests of San Andreas"
+      ]
+    },
+    {
+      "id": "grass-v-performance-friendly",
+      "name": "Grass V (Improved Models, Textures and Density)",
+      "category": "world",
+      "author": "Foxy_Oxy",
+      "sourceUri": "https://www.gta5-mods.com/misc/grass-v-improved-models-textures-density-beta-oiv-foxy_oxy",
+      "licence": "Video showcase permission is stated; redistribution/modification rights for package assets are not granted",
+      "version": "1.5 beta (22 March 2025)",
+      "minimumGameBuild": "GTA V Legacy listing; exact executable build range not specified",
+      "maximumGameBuild": "GTA V Legacy listing; exact executable build range not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-grass-model-and-density-overhauls",
+        "other-vegetation-and-tree-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV adapter required; not implemented",
+      "restoreStrategy": "Back up the exact replaced grass model/texture archives; restore them transactionally",
+      "performanceTier": "Potentially medium/high CPU/GPU streaming cost; source provides a performance-friendly option but increased density/draw distance still needs benchmarking",
+      "notes": "The beta replaces and recolours existing grass models and increases grass density, scaling and draw distance. Version 1.5 lists a performance-friendly option, but the mod remains beta and the author warns about installation order relative to other grass/vegetation replacements. It does not add new botanical species. Verify the exact performance-friendly variant and test it on 1080p/6GB VRAM.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "grass-overhaul"
     }
   ],
   "profiles": [
