@@ -13,6 +13,11 @@
 | Population / traffic | World Of Variety Plus 2026 | The Nexus page describes restored content and expanded world events. Its permissions explicitly prohibit re-uploading the author's assets elsewhere. | **External-source-only candidate.** No bundled binaries; inspect base-mod requirements and compatibility before approval. |
 | Population / traffic | Los Angeles Traffic | The Nexus page shows an update in October 2026, but its documentation still references a tested game version 1.0.3586 and additional DLC-enabling scripts. | **Blocked pending build confirmation and dependency review.** |
 
+## Additional current HUD candidate (19 November 2026)
+
+
+| HUD / gameplay systems | [GTA VI HUD 1.1 — FBICat](https://www.gta5-mods.com/sl/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705) | Current listing describes a 60 MB package with separate Legacy and Enhanced folders. It adds a GTA VI-inspired HUD, status bars, weapon wheel, vehicle card, world markers and cash rings, plus optional back-mounted weapons, stamina, vehicle storage, bounty and fuel systems. Requires Script Hook V, ScriptHookVDotNet 3 and LemonUI.SHVDN3.dll. | **Research first; mutually exclusive with other total HUD overhauls.** Exact Legacy game-build support, full file inventory, author/licence permissions, dependencies, script conflicts, rollback and RTX 4050 performance remain unverified. Never install both edition folders. |
+
 ## Candidate profile direction
 
 - **Balanced 1080p:** one visual overhaul at most; conservative texture and post-processing choices; no experimental ray tracing by default; only tested gameplay plugins.
@@ -32,7 +37,7 @@ A candidate becomes installable only after all of the following are complete:
 6. A clean GTA V Legacy test installation passes apply, launch, normal exit, rollback, interrupted-transaction recovery, and repeated apply/rollback tests.
 7. Performance is measured at 1920×1080 and the package receives a tested performance tier.
 
-## Sources checked on 18 November 2026
+## Sources checked on 19 November 2026
 
 - [Razed Mods — NaturalVision Evolved single-player guide](https://content.razedmods.com/readme/sp)
 - [Razed Mods — November 2026 NVE update](https://www.patreon.com/razedmods/posts/naturalvision-175019911)
@@ -40,5 +45,6 @@ A candidate becomes installable only after all of the following are complete:
 - [BetterChaseRemade](https://www.gta5-mods.com/uk/scripts/betterchaseremade)
 - [World Of Variety Plus 2026](https://www.nexusmods.com/gta5/mods/1171)
 - [Los Angeles Traffic](https://www.nexusmods.com/gta5/mods/1505)
+- [GTA VI HUD 1.1 — FBICat](https://www.gta5-mods.com/sl/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705)
 
 Secondary comparisons were used only to identify candidates, not to approve packages. The hub's own validation process remains authoritative.
