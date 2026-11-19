@@ -42,7 +42,7 @@ foreach ($category in $catalogue.categories) {
 
 $packageIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($package in $catalogue.packages) {
-    foreach ($field in @("id", "name", "category", "author", "sourceUri", "licence", "version", "status")) {
+    foreach ($field in @("id", "name", "category", "author", "sourceUri", "licence", "version", "status", "installAdapter", "restoreStrategy", "performanceTier", "notes")) {
         if ([string]::IsNullOrWhiteSpace([string]$package.$field)) {
             throw "Package '$($package.id)' is missing required field '$field'."
         }
@@ -76,7 +76,12 @@ foreach ($package in $catalogue.packages) {
         }
     }
 
-    if ($package.status -eq "Approved") {
+    $allowedStatuses = @("Planned", "Researching", "Verified", "Tested", "Deprecated", "Blocked")
+    if ($package.status -notin $allowedStatuses) {
+        throw "Package '$($package.id)' has an unsupported catalogue status '$($package.status)'. Use one of: $($allowedStatuses -join ', ')."
+    }
+
+    if ($package.status -eq "Tested") {
         if ([string]::IsNullOrWhiteSpace([string]$package.sha256) -or
             [string]$package.sha256 -notmatch '^[A-Fa-f0-9]{64}$') {
             throw "Approved package '$($package.id)' must have a verified 64-character SHA-256."
@@ -90,7 +95,7 @@ foreach ($package in $catalogue.packages) {
         }
         if ([string]::IsNullOrWhiteSpace([string]$package.installAdapter) -or
             [string]$package.installAdapter -match '(?i)(not implemented|manual only)') {
-            throw "Approved package '$($package.id)' does not have an implemented install adapter."
+            throw "Tested package '$($package.id)' does not have an implemented install adapter."
         }
     }
 }
@@ -118,9 +123,16 @@ if ($null -ne $catalogue.profiles) {
         if (-not $profileIds.Add([string]$profile.id)) {
             throw "Duplicate profile id: $($profile.id)"
         }
+        $enabledGroups = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($packageId in @($profile.enabledPackageIds)) {
             if (-not $packageIds.Contains([string]$packageId)) {
                 throw "Profile '$($profile.id)' references missing package '$packageId'."
+            }
+            $selectedPackage = $catalogue.packages | Where-Object { $_.id -eq $packageId } | Select-Object -First 1
+            if (-not [string]::IsNullOrWhiteSpace([string]$selectedPackage.exclusiveGroup)) {
+                if (-not $enabledGroups.Add([string]$selectedPackage.exclusiveGroup)) {
+                    throw "Profile '$($profile.id)' selects multiple packages from exclusive group '$($selectedPackage.exclusiveGroup)'."
+                }
             }
         }
     }
