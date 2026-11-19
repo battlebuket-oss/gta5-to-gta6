@@ -338,7 +338,7 @@ public sealed class ImportedModLibraryService
                         warnings.Add("The retained original source archive is missing.");
                     else if ((File.GetAttributes(resolvedArchivePath) & FileAttributes.ReparsePoint) != 0)
                         warnings.Add("The retained original source archive is a reparse point.");
-                    else
+                    else if (warnings.Count == 0)
                         originalArchivePath = resolvedArchivePath;
                 }
                 catch (InvalidDataException exception)
@@ -346,10 +346,11 @@ public sealed class ImportedModLibraryService
                     warnings.Add("The retained source archive path is invalid: " + exception.Message);
                 }
             }
-            else
-            {
-                warnings.Add("The original source archive is not retained in this package manifest.");
             }
+
+            var verificationNote = warnings.Count == 0
+                ? "Per-file SHA-256 values were re-computed and compared with the import manifest, including the retained source archive."
+                : "The local inventory is not fully verified. Packages without a retained source archive must be re-imported before external installation.";
 
             return new ImportedModLibraryEntry(
                 metadata?.PackageId ?? "unknown",
@@ -361,7 +362,7 @@ public sealed class ImportedModLibraryService
                 manifest.Files?.Count ?? 0,
                 fullDirectory,
                 warnings.Count == 0,
-                "Per-file SHA-256 values were re-computed and compared with the import manifest, including the retained source archive.",
+                verificationNote,
                 warnings,
                 originalArchivePath,
                 manifest.OivInspection);
