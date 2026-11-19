@@ -84,6 +84,82 @@ public sealed class PackageArchiveServiceTests : IDisposable
             new PackageArchiveService(_packagesRoot).ImportAsync(archive));
     }
 
+    [Fact]
+    public async Task ImportAsync_AcceptsV3InGameUiDescriptor()
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes("ui package payload");
+        var manifest = CreateManifest(
+            Convert.ToHexString(SHA256.HashData(bytes)),
+            bytes.LongLength,
+            "ui/ui.dat",
+            "mods/ui.dat") with
+        {
+            SignatureVersion = 3,
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true,
+            Ui = CreateUiDescriptor()
+        };
+        var archive = CreateArchive(manifest, ("ui/ui.dat", bytes));
+
+        var imported = await new PackageArchiveService(_packagesRoot).ImportAsync(archive);
+
+        Assert.Equal(3, imported.Manifest.SignatureVersion);
+        Assert.NotNull(imported.Manifest.Ui);
+        Assert.Equal("1.0.3889.0", imported.Manifest.Ui!.VerifiedGameBuild);
+    }
+
+    [Fact]
+    public async Task ImportAsync_RejectsUiMetadataWithoutSignatureV3()
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes("ui package payload");
+        var manifest = CreateManifest(
+            Convert.ToHexString(SHA256.HashData(bytes)),
+            bytes.LongLength,
+            "ui/ui.dat",
+            "mods/ui.dat") with
+        {
+            SignatureVersion = 2,
+            ImpactAreas = new[] { "interface" },
+            CompatibilityVerified = true,
+            Ui = CreateUiDescriptor()
+        };
+        var archive = CreateArchive(manifest, ("ui/ui.dat", bytes));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new PackageArchiveService(_packagesRoot).ImportAsync(archive));
+    }
+
+    [Fact]
+    public async Task ImportAsync_RejectsInterfaceImpactWithoutUiDescriptor()
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes("ui package payload");
+        var manifest = CreateManifest(
+            Convert.ToHexString(SHA256.HashData(bytes)),
+            bytes.LongLength,
+            "ui/ui.dat",
+            "mods/ui.dat") with
+        {
+            SignatureVersion = 3,
+            ImpactAreas = new[] { "interface" }
+        };
+        var archive = CreateArchive(manifest, ("ui/ui.dat", bytes));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new PackageArchiveService(_packagesRoot).ImportAsync(archive));
+    }
+
+    private static UiPackageDescriptor CreateUiDescriptor() => new(
+        new[] { "hud" },
+        "GameScript",
+        new[] { "KeyboardMouse", "Controller" },
+        new[] { "1920x1080" },
+        new[] { "KeyboardNavigation", "ControllerNavigation", "VisibleFocus" },
+        true, true, true, true, true,
+        "https://example.com/ui-compatibility",
+        "https://example.com/ui-rollback",
+        "1.0.3889.0",
+        new string('A', 64));
+
     private PackageManifest CreateManifest(
         string hash, long size, string source, string destination) =>
         new(
