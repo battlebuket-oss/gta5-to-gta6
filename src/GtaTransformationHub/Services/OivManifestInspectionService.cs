@@ -68,6 +68,7 @@ public static class OivManifestInspectionService
         var name = RequiredValue(metadata, "name", "OIV package name");
         var authorNode = ExactlyOneChild(metadata, "author", "metadata/author");
         var author = RequiredValue(authorNode, "displayName", "metadata/author/displayName");
+        _ = RequiredValue(metadata, "description", "metadata/description");
         var versionNode = ExactlyOneChild(metadata, "version", "metadata/version");
         var major = RequiredInteger(versionNode, "major", "metadata/version/major");
         var minor = RequiredInteger(versionNode, "minor", "metadata/version/minor");
@@ -231,6 +232,7 @@ public static class OivManifestInspectionService
                     AddOperation(operations, new OivOperationSummary("text:replace", containingArchive, target, null));
                     break;
                 case "delete":
+                    _ = RequiredAttribute(element, "line");
                     ValidateTextCondition(RequiredAttribute(element, "condition"));
                     AddOperation(operations, new OivOperationSummary("text:delete", containingArchive, target, null));
                     break;
