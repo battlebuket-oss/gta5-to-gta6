@@ -57,6 +57,13 @@
               <Button x:Name="ImportArchiveButton" Content="IMPORT MOD ARCHIVE FOR REVIEW" Padding="12,8" Margin="0,0,8,0" Click="ImportArchiveButton_Click"/>
               <Button x:Name="RefreshLibraryButton" Content="REFRESH LIBRARY" Padding="12,8" Click="RefreshLibraryButton_Click"/>
             </StackPanel>
+            <TextBlock Text="OPTIONAL OIV INSTALLER BRIDGE" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,14,0,6"/>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="SelectOivInstallerButton" Content="SELECT OIV ENGINE" Padding="10,7" Margin="0,0,8,0" Click="SelectOivInstallerButton_Click"/>
+              <Button x:Name="OpenImportedOivButton" Content="OPEN IMPORTED OIV" Padding="10,7" Margin="0,0,8,0" IsEnabled="False" Click="OpenImportedOivButton_Click"/>
+              <Button x:Name="GetOivInstallerButton" Content="GET OIV ENGINE" Padding="10,7" Click="GetOivInstallerButton_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="OivEngineStatusText" Text="No external installer selected. The Hub does not bundle third-party installers." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
           </StackPanel>
           <TextBlock Text="LOCAL IMPORTED PACKAGES" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,4,0,8"/>
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
