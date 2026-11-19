@@ -52,6 +52,10 @@ public sealed class ModArchiveImportService
         Directory.CreateDirectory(root);
         EnsureNoReparsePointAncestors(root);
 
+        var sourceArchiveInfo = new FileInfo(source);
+        if (sourceArchiveInfo.Length <= 0 || sourceArchiveInfo.Length > _limits.MaximumTotalBytes)
+            throw new InvalidDataException("The source archive is empty or exceeds the configured archive-size limit.");
+
         await using var archiveStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read);
         var archiveHash = Convert.ToHexString(
             await SHA256.HashDataAsync(archiveStream, cancellationToken));
@@ -149,6 +153,20 @@ public sealed class ModArchiveImportService
                 }
             }
 
+            var originalArchiveRelativePath = "source-package" + extension.ToLowerInvariant();
+            var originalArchivePath = Path.Combine(staging, originalArchiveRelativePath);
+            archiveStream.Position = 0;
+            var copiedArchiveHash = await CopyAndHashAsync(
+                archiveStream, originalArchivePath, _limits.MaximumTotalBytes, cancellationToken);
+            if (!string.Equals(copiedArchiveHash, archiveHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The retained source archive hash differs from the archive that was inspected.");
+
+            var retainedArchiveSize = new FileInfo(originalArchivePath).Length;
+            files.Add(new ImportedModFile(
+                originalArchiveRelativePath,
+                retainedArchiveSize,
+                copiedArchiveHash));
+
             var manifest = new ImportedModManifest(
                 1,
                 metadata,
@@ -156,7 +174,8 @@ public sealed class ModArchiveImportService
                 DateTimeOffset.UtcNow,
                 CatalogueStatus.Researching,
                 files,
-                oivInspection);
+                oivInspection,
+                originalArchiveRelativePath);
 
             var manifestPath = Path.Combine(staging, "package-manifest.json");
             await using (var manifestStream = new FileStream(
@@ -177,7 +196,8 @@ public sealed class ModArchiveImportService
             return new ModArchiveImportResult(
                 metadata.PackageId, destination,
                 Path.Combine(destination, "package-manifest.json"),
-                archiveHash, files, oivInspection);
+                archiveHash, files, oivInspection,
+                Path.Combine(destination, originalArchiveRelativePath));
         }
         catch
         {
@@ -296,6 +316,35 @@ public sealed class ModArchiveImportService
         }
     }
 
+    private static async Task<string> CopyAndHashAsync(
+        Stream input,
+        string destination,
+        long maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        await using var output = new FileStream(
+            destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, useAsync: true);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[65536];
+        long total = 0;
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read == 0)
+                break;
+
+            total = checked(total + read);
+            if (total > maximumBytes)
+                throw new InvalidDataException("The retained source archive exceeds the configured size limit.");
+
+            hash.AppendData(buffer, 0, read);
+            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
+
+        await output.FlushAsync(cancellationToken);
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
     private static async Task<string> ExtractAndHashAsync(
         ZipArchiveEntry entry,
         string destination,
@@ -345,7 +394,8 @@ public sealed record ModArchiveImportResult(
     string ManifestPath,
     string ArchiveSha256,
     IReadOnlyList<ImportedModFile> Files,
-    OivManifestInspectionResult? OivInspection = null);
+    OivManifestInspectionResult? OivInspection = null,
+    string? OriginalArchiveRelativePath = null);
 
 public sealed record ImportedModManifest(
     int SchemaVersion,
@@ -354,7 +404,8 @@ public sealed record ImportedModManifest(
     DateTimeOffset ImportedAt,
     CatalogueStatus Status,
     IReadOnlyList<ImportedModFile> Files,
-    OivManifestInspectionResult? OivInspection = null);
+    OivManifestInspectionResult? OivInspection = null,
+    string? OriginalArchiveRelativePath = null);
 
 public sealed record ModArchiveImportLimits(
     int MaximumEntries = 2500,
