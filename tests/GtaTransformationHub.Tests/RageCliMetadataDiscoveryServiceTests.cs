@@ -45,7 +45,7 @@ public sealed class RageCliMetadataDiscoveryServiceTests
             @"C:\Games\GTA V\GTA5.exe",
             @"C:\Games\GTA V",
             "*popgroups*",
-            200);
+            10_000);
 
         Assert.Equal("--no-update-check", arguments[0]);
         Assert.Equal("--exe", arguments[1]);
@@ -54,7 +54,7 @@ public sealed class RageCliMetadataDiscoveryServiceTests
         Assert.Equal(Path.GetFullPath(@"C:\Games\GTA V"), arguments[4]);
         Assert.Equal("*popgroups*", arguments[5]);
         Assert.Contains("--json", arguments);
-        Assert.Equal("200", arguments[^1]);
+        Assert.Equal("10000", arguments[^1]);
     }
 
     [Theory]
@@ -69,7 +69,7 @@ public sealed class RageCliMetadataDiscoveryServiceTests
                 @"C:\Games\GTA V\GTA5.exe",
                 @"C:\Games\GTA V",
                 pattern,
-                200));
+                10_000));
     }
 
     [Fact]
@@ -79,6 +79,18 @@ public sealed class RageCliMetadataDiscoveryServiceTests
             RageCliMetadataDiscoveryService.BuildSearchArguments("GTA5.exe", ".", "*.ymt", 0));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             RageCliMetadataDiscoveryService.BuildSearchArguments("GTA5.exe", ".", "*.ymt", 1001));
+    }
+
+    [Fact]
+    public void BuildSearchArguments_AcceptsLargerBoundedSearchLimit()
+    {
+        var arguments = RageCliMetadataDiscoveryService.BuildSearchArguments(
+            @"C:\Games\GTA V\GTA5.exe",
+            @"C:\Games\GTA V",
+            "*.pso",
+            10_000);
+
+        Assert.Equal("10000", arguments[^1]);
     }
 
     [Fact]
