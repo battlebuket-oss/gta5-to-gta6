@@ -26,9 +26,10 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
                     <name>Example HUD</name>
                     <version><major>2</major><minor>8</minor><tag>Legacy</tag></version>
                     <author><displayName>Example Author</displayName></author>
+                    <description><![CDATA[Example package description]]></description>
                     <licence>Personal use</licence>
                   </metadata>
-                  <colors><headerBackground>$FF000000</headerBackground><iconBackground>$FFFFFFFF</iconBackground></colors>
+                  <colors><headerBackground useBlackTextColor="False">$FF000000</headerBackground><iconBackground>$FFFFFFFF</iconBackground></colors>
                   <content>
                     <add source="scripts/example.asi">scripts/example.asi</add>
                     <archive path="update/update.rpf" type="RPF7" createIfNotExist="False">
@@ -93,7 +94,9 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
                 <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
                   <metadata><name>Unsafe</name><version><major>1</major><minor>0</minor></version>
                     <author><displayName>Author</displayName></author></metadata>
-                  <colors/><content><delete>../../outside.txt</delete></content>
+                  <description><![CDATA[Traversal test]]></description>
+                  <colors><headerBackground useBlackTextColor="False">$FF000000</headerBackground><iconBackground>$FFFFFFFF</iconBackground></colors>
+                  <content><delete>../../outside.txt</delete></content>
                 </package>
                 """));
 
@@ -127,7 +130,9 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
                 <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
                   <metadata><name>Import Test</name><version><major>1</major><minor>0</minor></version>
                     <author><displayName>Author</displayName></author><licence>Personal use</licence></metadata>
-                  <colors/><content><add source="example.ini">example.ini</add></content>
+                  <description><![CDATA[Import test description]]></description>
+                  <colors><headerBackground useBlackTextColor="False">$FF000000</headerBackground><iconBackground>$FFFFFFFF</iconBackground></colors>
+                  <content><add source="example.ini">example.ini</add></content>
                 </package>
                 """),
             ("content/9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43/example.ini", "setting=true"));
