@@ -129,11 +129,6 @@ public sealed class RageCliMetadataPayloadService
             .ToArray();
         var errors = new List<string>();
         var hasMoreBatches = batch.NextCandidateIndex < eligible.Length;
-        if (hasMoreBatches)
-            errors.Add("This batch contains " + selected.Length + " candidate(s). " +
-                       (eligible.Length - batch.NextCandidateIndex) +
-                       " candidate(s) remain; run the next batch using index " +
-                       batch.NextCandidateIndex + ".");
 
         Directory.CreateDirectory(_dataRoot);
         EnsureDirectoryIsNotReparsePoint(_dataRoot);
