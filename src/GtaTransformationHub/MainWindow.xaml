@@ -54,6 +54,10 @@
             <TextBlock Text="Import existing mod archives for inspection. Imported packages remain research-only until their build support, licence, hashes, conflicts and restore procedure are verified." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
             <TextBlock x:Name="LibrarySummaryText" Text="Loading local research library..." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,10,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button x:Name="ManageModsButton" Content="MANAGE MOD TOGGLES" Padding="12,8" Margin="0,0,8,0" Click="ManageModsButton_Click"/>
+              <TextBlock Text="Saved ON/OFF loadout · installation is separately gated" Foreground="{StaticResource SecondaryText}" FontSize="10" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
               <Button x:Name="ImportArchiveButton" Content="IMPORT MOD ARCHIVE FOR REVIEW" Padding="12,8" Margin="0,0,8,0" Click="ImportArchiveButton_Click"/>
               <Button x:Name="RefreshLibraryButton" Content="REFRESH LIBRARY" Padding="12,8" Click="RefreshLibraryButton_Click"/>
             </StackPanel>
