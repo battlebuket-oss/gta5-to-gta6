@@ -1,0 +1,399 @@
+using System.Security.Cryptography;
+using GtaTransformationHub.Models;
+
+namespace GtaTransformationHub.Services;
+
+public sealed record PackagePreflightReport(
+    bool IsValid,
+    IReadOnlyList<string> Errors,
+    IReadOnlyList<string> Warnings,
+    int FilesToDeploy);
+
+/// <summary>
+/// Resolves and verifies a complete set of user-imported packages before passing
+/// their declared data files to the transactional copy engine.
+/// </summary>
+public sealed class PackageDeploymentCoordinator
+{
+    private readonly TransactionalDeploymentService _deploymentService;
+    private readonly PackageSignatureService _signatureService;
+    private readonly string _stagingRoot;
+
+    public PackageDeploymentCoordinator(
+        TransactionalDeploymentService? deploymentService = null,
+        string? stagingRoot = null,
+        PackageSignatureService? signatureService = null)
+    {
+        _deploymentService = deploymentService ?? new TransactionalDeploymentService();
+        _signatureService = signatureService ?? new PackageSignatureService();
+        _stagingRoot = Path.GetFullPath(stagingRoot ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GtaTransformationHub", "deployment-staging"));
+    }
+
+    public async Task<PackagePreflightReport> ValidateAsync(
+        GameInstallation installation,
+        IReadOnlyCollection<ImportedPackage> selectedPackages,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = new List<string>();
+        var warnings = new List<string>();
+        var packageMap = new Dictionary<string, ImportedPackage>(StringComparer.OrdinalIgnoreCase);
+        var destinations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var filesToDeploy = 0;
+
+        if (selectedPackages is null || selectedPackages.Count == 0)
+            errors.Add("Select at least one imported package.");
+
+        string? actualUiExecutableSha256 = null;
+        if (selectedPackages?.Any(imported => imported?.Manifest?.Ui is not null) == true)
+        {
+            try
+            {
+                actualUiExecutableSha256 = await GameExecutableFingerprintService.ComputeSha256Async(
+                    installation.ExecutablePath, cancellationToken);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                errors.Add("The exact GTA5.exe fingerprint could not be verified for UI package preflight: " + exception.Message);
+            }
+        }
+
+        foreach (var imported in selectedPackages ?? Array.Empty<ImportedPackage>())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (imported?.Manifest is null)
+            {
+                errors.Add("The package library contains an empty package entry.");
+                continue;
+            }
+
+            var manifest = imported.Manifest;
+            foreach (var storyError in StoryContentValidationService.Validate(manifest))
+                errors.Add(storyError);
+            foreach (var ecologyError in EcologyCompatibilityService.Validate(manifest))
+                errors.Add(ecologyError);
+            foreach (var uiError in UiPackageValidationService.Validate(manifest))
+                errors.Add(uiError);
+            if (string.Equals(manifest.PackageFormat, "OIV-2.2", StringComparison.OrdinalIgnoreCase))
+                errors.Add(manifest.Name + " uses the restricted OIV import path. OIV deployment remains disabled until a complete audited archive adapter, exact-build test evidence, and package-bound rollback validation are available. A manifest flag cannot self-approve OIV deployment.");
+            var signature = await _signatureService.VerifyAsync(manifest, cancellationToken);
+            if (manifest.Ui is not null)
+            {
+                if (!manifest.CompatibilityVerified)
+                    errors.Add(manifest.Name + " is an in-game UI package but is not marked compatibility-verified.");
+                if (manifest.SignatureVersion < 3)
+                    errors.Add(manifest.Name + " must use signature version 3 to authenticate its UI replacement contract.");
+                if (signature.Status != PackageSignatureStatus.TrustedPublisher)
+                    errors.Add(manifest.Name + " is an in-game UI package and requires a valid signature from a locally trusted publisher.");
+                if (!string.Equals(manifest.Ui.VerifiedGameBuild, installation.BuildVersion, StringComparison.OrdinalIgnoreCase) ||
+                    actualUiExecutableSha256 is null ||
+                    !string.Equals(manifest.Ui.VerifiedGta5ExeSha256, actualUiExecutableSha256, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " was validated against a different exact GTA5.exe build or SHA-256 fingerprint.");
+            }
+            switch (signature.Status)
+            {
+                case PackageSignatureStatus.Invalid:
+                    errors.Add(manifest.Name + " has an invalid publisher signature: " + signature.Message);
+                    break;
+                case PackageSignatureStatus.Unsigned:
+                    warnings.Add(manifest.Name + " is unsigned. Its file hashes do not authenticate the publisher.");
+                    break;
+                case PackageSignatureStatus.UnknownPublisher:
+                    warnings.Add(manifest.Name + " is signed by an untrusted publisher key. Verify the fingerprint independently before installation.");
+                    break;
+            }
+
+            if (!PackageIdValidator.IsValid(manifest.Id))
+            {
+                errors.Add("An imported package has an invalid ID.");
+                continue;
+            }
+
+            if (!packageMap.TryAdd(manifest.Id, imported))
+            {
+                errors.Add("The selection contains more than one version of package " + manifest.Id + ".");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(manifest.Name) ||
+                string.IsNullOrWhiteSpace(manifest.Author))
+                errors.Add(manifest.Id + " is missing its package name or author.");
+
+            if (!string.IsNullOrWhiteSpace(manifest.ExclusiveGroup) &&
+                !PackageIdValidator.IsValid(manifest.ExclusiveGroup))
+                errors.Add(manifest.Name + " has an invalid exclusive group ID.");
+
+            if (!Uri.TryCreate(manifest.SourceUri, UriKind.Absolute, out var sourceUri) ||
+                sourceUri.Scheme != Uri.UriSchemeHttps)
+                errors.Add(manifest.Name + " does not declare a valid HTTPS author/source page.");
+
+            var licenceText = manifest.Licence ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(licenceText))
+                errors.Add(manifest.Name + " is missing its licence/permission statement.");
+
+            if (!Version.TryParse(manifest.Version, out _))
+                errors.Add(manifest.Name + " has an invalid numeric package version.");
+
+            if (!string.Equals(manifest.GameTarget, "GTA V Legacy", StringComparison.Ordinal))
+                errors.Add(manifest.Name + " does not target GTA V Legacy.");
+
+            if (!Version.TryParse(manifest.MinimumGameBuild, out var minimum) ||
+                !Version.TryParse(manifest.MaximumGameBuild, out var maximum) ||
+                !Version.TryParse(installation.BuildVersion, out var current) ||
+                minimum > maximum)
+            {
+                errors.Add(manifest.Name + " has an invalid game-build compatibility range.");
+            }
+            else if (current < minimum || current > maximum)
+            {
+                errors.Add(manifest.Name + " is not compatible with GTA V build " + installation.BuildVersion + ".");
+            }
+
+            if (manifest.Dependencies is null || manifest.Conflicts is null || manifest.Files is null)
+            {
+                errors.Add(manifest.Name + " has incomplete dependency, conflict or file declarations.");
+                continue;
+            }
+
+            foreach (var dependency in manifest.Dependencies)
+            {
+                if (!PackageIdValidator.IsValid(dependency) ||
+                    dependency.Equals(manifest.Id, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " contains an invalid dependency ID.");
+            }
+
+            foreach (var conflict in manifest.Conflicts)
+            {
+                if (!PackageIdValidator.IsValid(conflict) ||
+                    conflict.Equals(manifest.Id, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " contains an invalid conflict ID.");
+            }
+
+            foreach (var file in manifest.Files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (file is null)
+                {
+                    errors.Add(manifest.Name + " contains an empty file entry.");
+                    continue;
+                }
+
+                string relativeSource;
+                string relativeDestination;
+                try
+                {
+                    relativeSource = PackageArchiveService.ValidateArchivePath(file.SourcePath, isDirectory: false);
+                    relativeDestination = PackageArchiveService.ValidateArchivePath(file.DestinationPath, isDirectory: false);
+                    ProtectedGamePathPolicy.ValidateDestination(relativeDestination);
+                }
+                catch (InvalidDataException exception)
+                {
+                    errors.Add(manifest.Name + ": " + exception.Message);
+                    continue;
+                }
+
+                if (!destinations.Add(relativeDestination))
+                    errors.Add("Multiple selected packages write to the same destination: " + relativeDestination);
+
+
+                if (file.SizeBytes < 0 || file.SizeBytes > 512L * 1024 * 1024 ||
+                    string.IsNullOrWhiteSpace(file.Sha256) ||
+                    file.Sha256.Length != 64 ||
+                    !file.Sha256.All(Uri.IsHexDigit))
+                {
+                    errors.Add(manifest.Name + " contains a file with invalid size or SHA-256 metadata.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(imported.PackageRoot))
+                {
+                    errors.Add(manifest.Name + " has no local package directory.");
+                    continue;
+                }
+
+                var packageRoot = Path.GetFullPath(imported.PackageRoot);
+                var sourcePath = Path.GetFullPath(Path.Combine(packageRoot, relativeSource));
+                var rootPrefix = Path.TrimEndingDirectorySeparator(packageRoot) + Path.DirectorySeparatorChar;
+                if (!sourcePath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(manifest.Name + " contains a file path outside its package directory.");
+                    continue;
+                }
+
+                if (HasReparsePointBetween(packageRoot, sourcePath) || !File.Exists(sourcePath))
+                {
+                    errors.Add(manifest.Name + " contains a missing file or reparse-point path: " + relativeSource);
+                    continue;
+                }
+
+                var fileInfo = new FileInfo(sourcePath);
+                if (fileInfo.Length != file.SizeBytes)
+                {
+                    errors.Add(manifest.Name + " has an imported file with an unexpected size: " + relativeSource);
+                    continue;
+                }
+
+                await using var stream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
+                if (!hash.Equals(file.Sha256, StringComparison.OrdinalIgnoreCase))
+                    errors.Add(manifest.Name + " has an imported file that failed SHA-256 verification: " + relativeSource);
+                else
+                    filesToDeploy++;
+            }
+
+            if (licenceText.Contains("unknown", StringComparison.OrdinalIgnoreCase) ||
+                licenceText.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
+                licenceText.Contains("review", StringComparison.OrdinalIgnoreCase) ||
+                licenceText.Contains("prohibit", StringComparison.OrdinalIgnoreCase))
+                warnings.Add(manifest.Name + " has licence terms requiring manual review.");
+
+            if (manifest.Files.Count == 0)
+                errors.Add(manifest.Name + " declares no deployable files.");
+        }
+
+        foreach (var uiSelectionError in UiPackageValidationService.ValidateSelection(packageMap.Values.ToArray()))
+            errors.Add(uiSelectionError);
+
+        foreach (var imported in packageMap.Values)
+        {
+            var manifest = imported.Manifest;
+            if (manifest.Dependencies is null || manifest.Conflicts is null)
+                continue;
+
+            foreach (var dependency in manifest.Dependencies)
+            {
+                if (!packageMap.ContainsKey(dependency))
+                    errors.Add(manifest.Name + " requires package " + dependency + ".");
+            }
+
+            foreach (var conflict in manifest.Conflicts)
+            {
+                if (packageMap.ContainsKey(conflict))
+                    errors.Add(manifest.Name + " conflicts with package " + conflict + ".");
+                else if (packageMap.Values.Any(candidate =>
+                             !string.IsNullOrWhiteSpace(candidate.Manifest.ExclusiveGroup) &&
+                             candidate.Manifest.ExclusiveGroup.Equals(conflict, StringComparison.OrdinalIgnoreCase)))
+                    errors.Add(manifest.Name + " conflicts with the selected exclusive group " + conflict + ".");
+            }
+        }
+
+        var duplicateGroups = packageMap.Values
+            .Where(imported => !string.IsNullOrWhiteSpace(imported.Manifest.ExclusiveGroup))
+            .GroupBy(imported => imported.Manifest.ExclusiveGroup!, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1);
+        foreach (var group in duplicateGroups)
+            errors.Add("Only one package may be selected in the '" + group.Key + "' group.");
+
+        if (filesToDeploy == 0)
+            errors.Add("The validated selection contains no deployable files.");
+
+        return new PackagePreflightReport(errors.Count == 0, errors, warnings, filesToDeploy);
+    }
+
+    public Task<DeploymentResult> ApplyAsync(
+        GameInstallation installation,
+        IReadOnlyCollection<ImportedPackage> selectedPackages,
+        CancellationToken cancellationToken = default) =>
+        ApplyAsync(installation, selectedPackages, selectedPackages, cancellationToken);
+
+    public async Task<DeploymentResult> ApplyAsync(
+        GameInstallation installation,
+        IReadOnlyCollection<ImportedPackage> selectedPackages,
+        IReadOnlyCollection<ImportedPackage> packagesToDeploy,
+        CancellationToken cancellationToken = default)
+    {
+        var report = await ValidateAsync(installation, selectedPackages, cancellationToken);
+        if (!report.IsValid)
+            throw new InvalidOperationException(
+                "Package preflight failed: " + string.Join(" ", report.Errors));
+
+        if (packagesToDeploy.Count == 0)
+            return new DeploymentResult(string.Empty, 0, string.Empty);
+
+        var selectedKeys = selectedPackages
+            .Select(GetPackageKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (packagesToDeploy.Any(package => !selectedKeys.Contains(GetPackageKey(package))))
+            throw new InvalidOperationException("The deployment subset contains a package outside the validated profile.");
+
+        var stagePath = Path.Combine(_stagingRoot, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stagePath);
+
+        try
+        {
+            var deploymentFiles = new List<DeploymentFile>();
+            foreach (var imported in packagesToDeploy)
+            {
+                foreach (var file in imported.Manifest.Files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var sourceRelative = PackageArchiveService.ValidateArchivePath(
+                        file.SourcePath, isDirectory: false);
+                    var sourceRoot = Path.GetFullPath(imported.PackageRoot);
+                    var sourcePath = Path.GetFullPath(Path.Combine(sourceRoot, sourceRelative));
+                    var packagePrefix = Path.TrimEndingDirectorySeparator(sourceRoot) + Path.DirectorySeparatorChar;
+                    if (!sourcePath.StartsWith(packagePrefix, StringComparison.OrdinalIgnoreCase) ||
+                        HasReparsePointBetween(sourceRoot, sourcePath))
+                        throw new InvalidDataException("A package source path escaped its import directory.");
+
+                    var stagedRelative = Path.Combine(imported.Manifest.Id, sourceRelative);
+                    var stagedPath = Path.GetFullPath(Path.Combine(stagePath, stagedRelative));
+                    var stagingPrefix = Path.TrimEndingDirectorySeparator(stagePath) + Path.DirectorySeparatorChar;
+                    if (!stagedPath.StartsWith(stagingPrefix, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("A package source path escaped the deployment staging directory.");
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(stagedPath)!);
+                    File.Copy(sourcePath, stagedPath, overwrite: false);
+
+                    deploymentFiles.Add(new DeploymentFile(
+                        imported.Manifest.Id,
+                        stagedRelative,
+                        file.DestinationPath,
+                        file.Sha256,
+                        imported.Manifest.Version));
+                }
+            }
+
+            return await _deploymentService.ApplyAsync(
+                installation.RootPath,
+                stagePath,
+                deploymentFiles,
+                cancellationToken);
+        }
+        finally
+        {
+            if (Directory.Exists(stagePath))
+                Directory.Delete(stagePath, recursive: true);
+        }
+    }
+
+    private static string GetPackageKey(ImportedPackage package) =>
+        package.Manifest.Id + "\u001f" + package.Manifest.Version + "\u001f" +
+        Path.GetFullPath(package.PackageRoot);
+
+    private static bool HasReparsePointBetween(string root, string path)
+    {
+        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        var currentPath = Path.GetFullPath(path);
+
+        while (currentPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
+        {
+            if (Directory.Exists(currentPath) &&
+                (File.GetAttributes(currentPath) & FileAttributes.ReparsePoint) != 0)
+                return true;
+
+            if (currentPath.Equals(rootPath, StringComparison.OrdinalIgnoreCase))
+                return File.Exists(currentPath) &&
+                       (File.GetAttributes(currentPath) & FileAttributes.ReparsePoint) != 0;
+
+            var parent = Path.GetDirectoryName(currentPath);
+            if (string.IsNullOrEmpty(parent))
+                return true;
+
+            currentPath = parent;
+        }
+
+        return true;
+    }
+}

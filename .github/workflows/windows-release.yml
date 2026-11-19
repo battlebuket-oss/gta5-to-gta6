@@ -1,0 +1,206 @@
+name: Windows release package
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'main'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Installer version, for example 0.1.0-preview.1'
+        required: true
+        default: '0.1.0-preview.1'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  SIGNING_CONFIGURED: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' && secrets.WINDOWS_SIGNING_PFX_PASSWORD != '' }}
+
+jobs:
+  package:
+    name: Build, test and package Windows x64
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $version = '${{ github.ref_name }}'.TrimStart('v')
+          } elseif (-not [string]::IsNullOrWhiteSpace('${{ inputs.version }}')) {
+            $version = '${{ inputs.version }}'
+          } else {
+            $version = '0.1.0-dev.${{ github.run_number }}'
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') {
+            throw "Invalid semantic version: $version"
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Validate mod catalogue
+        shell: pwsh
+        run: ./scripts/Validate-Catalogue.ps1
+
+      - name: Test catalogue validation rules
+        shell: pwsh
+        run: ./scripts/Test-CatalogueValidator.ps1
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj
+
+      - name: Build with warnings as errors
+        run: dotnet build tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj --configuration Release --no-restore -warnaserror
+
+      - name: Run automated tests
+        run: dotnet test tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj --configuration Release --no-build --logger 'trx;LogFileName=tests.trx'
+
+      - name: Publish self-contained Windows x64 application
+        run: dotnet publish src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/win-x64
+
+      - name: Verify publish output
+        shell: pwsh
+        run: |
+          $exe = 'artifacts/win-x64/GtaTransformationHub.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Expected application executable is missing: $exe" }
+          if ((Get-Item -LiteralPath $exe).Length -lt 100KB) { throw 'Published executable is unexpectedly small.' }
+          Write-Host "Application executable size: $((Get-Item -LiteralPath $exe).Length) bytes"
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress --yes
+
+      - name: Sign application executable
+        if: env.SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: ./scripts/Sign-WindowsArtifact.ps1 -ArtifactPath 'artifacts/win-x64/GtaTransformationHub.exe'
+
+      - name: Reject unsigned public release
+        if: startsWith(github.ref, 'refs/tags/v') && env.SIGNING_CONFIGURED != 'true'
+        shell: pwsh
+        run: throw 'A public release tag requires a configured Windows code-signing certificate.'
+
+      - name: Compile Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'artifacts/installer' | Out-Null
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $iscc -PathType Leaf)) { throw "Inno Setup compiler not found: $iscc" }
+          & $iscc '/DAppVersion=${{ steps.version.outputs.value }}' 'installer/GtaTransformationHub.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+
+      - name: Smoke-test installer installation and removal
+        shell: pwsh
+        run: |
+          $setup = 'artifacts/installer/GtaTransformationHub-Setup-${{ steps.version.outputs.value }}.exe'
+          if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) { throw "Installer is missing: $setup" }
+
+          $installRoot = Join-Path $env:RUNNER_TEMP ('GtaTransformationHub-Smoke-' + [Guid]::NewGuid().ToString('N'))
+          $installLog = Join-Path $env:RUNNER_TEMP 'GtaTransformationHub-Setup-Smoke.log'
+          $setupPath = (Resolve-Path -LiteralPath $setup).Path
+          $installProcess = Start-Process -FilePath $setupPath -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+            "/DIR=$installRoot", "/LOG=$installLog"
+          ) -Wait -PassThru -WindowStyle Hidden
+          if ($installProcess.ExitCode -ne 0) {
+            if (Test-Path -LiteralPath $installLog) { Get-Content -LiteralPath $installLog -Tail 80 }
+            throw "Silent installer execution failed with exit code $($installProcess.ExitCode)."
+          }
+
+          $installedExe = Join-Path $installRoot 'GtaTransformationHub.exe'
+          $installedCatalogue = Join-Path $installRoot 'Catalogue\catalogue.json'
+          $uninstaller = Join-Path $installRoot 'unins000.exe'
+          if (-not (Test-Path -LiteralPath $installedExe -PathType Leaf)) { throw 'Installed application executable is missing.' }
+          if ((Get-Item -LiteralPath $installedExe).Length -lt 100KB) { throw 'Installed application executable is unexpectedly small.' }
+          if (-not (Test-Path -LiteralPath $installedCatalogue -PathType Leaf)) { throw 'Installed mod catalogue is missing.' }
+          if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'Per-user uninstaller was not installed.' }
+
+          $uninstallProcess = Start-Process -FilePath $uninstaller -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          ) -Wait -PassThru -WindowStyle Hidden
+          if ($uninstallProcess.ExitCode -ne 0) {
+            throw "Silent uninstaller execution failed with exit code $($uninstallProcess.ExitCode)."
+          }
+          if (Test-Path -LiteralPath $installedExe) { throw 'Application executable remains after uninstallation.' }
+          Write-Host 'Installer smoke test passed: application and catalogue installed, then removed cleanly.'
+  
+      - name: Sign installer
+        if: env.SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: ./scripts/Sign-WindowsArtifact.ps1 -ArtifactPath 'artifacts/installer/GtaTransformationHub-Setup-${{ steps.version.outputs.value }}.exe'
+
+      - name: Generate SHA-256 checksums
+        shell: pwsh
+        run: |
+          $files = @(
+            Get-ChildItem 'artifacts/win-x64' -File -Recurse
+            Get-ChildItem 'artifacts/installer' -File -Recurse
+          )
+          if ($files.Count -eq 0) { throw 'No release files were produced.' }
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $relative = $file.FullName.Replace((Resolve-Path 'artifacts').Path + [IO.Path]::DirectorySeparatorChar, '')
+            "$hash  $relative"
+          }
+          $lines | Set-Content 'artifacts/SHA256SUMS.txt' -Encoding utf8
+
+      - name: Upload installer and portable application
+        uses: actions/upload-artifact@v6
+        with:
+          name: gta-transformation-hub-${{ steps.version.outputs.value }}-windows-x64
+          path: |
+            artifacts/win-x64/**
+            artifacts/installer/*.exe
+            artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish tagged GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified package artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: gta-transformation-hub-${{ needs.package.outputs.version }}-windows-x64
+          path: artifacts
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: GTA V Transformation Hub ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/installer/*.exe
+            artifacts/SHA256SUMS.txt

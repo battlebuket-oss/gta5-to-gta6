@@ -1,0 +1,268 @@
+using GtaTransformationHub.Services;
+using Xunit;
+
+namespace GtaTransformationHub.Tests;
+
+public sealed class RageCliEcologyCandidateAnalysisServiceTests
+{
+    [Fact]
+    public void ValidateDumpBatchContract_AcceptsFirstBatchWhenMoreCandidatesRemain()
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 0, 50, 50, true, true,
+            Enumerable.Range(0, 50).ToArray(),
+            Array.Empty<string>());
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_AcceptsFinalPartialBatch()
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 100, 135, 35, false, true,
+            Enumerable.Range(100, 35).ToArray(),
+            Array.Empty<string>());
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_AllowsPartialFailedBatchAndKeepsFirstMissingOffset()
+    {
+        var dumped = Enumerable.Range(50, 50).Where(index => index != 52 && index != 88).ToArray();
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 50, 52, 50, true, false,
+            dumped,
+            new[] { "Two metadata resources could not be dumped." });
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_RejectsPartialBatchWithoutRecordedErrors()
+    {
+        var indexes = Enumerable.Range(0, 50).Where(index => index != 4).ToArray();
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 0, 4, 50, true, false,
+            indexes,
+            Array.Empty<string>());
+
+        Assert.Contains(errors, error => error.Contains("must record at least one", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_RejectsMissingErrorCollection()
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 0, 50, 50, true, true,
+            Enumerable.Range(0, 50).ToArray(),
+            null);
+
+        Assert.Contains(errors, error => error.Contains("error collection is missing", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(1, 135, 0, 50, 50, true, true)]
+    [InlineData(3, 135, 0, 50, 50, false, true)]
+    [InlineData(3, 135, 0, 40, 50, true, true)]
+    [InlineData(3, 135, 0, 50, 49, true, true)]
+    [InlineData(3, 135, 50, 100, 50, true, false)]
+    public void ValidateDumpBatchContract_RejectsInconsistentBatchMetadata(
+        int schemaVersion,
+        int total,
+        int start,
+        int next,
+        int selected,
+        bool more,
+        bool complete)
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            schemaVersion, total, start, next, selected, more, complete,
+            Enumerable.Range(start, Math.Max(0, selected)).ToArray(),
+            Array.Empty<string>());
+
+        Assert.NotEmpty(errors);
+    }
+
+    [Theory]
+    [InlineData("popgroups.ymt", "CPopulationGroup", "$/pedModels/0/modelName", "modelName", "Population")]
+    [InlineData("water.xml", "CWaterConfig", "$/water/waveHeight", "waveHeight", "Water")]
+    [InlineData("animals.ymt", "CAnimalModel", "$/animal/modelName", "modelName", "TerrestrialAnimal")]
+    [InlineData("fish.ymt", "CFishModel", "$/fish/modelName", "modelName", "AquaticAnimal")]
+    [InlineData("vegetation.ymt", "CPlantModel", "$/plant/modelName", "modelName", "TerrestrialPlant")]
+    [InlineData("underwater.ymt", "CAquaticPlantModel", "$/underwater/kelp/modelName", "modelName", "AquaticPlant")]
+    [InlineData("habitats.ymt", "CHabitatDefinition", "$/habitat/name", "name", "Habitat")]
+    public void ClassifyCandidateField_DetectsReviewCategoryFromPathAndMetadataContext(
+        string resource, string structure, string path, string field, string expected)
+    {
+        Assert.Equal(expected,
+            RageCliEcologyCandidateAnalysisService.ClassifyCandidateField(resource, structure, path, field));
+    }
+
+    [Fact]
+    public void ClassifyCandidateField_HandlesNullContextWithoutThrowing()
+    {
+        Assert.Null(RageCliEcologyCandidateAnalysisService.ClassifyCandidateField(
+            null, null, null, null));
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJson_RejectsMissingProvenanceAndIdentity()
+    {
+        const string json = """{"$type":"CAnimal","modelName":"a_c_deer"}""";
+        Assert.ThrowsAny<ArgumentException>(() =>
+            RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+                json, null!, "animals.ymt", @"C:\Games\GTA V\x64v.rpf",
+                new string('A', 64), new string('B', 64)));
+        Assert.ThrowsAny<ArgumentException>(() =>
+            RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+                json, "animals.ymt", "animals.ymt", @"C:\Games\GTA V\x64v.rpf",
+                "bad-hash", new string('B', 64)));
+    }
+
+    [Fact]
+    public void HasCompleteCandidateCoverage_MergesConsecutiveBatchesAndRetryOverlaps()
+    {
+        Assert.True(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 2, 3, 4, 5 }));
+        Assert.True(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 2, 2, 3, 4, 5 }));
+        Assert.False(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 3, 4, 5 }));
+        Assert.False(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 2, 3, 4, 6 }));
+        Assert.False(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            0, Array.Empty<int>()));
+    }
+
+    [Fact]
+    public void ClassifyCandidateField_LeavesGenericFieldsUnclassified()
+    {
+        Assert.Null(RageCliEcologyCandidateAnalysisService.ClassifyCandidateField(
+            "generic.ymt", "CGenericRecord", "$/displayName", "displayName"));
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJson_CollectsHeuristicRecordsAndSourceProvenance()
+    {
+        const string json = """
+        {
+          "$type": "CPopulationGroup",
+          "animalModels": [
+            { "$type": "CAnimalModel", "modelName": "a_c_deer", "speciesName": "deer" }
+          ],
+          "waterSettings": { "$type": "CWaterConfig", "waveHeight": 1.25 }
+        }
+        """;
+
+        var candidates = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+            json,
+            "popgroups_and_water.ymt",
+            "x64v.rpf/common/data/popgroups_and_water.ymt",
+            @"C:\\Games\\GTA V\\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64));
+
+        Assert.Contains(candidates, item =>
+            item.Category == "Population" && item.CandidateValue == "a_c_deer");
+        Assert.Contains(candidates, item =>
+            item.Category == "TerrestrialAnimal" && item.CandidateValue == "deer");
+        Assert.Contains(candidates, item =>
+            item.Category == "Water" && item.CandidateValue == "1.25");
+        Assert.All(candidates, item =>
+        {
+            Assert.Equal(new string('A', 64), item.SourceArchiveSha256);
+            Assert.Equal(new string('B', 64), item.DumpJsonSha256);
+            Assert.Contains("Heuristic", item.EvidenceNote, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJson_AddsSeparateModelIdentifierEvidence()
+    {
+        const string json = """
+        {
+          "$type": "CPopulationGroup",
+          "animalModels": [
+            {
+              "$type": "CAnimalModel",
+              "modelName": "a_c_deer",
+              "modelHash": "0x12345678",
+              "speciesName": "deer"
+            }
+          ]
+        }
+        """;
+
+        var candidates = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+            json,
+            "popgroups.ymt",
+            "x64v.rpf/common/data/popgroups.ymt",
+            @"C:\Games\GTA V\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64));
+
+        Assert.Contains(candidates, item =>
+            item.Category == "ModelIdentifier" && item.CandidateValue == "a_c_deer");
+        Assert.Contains(candidates, item =>
+            item.Category == "ModelIdentifier" && item.CandidateValue == "0x12345678");
+        Assert.Contains(candidates, item =>
+            item.Category == "Population" && item.CandidateValue == "a_c_deer");
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJsonWithStatus_ReportsWhenNodeLimitTruncatesTraversal()
+    {
+        const string json = """
+        {
+          "animalModels": [
+            { "modelName": "a_c_deer", "modelHash": "0x12345678" }
+          ]
+        }
+        """;
+
+        var result = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJsonWithStatus(
+            json,
+            "animals.ymt",
+            "x64v.rpf/common/data/animals.ymt",
+            @"C:\Games\GTA V\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64),
+            maximumNodesPerPayload: 4);
+
+        Assert.False(result.TraversalComplete);
+        Assert.Equal(4, result.NodesVisited);
+        Assert.Contains(result.Candidates, item => item.Category == "ModelIdentifier");
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJsonWithStatus_ReportsCompleteTraversalBelowNodeLimit()
+    {
+        const string json = """{"label":"ordinary text"}""";
+
+        var result = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJsonWithStatus(
+            json,
+            "generic.ymt",
+            "x64v.rpf/common/data/generic.ymt",
+            @"C:\Games\GTA V\x64v.rpf",
+            new string('A', 64),
+            new string('B', 64),
+            maximumNodesPerPayload: 5);
+
+        Assert.True(result.TraversalComplete);
+        Assert.Equal(2, result.NodesVisited);
+        Assert.Empty(result.Candidates);
+    }
+
+    [Fact]
+    public void ExtractCandidatesFromJson_DoesNotInventCandidatesForUnmatchedValues()
+    {
+        const string json = """{"$type":"CGeneric","label":"ordinary text","number":7}""";
+        var candidates = RageCliEcologyCandidateAnalysisService.ExtractCandidatesFromJson(
+            json, "generic.ymt", "x64v.rpf/generic.ymt",
+            @"C:\\Games\\GTA V\\x64v.rpf",
+            new string('A', 64), new string('B', 64));
+        Assert.Empty(candidates);
+    }
+}

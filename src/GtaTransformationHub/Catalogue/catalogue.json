@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.1-research",
+  "catalogueVersion": "0.4.3-research",
   "categories": [
     {
       "id": "graphics",
@@ -312,13 +312,443 @@
         "ScriptHookVDotNet",
         "Enable MP Maps"
       ]
+    },
+    {
+      "id": "gta-vi-hud-legacy",
+      "name": "GTA VI HUD [Legacy / Enhanced]",
+      "category": "interface",
+      "author": "fbicat",
+      "sourceUri": "https://www.gta5-mods.com/uk/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705",
+      "licence": "Author distribution and asset permissions require review; do not bundle or redistribute.",
+      "version": "1.3 FIXED (source listing, 18 November 2026)",
+      "minimumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ScriptHookVDotNet scripts-folder adapter (not implemented)",
+      "restoreStrategy": "Manifest-based per-file backup after archive inspection; test script data persistence and rollback",
+      "performanceTier": "Unknown; benchmark on the target 1080p/6 GB VRAM hardware",
+      "notes": "The author's current listing describes separate Legacy and Enhanced folders; this catalogue targets Legacy only. The mod advertises a GTA VI-inspired status/HUD layout, weapon wheel, vehicle card, world markers, cash rings, weapons-on-back, stamina, vehicle storage, bounty, fuel and configurable chase music. Requirements list Script Hook V, ScriptHookVDotNet 3 and LemonUI SHVDN3. Version 1.3 FIXED was listed as current on 18 November 2026. Exact supported Legacy build, archive contents, licence, script conflicts, cutscene behaviour and rollback remain unverified. Do not install the Enhanced folder.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3",
+        "LemonUI SHVDN3"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "gta-vi-styled-minimap-hud-legacy",
+      "name": "GTA VI Styled Minimap & HUD (Legacy)",
+      "category": "interface",
+      "author": "sej0bec",
+      "sourceUri": "https://www.gta5-mods.com/scripts/gta-vi-styled-minimap-legacy",
+      "licence": "Author distribution and asset permissions require review; do not bundle or redistribute.",
+      "version": "2.0",
+      "minimumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV plus managed script-folder adapter (not implemented)",
+      "restoreStrategy": "OpenIV mods-folder backups and per-script transaction backup; OIV archive edits are not supported by the Hub yet",
+      "performanceTier": "Unknown; archive is listed around 157 MB; benchmark texture/VRAM and script overhead",
+      "notes": "The author listing describes a GTA VI-inspired minimap and redesigned HUD, including context-sensitive health and special-ability bars. Installation requires an OIV through OpenIV plus separately copied script files. No binaries are bundled. Inspect the exact OIV commands, script dependencies, supported build, licence, archive conflicts and rollback before approval.",
+      "externalRequirements": [
+        "OpenIV Package Installer",
+        "Author-specified script framework requirements must be confirmed from the downloaded archive"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "gta-vi-minimap-3d-buildings",
+      "name": "GTA VI MiniMap (3D Buildings) (Legacy & Enhanced)",
+      "category": "interface",
+      "author": "loneeps",
+      "sourceUri": "https://www.gta5-mods.com/scripts/gtavi-minimap-3d-buildings-legacy-enhanced",
+      "licence": "Author prohibits re-uploading; do not bundle or redistribute.",
+      "version": "1.0 (Beta)",
+      "minimumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "maximumGameBuild": "Not specified; exact Legacy build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ASI plus managed scripts-folder adapter (not implemented)",
+      "restoreStrategy": "Back up MiniMap.asi, MiniMap.dll and font assets; verify rollback against user-modified files",
+      "performanceTier": "Unknown; beta release requires frame-time and map-streaming tests",
+      "notes": "The author's page describes a GTA VI-inspired minimap with custom waypoints, coloured sea/sand and 3D buildings, plus an F11 menu. The archive contains MiniMap.asi and scripts-folder assets. Author notes a fullscreen naming workaround and labels the mod beta, so it must not be enabled by default. Use only the Legacy files.",
+      "externalRequirements": [
+        "ASI Loader and script framework requirements must be verified from the archive"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "pause-menu-library",
+      "name": "Pause Menu Library",
+      "category": "interface",
+      "author": "SloRey",
+      "sourceUri": "https://www.gta5-mods.com/fi/tools/pause-menu-library",
+      "licence": "Free for personal, non-commercial GTA V single-player use; author prohibits modifying, re-uploading, decompiling, reverse engineering or use in GTA Online. Redistribution permission not granted.",
+      "version": "1.0.1",
+      "minimumGameBuild": "Latest supported GTA V Legacy version stated by author; exact build pending",
+      "maximumGameBuild": "Latest supported GTA V Legacy version stated by author; exact build pending",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "ASI library adapter (not implemented); author says players install PauseMenuLibrary.asi into game root",
+      "restoreStrategy": "Per-file backup for the library ASI and any dependent mod settings; test menu state and keybind persistence",
+      "performanceTier": "Unknown; library-only overhead must be measured",
+      "notes": "This is a mod-author API, not a visual pause-menu replacement by itself. It lets compatible mods add in-game pause-menu pages, tabs, toggles, sliders, option lists, text boxes and keyboard/controller binding pages. It is a potential foundation for a future GTA VI-inspired settings page. The author states it works with Legacy and Enhanced and requires Script Hook V.",
+      "externalRequirements": [
+        "Script Hook V"
+      ]
+    },
+    {
+      "id": "minimap-radar-editor-vi-daynightoverlay",
+      "name": "MinimapRadarEditor VI_DayNightOverlay",
+      "category": "interface",
+      "author": "Tamerktb",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/2213",
+      "licence": "Nexus permissions prohibit re-uploading and modification without author permission; third-party assets also require permission.",
+      "version": "1",
+      "minimumGameBuild": "GTA V Legacy v1.73 stated as tested; confirm exact executable build before approval",
+      "maximumGameBuild": "GTA V Legacy v1.73 stated as tested; confirm exact executable build before approval",
+      "sha256": null,
+      "dependencies": [
+        "gta-vi-styled-minimap-hud-legacy"
+      ],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "Manual external script package; no automated installer adapter",
+      "restoreStrategy": "Documented manual removal and manifest-based backup required before any Hub-managed deployment",
+      "performanceTier": "Unknown; test radar rendering and ultrawide layouts",
+      "notes": "Adds live minimap and big-map position/size editing, zoom and a VI-style day/night tint. The author lists Script Hook V, ScriptHookVDotNet, LemonUI SHVDN3 and a compatible GTA VI HUD/radar mod. The Nexus page says it was tested on GTA V Legacy v1.73; do not assume compatibility with other builds. This is an optional companion, not a standalone HUD.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3",
+        "LemonUI SHVDN3",
+        "A compatible GTA VI HUD/radar mod"
+      ],
+      "exclusiveGroup": "minimap-editor-exclusive"
+    },
+    {
+      "id": "jaxon-ui-overhaul-legacy",
+      "name": "Jaxon UI Overhaul",
+      "category": "interface",
+      "author": "Jaxon G (jaxon-hash)",
+      "sourceUri": "https://www.gta5-mods.com/gl/scripts/ui-overhaul-v1",
+      "licence": "Author redistribution terms require review; do not bundle or re-upload without permission.",
+      "version": "1.0",
+      "minimumGameBuild": "Not specified; author says GTA V Legacy and tests at 1920x1080",
+      "maximumGameBuild": "Not specified; author says GTA V Legacy and tests at 1920x1080",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV adapter (not implemented)",
+      "restoreStrategy": "Back up conflicting minimap/graphics assets in the mods folder and verify rollback",
+      "performanceTier": "Unknown; author reports 1920x1080 16:9 testing",
+      "notes": "Modern Legacy HUD candidate with circular minimap, health/armour rings, vehicle speedometer and redesigned weapon/ammunition display. The author says custom HUD hides during cutscenes and supported menus. Installation uses an OIV through OpenIV. The page warns that replacements for graphics.ytd, minimap.gfx and minimap_main_map.gfx may conflict with other HUD/minimap mods.",
+      "externalRequirements": [
+        "OpenIV",
+        "OpenIV.ASI",
+        "ASI Loader",
+        "Script Hook V",
+        "ScriptHookVDotNet 3"
+      ],
+      "exclusiveGroup": "gta-vi-hud-exclusive"
+    },
+    {
+      "id": "gta-6-style-loading-screen-music-icon",
+      "name": "GTA 6 Style Loading Screen, Music & Icon",
+      "category": "interface",
+      "author": "sa3ydov",
+      "sourceUri": "https://www.gta5-mods.com/misc/gta-6-style-loading-screen-music-icon",
+      "licence": "Author prohibits redistribution without permission; music rights and usage terms require separate review.",
+      "version": "1.0",
+      "minimumGameBuild": "Not specified; build compatibility test required",
+      "maximumGameBuild": "Not specified; build compatibility test required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "OpenIV asset adapter (not implemented)",
+      "restoreStrategy": "Back up original loading assets in the mods folder; verify restore on clean launch",
+      "performanceTier": "Low expected asset footprint; launch-time impact unmeasured",
+      "notes": "GTA VI-inspired startup/loading-screen artwork, intro music and desktop icon. The author says to install through OpenIV using the mods folder and explicitly prohibits re-uploading without permission. Music licensing must be checked before bundling or redistribution.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "loading-screen-overhaul-exclusive"
+    },
+    {
+      "id": "visualv-legacy-1-0-630",
+      "name": "VisualV (GTA V Legacy)",
+      "category": "graphics",
+      "author": "_CP_ & robi29",
+      "sourceUri": "https://www.gta5-mods.com/scripts/visualv",
+      "licence": "Author/source-site terms require review; do not redistribute archive or assets.",
+      "version": "1.0.630 Legacy (listed 17 July 2026)",
+      "minimumGameBuild": "Not specified; exact build review required",
+      "maximumGameBuild": "Not specified; exact build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "visual-weather-overhaul",
+        "graphics-overhaul"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV OIV/mods-folder installation; Hub RPF/OIV adapter not implemented",
+      "restoreStrategy": "OpenIV mods-folder copy plus verified file/RPF backup; manual review before installation",
+      "performanceTier": "Moderate; weather, visual effects and draw-distance settings require 1080p/6GB VRAM benchmarking",
+      "notes": "The source lists separate Legacy 1.0.630 and Enhanced 2.0.640 releases (17 July 2026). It overhauls weather, area/interior modifiers, colour correction, volumetric fog and light draw distance. Use Legacy assets only. Treat as an alternative to NaturalVision Evolved and other full graphics/weather stacks; do not combine until overlapping archive paths are compared.",
+      "externalRequirements": [
+        "OpenIV",
+        "ASI Manager (if required by the selected package version)"
+      ],
+      "exclusiveGroup": "graphics-overhaul"
+    },
+    {
+      "id": "realistic-weather-effects-unleashed-legacy",
+      "name": "Realistic Weather Effects Unleashed (Legacy)",
+      "category": "graphics",
+      "author": "Foxy_Oxy",
+      "sourceUri": "https://www.gta5-mods.com/misc/realistic-effects-unleashed-beta-oiv",
+      "licence": "Author/source-site terms require review; do not redistribute archive or assets.",
+      "version": "1.1 FINAL (Legacy variant; listed 15 February 2026)",
+      "minimumGameBuild": "Not specified; exact build review required",
+      "maximumGameBuild": "Not specified; exact build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "visualv-legacy-1-0-630",
+        "graphics-overhaul",
+        "visual-weather-overhaul"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV OIV/mods-folder installation; Hub RPF/OIV adapter not implemented",
+      "restoreStrategy": "Use the author-provided uninstaller and retain a pre-install OpenIV mods-folder backup",
+      "performanceTier": "Low to moderate; timecycle/weather effects still require frame-time and visual regression tests",
+      "notes": "The author lists version 1.1 FINAL with Legacy and Enhanced variants and provides an uninstaller. It changes weather, atmosphere and timecycle definitions without adding assets. Install only the Legacy variant. It overlaps VisualV/NVE weather and timecycle files; choose one weather/graphics foundation, never stack by default.",
+      "externalRequirements": [
+        "OpenIV",
+        "CodeWalker (author-listed for the Enhanced workflow; confirm whether required for Legacy)"
+      ],
+      "exclusiveGroup": "visual-weather-overhaul"
+    },
+    {
+      "id": "better-blue-water-legacy",
+      "name": "Better Blue Water",
+      "category": "graphics",
+      "author": "GameOne O One",
+      "sourceUri": "https://www.gta5-mods.com/misc/better-blue-water",
+      "licence": "Author/source-site terms require review; do not redistribute archive or assets.",
+      "version": "1.0 (23 May 2026)",
+      "minimumGameBuild": "Not specified; Legacy compatibility reported by users but not author-pinned",
+      "maximumGameBuild": "Not specified; Legacy compatibility reported by users but not author-pinned",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "water-visual-overhaul"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV texture/RPF replacement; Hub archive mutation adapter not implemented",
+      "restoreStrategy": "Back up graphics.ytd and affected water texture RPFs in the mods folder before replacement",
+      "performanceTier": "Low expected texture footprint (9.33 MB source archive); verify VRAM and seams",
+      "notes": "A lightweight water-colour/texture change from dark blue toward lighter blue. The author instructs replacing DDS entries in graphics.ytd and water texture RPFs. A user comment reports Legacy compatibility, but the author does not pin an executable build. This is a visual colour tweak, not a full water simulation/foam/underwater overhaul. Mutually exclusive with Upscaled Water Overhaul until archive paths are diffed.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "water-visual-overhaul"
+    },
+    {
+      "id": "upscaled-water-overhaul-legacy-8k",
+      "name": "Upscaled Water Overhaul (Legacy, 8K)",
+      "category": "graphics",
+      "author": "Source author on Nexus Mods",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1085",
+      "licence": "Author explicitly prohibits re-upload; permission required for modifications or asset reuse.",
+      "version": "3.1 (Legacy page; source changelog)",
+      "minimumGameBuild": "Not specified; exact Legacy build review required",
+      "maximumGameBuild": "Not specified; exact Legacy build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "better-blue-water-legacy",
+        "water-visual-overhaul"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV OIV installation to mods folder; Hub RPF/OIV adapter not implemented",
+      "restoreStrategy": "Use a disposable GTA V Legacy copy and author OIV; preserve all replaced water and graphics texture archives",
+      "performanceTier": "High VRAM risk: 4K/8K textures and high-resolution reflections are not approved for a 6 GB VRAM profile without measurement",
+      "notes": "The Legacy listing describes higher-resolution surface/bottom water, ripples, waves, shore foam, underwater fog and puddles, with an RDR2-inspired water appearance. The author page claims little FPS impact but discloses a flashing-ripples issue and prohibits re-uploading and modifications. Not part of the RTX 4050 balanced profile by default; only test on a cloned game install and monitor VRAM/frame times.",
+      "externalRequirements": [
+        "OpenIV",
+        "Rainfall Rehaul (optional per source)"
+      ],
+      "exclusiveGroup": "water-visual-overhaul"
+    },
+    {
+      "id": "grass-v-performance-friendly-legacy",
+      "name": "Grass V — Performance-Friendly Variant (Legacy)",
+      "category": "wildlife",
+      "author": "Foxy_Oxy",
+      "sourceUri": "https://www.gta5-mods.com/misc/grass-v-improved-models-textures-density-beta-oiv-foxy_oxy",
+      "licence": "Author/source-site terms require review; do not redistribute archive or assets.",
+      "version": "1.5 BETA (22 March 2025)",
+      "minimumGameBuild": "Not specified; exact Legacy build review required",
+      "maximumGameBuild": "Not specified; exact Legacy build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "grass-replacement-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV OIV install; choose the author's performance-friendly variant; Hub RPF/OIV adapter not implemented",
+      "restoreStrategy": "Back up the mods-folder grass model/texture archives and install after other vegetation replacements as the author instructs",
+      "performanceTier": "Low-to-moderate target; author added a performance-friendly variant, but increased grass density/draw distance still needs measurement",
+      "notes": "Improves grass model clarity, colour calibration, density, scale and draw distance. Version 1.5 is still labelled BETA. The author says a performance-friendly variant was added and warns to install this after any other grass/vegetation mod that replaces the same models. This improves existing grass assets; it does not add new plant species. Use only the performance-friendly variant on RTX 4050.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "grass-replacement-exclusive"
+    },
+    {
+      "id": "wild-crocodiles-addon-net-legacy",
+      "name": "Wild Crocodiles [Add-On Animal | .NET] (Legacy candidate)",
+      "category": "wildlife",
+      "author": "andre500",
+      "sourceUri": "https://www.gta5-mods.com/scripts/wild-crocodiles-add-on-animal-net",
+      "licence": "Author/source-site terms require review; do not redistribute archive, models or scripts.",
+      "version": "1.1 (author listing; October 2026)",
+      "minimumGameBuild": "Not specified; exact Legacy build review required",
+      "maximumGameBuild": "Not specified; exact Legacy build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "wildlife-dlc-limit-sensitive"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual DLC pack + dlclist.xml + ScriptHookVDotNet script installation; no supported Hub RPF/dlclist adapter",
+      "restoreStrategy": "Clone game install; back up mods/update/x64/dlcpacks, mods/update/update.rpf dlclist.xml, scripts folder and gameconfig before installation",
+      "performanceTier": "High world-streaming/script/packfile risk; users report crashes without a suitable more-mods gameconfig",
+      "notes": "The author describes a new crocodile add-on with 316 spawn points around Lago Zancudo, Alamo Sea, Raton Canyon, Zancudo River and Land Act Reservoir, plus habitat behaviours and animations. It adds a new animal rather than replacing a vanilla animal. Community comments report crashes/missing spawns on Legacy when gameconfig limits are not adjusted; author points users to a more-mods gameconfig. Do not auto-install or combine with other wildlife DLCs until exact build, dependency and rollback tests pass.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3",
+        "LemonUI (confirm exact runtime from downloaded archive)",
+        "Compatible more-mods gameconfig",
+        "Heap Adjuster",
+        "Packfile Limit Adjuster"
+      ],
+      "exclusiveGroup": "wildlife-dlc-limit-sensitive"
+    },
+    {
+      "id": "sea-life-v-aquatic-population-legacy",
+      "name": "Sea Life V — Aquatic Population Add-On",
+      "category": "wildlife",
+      "author": "Cass; tested/uploaded by JammersXAM",
+      "sourceUri": "https://www.gta5-mods.com/misc/sea-life-v",
+      "licence": "Author/source-site terms require review; do not redistribute archive or assets.",
+      "version": "Current listing (29 January 2017)",
+      "minimumGameBuild": "Not specified; legacy archive requires exact build review",
+      "maximumGameBuild": "Not specified; legacy archive requires exact build review",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "population-overhaul-exclusive",
+        "wildlife-popgroups-exclusive"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV replacement of mods/update/update.rpf population metadata; Hub RPF/XML adapter not implemented",
+      "restoreStrategy": "Back up the exact original Popgroups.ymt from a cloned installation and compare the candidate XML/metadata rows before installation",
+      "performanceTier": "Low file size (8 KB listing); population/spawn density and AI impact must be tested",
+      "notes": "The source says it increases ocean population of sharks, fish, killer whales, sting rays and dolphins by transferring Popgroups.ymt. It is a population/spawn-table change, not a new aquatic model pack. It must not remove existing entries; until the exact file is semantically compared with the current vanilla build it remains blocked from automatic installation. Conflicts with any other package that replaces Popgroups.ymt.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "wildlife-popgroups-exclusive"
+    },
+    {
+      "id": "quadrupeds-animals-addon-legacy",
+      "name": "Quadrupeds Animals [Add-On]",
+      "category": "wildlife",
+      "author": "N8Gamez",
+      "sourceUri": "https://www.gta5-mods.com/misc/add-on-quadrupeds-animals",
+      "licence": "Third-party model credits and redistribution terms require review; do not redistribute archive.",
+      "version": "2.2.1 (4 March 2021)",
+      "minimumGameBuild": "Not specified; exact Legacy build review required",
+      "maximumGameBuild": "Not specified; exact Legacy build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "wildlife-dlc-limit-sensitive"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual DLC pack + author-specific XML/metadata; Hub RPF/dlclist adapter not implemented",
+      "restoreStrategy": "Cloned installation only; back up DLC list, dlcpacks, Documents/Rockstar Games/UserMods data and gameconfig",
+      "performanceTier": "Medium-to-high packfile and model streaming risk; old archive requires current-limit validation",
+      "notes": "The source describes a DLC add-on pack with bear, horses, pony, donkey, bobcat, leopard, lions, wolf and skunk. The page is from 2021, recommends Heap Adjuster and Gameconfig, and describes a custom user-mods animal attribute file. Compatibility with current GTA V Legacy is unknown. Treat as a research candidate only; do not install together with other large animal DLC packs until packfile and spawn conflicts are tested.",
+      "externalRequirements": [
+        "OpenIV",
+        "Heap Adjuster",
+        "Gameconfig for more mods"
+      ],
+      "exclusiveGroup": "wildlife-dlc-limit-sensitive"
+    },
+    {
+      "id": "mp-jason-lucia-v-freemode",
+      "name": "MP Jason & Lucia V (Freemode Heads)",
+      "category": "story",
+      "author": "clutit",
+      "sourceUri": "https://www.gta5-mods.com/player/mp-jason-lucia-v",
+      "licence": "Author/source-site terms require review; do not redistribute models or outfits.",
+      "version": "Current listing (27 May 2025)",
+      "minimumGameBuild": "Not specified; exact Legacy build review required",
+      "maximumGameBuild": "Not specified; exact Legacy build review required",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "Manual OpenIV freemode-head replacement + user outfit installation; Hub RPF adapter not implemented",
+      "restoreStrategy": "Clone install and back up the exact freemode head archive and outfit folder",
+      "performanceTier": "Low expected runtime overhead; cosmetic assets only",
+      "notes": "This replaces two multiplayer/freemode heads to resemble Jason and Lucia and includes outfit guidance. It does not create GTA VI story protagonists, add story-mode character switching, or implement GTA VI missions. The source page notes eye/normal/specular map imperfections. Treat as a cosmetic freemode preview only.",
+      "externalRequirements": [
+        "OpenIV",
+        "Freemode model/outfit compatibility"
+      ],
+      "exclusiveGroup": "jason-lucia-freemode-exclusive"
+    },
+    {
+      "id": "blue-whales-humpback-replacer",
+      "name": "Blue Whales [Humpback Replacer]",
+      "category": "wildlife",
+      "author": "MiiTins",
+      "sourceUri": "https://www.gta5-mods.com/misc/miitinsmods-blue-whales-replacer-miitins",
+      "licence": "Author/source-site terms require review; do not redistribute assets.",
+      "version": "Legacy beta (source listing; November 2026)",
+      "minimumGameBuild": "Not specified",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Blocked",
+      "installAdapter": "Not applicable: rejected by vanilla-species preservation policy",
+      "restoreStrategy": "Do not install; it replaces the existing humpback whale mesh/texture identity",
+      "performanceTier": "Unknown",
+      "notes": "Rejected for the preservation-first stack: the author describes this as a replacement of humpback whales with blue whales, not an additive species. This would violate the requirement to preserve every original animal species and model identity."
     }
   ],
   "profiles": [
     {
       "id": "balanced-1080p",
-      "name": "Balanced 1080p",
-      "description": "Target for 1920×1080 and 6 GB VRAM systems. Research candidates remain disabled until individually verified, tested and installed.",
+      "name": "RTX 4050 Balanced 1080p (Research Preview)",
+      "description": "Target hardware: RTX 4050 Laptop GPU 6 GB VRAM, 1080p. The profile deliberately preselects no packages: every listed candidate is still Researching and cannot pass the current Tested-only installation gate. Preferred review sequence: one GTA VI HUD only; VisualV OR Realistic Weather Effects Unleashed; Better Blue Water OR Upscaled Water Overhaul (8K not recommended by default); Grass V performance-friendly only after a grass-file diff. Wildlife add-ons are separate optional tests.",
       "enabledPackageIds": []
     },
     {
@@ -349,6 +779,12 @@
       "id": "accessibility-comfort",
       "name": "Accessibility & Comfort",
       "description": "Prioritises readable UI, subtitle clarity, control flexibility, camera comfort, audio clarity and other verified accessibility improvements. Native game settings are preferred over risky modifications.",
+      "enabledPackageIds": []
+    },
+    {
+      "id": "rtx4050-wildlife-staging",
+      "name": "RTX 4050 Wildlife Staging (Not Auto-Installable)",
+      "description": "Research list only. Crocodiles, quadrupeds and Sea Life V must be tested individually on a cloned Legacy install. Do not combine packages that change Popgroups.ymt or large DLC limits. Underwater plant species add-ons have not yet been found and verified; this is not a complete flora/fauna stack.",
       "enabledPackageIds": []
     }
   ],

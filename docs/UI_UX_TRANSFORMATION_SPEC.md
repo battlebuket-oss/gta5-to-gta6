@@ -88,6 +88,31 @@ A UI package needs explicit metadata beyond a generic mod entry:
 5. Expand to map, settings, phone, radial, title/entry and loading screens only after each surface passes acceptance.
 6. Deliver a cohesive UI profile and accessibility validation before calling the track production-ready.
 
+
+## Implemented package contract (application-side)
+
+The package model now has an optional `ui` descriptor. It declares the replaced surfaces (title, frontend, pause, map, settings, HUD, phone, radial, loading or accessibility), implementation type (Scaleform, game script or asset replacement), supported input methods, tested resolutions, accessibility capabilities, native-action preservation, mission/cutscene/subtitle/original-campaign preservation, compatibility evidence URL and rollback evidence URL.
+
+The Hub validates these declarations and rejects UI impact packages that omit the descriptor, use unsupported surfaces or implementation types, claim companion-only overlays as in-game replacements, omit keyboard/controller support, omit evidence references, or fail to preserve native gameplay functions. Preflight rejects two selected packages that replace the same surface. UI packages additionally require `CompatibilityVerified=true`, a locally trusted publisher signature and signature version 3. Signature v3 authenticates the entire UI descriptor. Version 1 and 2 canonical payload formats remain unchanged for existing packages.
+
+These checks validate package declarations and trust provenance; they do not prove that the linked evidence is accurate. The current catalogue candidates remain Researching, and no actual title, pause, map, settings, HUD, phone or radial replacement has been approved or deployed. Real GTA V screen integration remains gated on archive inspection and game-side tests.
+
 ## Release gate
 
 The UI/UX track is production-ready only when all shipped screens have verified compatibility, complete native-action coverage, input/accessibility evidence, performance measurements, clean rollback and no unresolved critical defects. A mock-up, screenshot or dashboard panel does not satisfy this gate.
+
+
+## Community implementation research (18 November 2026)
+
+The research catalogue now tracks current candidates for portions of the intended UI:
+
+- **HUD and weapon wheel:** [GTA VI HUD](https://www.gta5-mods.com/uk/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705) has a Legacy-specific archive and advertises status bars, radial weapon selection, vehicle cards, world markers and other gameplay indicators. Its ScriptHookVDotNet/LemonUI stack and current Legacy build range remain to be verified.
+- **Minimap and HUD:** [GTA VI Styled Minimap & HUD (Legacy)](https://www.gta5-mods.com/scripts/gta-vi-styled-minimap-legacy) is an OIV plus separate scripts package. The Hub cannot yet execute OIV/RPF operations.
+- **Map rendering:** [GTA VI MiniMap (3D Buildings)](https://www.gta5-mods.com/scripts/gtavi-minimap-3d-buildings-legacy-enhanced) is a beta minimap candidate with 3D buildings and custom waypoints. Do not combine it with other minimap replacements without compatibility tests.
+- **Pause-menu extension:** [Pause Menu Library](https://www.gta5-mods.com/fi/tools/pause-menu-library) exposes an API for mod-specific native-style pause-menu pages and settings controls. It does not redesign the native home or pause screens by itself.
+- **Map layout and radar controls:** [MinimapRadarEditor VI_DayNightOverlay](https://www.nexusmods.com/gta5/mods/2213) can reposition/resize the radar and big map, but it depends on a compatible HUD stack and has restrictive distribution terms.
+- **Loading screen:** [GTA 6 Style Loading Screen, Music & Icon](https://www.gta5-mods.com/misc/gta-6-style-loading-screen-music-icon) is an OpenIV-based loading-art/audio candidate with separate permissions for included music.
+
+All of the above remain Researching. The catalogue must not offer a one-click Install action until the actual archive is inspected, its author licence is recorded, an exact supported game build is confirmed, file conflicts and required frameworks are pinned, and a disposable-install/rollback test passes.
+
+**Current gap:** research has not identified a verified package that replaces the entire title/home screen, pause navigation, full map UI and all native settings as one coherent GTA VI-like interface. The project will implement or curate each surface independently, preserving native functionality and a fallback path.

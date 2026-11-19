@@ -13,9 +13,9 @@ namespace GtaTransformationHub.Services;
 /// Conservative, copy-only deployment transaction. It never executes package code
 /// or modifies a running game process. Rollback removes only files created by its own journal.
 /// </summary>
-public sealed class TransactionalDeploymentService
+public sealed partial class TransactionalDeploymentService
 {
-    private static readonly SemaphoreSlim DeploymentLock = new(1, 1);
+    private static readonly SemaphoreSlim RecoveryLock = new(1, 1);
     private readonly GameProcessMonitor _processMonitor;
     private readonly string _dataRoot;
 
@@ -33,7 +33,7 @@ public sealed class TransactionalDeploymentService
         IReadOnlyCollection<DeploymentFile> files,
         CancellationToken cancellationToken = default)
     {
-        await DeploymentLock.WaitAsync(cancellationToken);
+        await GameMutationGate.Gate.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -87,7 +87,7 @@ public sealed class TransactionalDeploymentService
 
                     var record = new DeploymentJournalEntry(
                         item.PackageId, item.DestinationRelativePath, existed, backupRelative,
-                        item.ExpectedSha256, originalSha256);
+                        item.ExpectedSha256, originalSha256, item.PackageVersion);
                     journal = journal with { Entries = journal.Entries.Append(record).ToArray() };
                     await SaveJournalAsync(journalPath, journal, cancellationToken);
 
@@ -127,7 +127,7 @@ public sealed class TransactionalDeploymentService
         }
         finally
         {
-            DeploymentLock.Release();
+            GameMutationGate.Gate.Release();
         }
     }
 
@@ -139,7 +139,7 @@ public sealed class TransactionalDeploymentService
     public async Task<IReadOnlyList<string>> RecoverInterruptedTransactionsAsync(
         CancellationToken cancellationToken = default)
     {
-        await DeploymentLock.WaitAsync(cancellationToken);
+        await RecoveryLock.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -165,8 +165,7 @@ public sealed class TransactionalDeploymentService
                     await File.ReadAllTextAsync(journalPath, cancellationToken))
                     ?? throw new InvalidDataException("An interrupted deployment journal is invalid.");
 
-                if (!string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
-                    throw new InvalidDataException("A transaction journal ID does not match its directory.");
+                ValidateJournal(journal, transactionId);
 
                 if (string.Equals(journal.State, "Applying", StringComparison.Ordinal))
                 {
@@ -183,7 +182,7 @@ public sealed class TransactionalDeploymentService
         }
         finally
         {
-            DeploymentLock.Release();
+            RecoveryLock.Release();
         }
     }
 
@@ -191,7 +190,7 @@ public sealed class TransactionalDeploymentService
         string transactionId,
         CancellationToken cancellationToken = default)
     {
-        await DeploymentLock.WaitAsync(cancellationToken);
+        await GameMutationGate.Gate.WaitAsync(cancellationToken);
         try
         {
             _processMonitor.EnsureConfigurationUnlocked();
@@ -209,8 +208,7 @@ public sealed class TransactionalDeploymentService
                 await File.ReadAllTextAsync(journalPath, cancellationToken))
                 ?? throw new InvalidDataException("The deployment journal is invalid.");
 
-            if (!string.Equals(journal.TransactionId, transactionId, StringComparison.Ordinal))
-                throw new InvalidDataException("The transaction journal ID does not match its directory.");
+            ValidateJournal(journal, transactionId);
             if (!string.Equals(journal.State, "Applied", StringComparison.Ordinal))
                 throw new InvalidOperationException("Only a fully applied transaction can be rolled back.");
 
@@ -219,7 +217,7 @@ public sealed class TransactionalDeploymentService
         }
         finally
         {
-            DeploymentLock.Release();
+            GameMutationGate.Gate.Release();
         }
     }
 
@@ -240,6 +238,7 @@ public sealed class TransactionalDeploymentService
 
             var source = ResolveContainedPath(packageRoot, file.SourcePath);
             var destination = ValidateRelativePath(file.DestinationRelativePath);
+            ProtectedGamePathPolicy.ValidateDestination(destination);
             if (!destinations.Add(destination))
                 throw new InvalidDataException("The deployment plan contains duplicate destination paths.");
             EnsureNoReparsePoints(packageRoot, source);
@@ -253,7 +252,7 @@ public sealed class TransactionalDeploymentService
             if (!actualHash.Equals(file.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("A package file failed SHA-256 verification: " + file.SourcePath);
 
-            result.Add(new ValidatedFile(file.PackageId, source, destination, actualHash));
+            result.Add(new ValidatedFile(file.PackageId, source, destination, actualHash, file.PackageVersion));
         }
 
         return result;
@@ -290,6 +289,15 @@ public sealed class TransactionalDeploymentService
             cancellationToken.ThrowIfCancellationRequested();
             var destination = ResolveContainedPath(root, entry.DestinationRelativePath);
             EnsureNoReparsePoints(root, destination);
+            if (entry.OwnershipOnly)
+            {
+                if (File.Exists(destination))
+                    throw new IOException(
+                        "A file appeared after an ownership-only removal record. Rollback stopped to protect that file: " +
+                        entry.DestinationRelativePath);
+                continue;
+            }
+
             if (entry.ExistedBefore)
             {
                 if (string.IsNullOrWhiteSpace(entry.OriginalSha256) || entry.OriginalSha256.Length != 64)
@@ -323,6 +331,9 @@ public sealed class TransactionalDeploymentService
             cancellationToken.ThrowIfCancellationRequested();
             _processMonitor.EnsureConfigurationUnlocked();
             var destination = ResolveContainedPath(root, entry.DestinationRelativePath);
+            if (entry.OwnershipOnly)
+                continue;
+
             if (entry.ExistedBefore)
             {
                 if (File.Exists(destination))
@@ -354,6 +365,63 @@ public sealed class TransactionalDeploymentService
 
         var rolledBack = journal with { State = "RolledBack" };
         await SaveJournalAsync(journalPath, rolledBack, cancellationToken);
+    }
+
+    private static void ValidateJournal(DeploymentJournal journal, string expectedTransactionId)
+    {
+        if (!string.Equals(journal.TransactionId, expectedTransactionId, StringComparison.Ordinal))
+            throw new InvalidDataException("A transaction journal ID does not match its directory.");
+
+        if (journal.Entries is null)
+            throw new InvalidDataException("A transaction journal has no entries array.");
+
+        if (journal.State is not ("Applying" or "Applied" or "RolledBack"))
+            throw new InvalidDataException("A transaction journal contains an unknown state.");
+
+        foreach (var entry in journal.Entries)
+        {
+            if (entry is null ||
+                string.IsNullOrWhiteSpace(entry.PackageId) ||
+                string.IsNullOrWhiteSpace(entry.DeployedSha256) ||
+                entry.DeployedSha256.Length != 64 ||
+                !entry.DeployedSha256.All(Uri.IsHexDigit))
+                throw new InvalidDataException("A transaction journal contains an invalid file entry.");
+
+            _ = ValidateRelativePath(entry.DestinationRelativePath);
+            ProtectedGamePathPolicy.ValidateDestination(entry.DestinationRelativePath);
+
+            if (entry.ExistedBefore)
+            {
+                _ = ValidateRelativePath(entry.BackupFile);
+                if (string.IsNullOrWhiteSpace(entry.OriginalSha256) ||
+                    entry.OriginalSha256.Length != 64 ||
+                    !entry.OriginalSha256.All(Uri.IsHexDigit))
+                    throw new InvalidDataException("A transaction journal contains an invalid original-file hash.");
+            }
+
+            if (entry.PackageId.StartsWith("removed:", StringComparison.OrdinalIgnoreCase))
+            {
+                var marker = entry.PackageId.Split(':', 4);
+                if (marker.Length != 4 ||
+                    !PackageIdValidator.IsValid(marker[1]) ||
+                    !Version.TryParse(marker[2], out _) ||
+                    string.IsNullOrWhiteSpace(marker[3]) ||
+                    !string.Equals(entry.PackageVersion, marker[2], StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("A package-removal journal marker is invalid.");
+
+                foreach (var ownerTransactionId in marker[3].Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (ownerTransactionId.Length > 128 ||
+                        ownerTransactionId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                        ownerTransactionId.Contains("..", StringComparison.Ordinal))
+                        throw new InvalidDataException("A package-removal journal contains an invalid owner reference.");
+                }
+            }
+            else if (!PackageIdValidator.IsValid(entry.PackageId))
+            {
+                throw new InvalidDataException("A transaction journal contains an invalid package ID.");
+            }
+        }
     }
 
     private static string ValidateGameRoot(string gameRoot)
@@ -430,7 +498,8 @@ public sealed class TransactionalDeploymentService
     }
 
     private sealed record ValidatedFile(
-        string PackageId, string SourcePath, string DestinationRelativePath, string ExpectedSha256);
+        string PackageId, string SourcePath, string DestinationRelativePath, string ExpectedSha256,
+        string PackageVersion);
 }
 
 public sealed record DeploymentResult(string TransactionId, int FilesApplied, string TransactionDirectory);
@@ -447,4 +516,6 @@ public sealed record DeploymentJournalEntry(
     bool ExistedBefore,
     string BackupFile,
     string DeployedSha256,
-    string? OriginalSha256);
+    string? OriginalSha256,
+    string PackageVersion = "",
+    bool OwnershipOnly = false);

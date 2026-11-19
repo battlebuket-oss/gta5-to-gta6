@@ -1,0 +1,172 @@
+<Window x:Class="GtaTransformationHub.EcologyInventoryCurationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ecological inventory curation"
+        Width="1500" Height="920" MinWidth="1050" MinHeight="680"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackground}"
+        Foreground="{StaticResource PrimaryText}">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+      <TextBlock Text="EXACT-BUILD ECOLOGY CURATION" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
+      <TextBlock Text="Review raw evidence, then author normalized identities" FontSize="22" FontWeight="SemiBold" Margin="0,4,0,0"/>
+      <TextBlock Text="Candidate rows are heuristic leads. Only mark a row Confirmed after inspecting the source JSON and GTA V metadata. This workspace cannot certify completeness or unlock ecology-sensitive packages." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+    </StackPanel>
+
+    <Border Grid.Row="1" Background="{StaticResource PanelBackground}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+      <StackPanel>
+        <CheckBox x:Name="HumanReviewedCheckBox"
+                  Content="I reviewed the source evidence and the definitions I am entering"
+                  FontWeight="SemiBold"
+                  Margin="0,0,0,8"/>
+        <TextBlock Text="Review notes / source assumptions (minimum 20 characters)" Foreground="{StaticResource SecondaryText}" FontSize="10" Margin="0,0,0,4"/>
+        <TextBox x:Name="ReviewNotesTextBox" Padding="7" MinHeight="48" AcceptsReturn="True" TextWrapping="Wrap"
+                 ToolTip="Describe what you checked and any remaining assumptions."/>
+      </StackPanel>
+    </Border>
+
+    <TabControl Grid.Row="2" Background="{StaticResource PanelBackground}" Foreground="{StaticResource PrimaryText}">
+      <TabItem Header="Candidate evidence">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <TextBlock Text="Review each row. Candidate values are not confirmed species or definitions until you verify them in the source JSON." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+          <DataGrid x:Name="CandidateGrid" Grid.Row="1"
+                    ItemsSource="{Binding CandidateRows}"
+                    AutoGenerateColumns="False"
+                    CanUserAddRows="False" CanUserDeleteRows="False"
+                    IsReadOnly="False"
+                    HeadersVisibility="All"
+                    GridLinesVisibility="Horizontal"
+                    SelectionUnit="FullRow"
+                    FrozenColumnCount="3">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Index" Binding="{Binding CandidateIndex}" IsReadOnly="True" Width="60"/>
+              <DataGridTextColumn Header="Category" Binding="{Binding Category}" IsReadOnly="True" Width="105"/>
+              <DataGridTextColumn Header="Candidate value" Binding="{Binding CandidateValue}" IsReadOnly="True" Width="170"/>
+              <DataGridTextColumn Header="Decision" Binding="{Binding ReviewDecision, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+              <DataGridTextColumn Header="Canonical ID" Binding="{Binding CanonicalId, UpdateSourceTrigger=PropertyChanged}" Width="140"/>
+              <DataGridTextColumn Header="Reviewer notes" Binding="{Binding ReviewerNotes, UpdateSourceTrigger=PropertyChanged}" Width="220"/>
+              <DataGridTextColumn Header="Resource" Binding="{Binding ResourceName}" IsReadOnly="True" Width="120"/>
+              <DataGridTextColumn Header="Archive path" Binding="{Binding InternalArchivePath}" IsReadOnly="True" Width="260"/>
+              <DataGridTextColumn Header="JSON pointer" Binding="{Binding JsonPointer}" IsReadOnly="True" Width="180"/>
+              <DataGridTextColumn Header="Field" Binding="{Binding FieldName}" IsReadOnly="True" Width="100"/>
+              <DataGridTextColumn Header="Evidence note" Binding="{Binding EvidenceNote}" IsReadOnly="True" Width="220"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Species">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <TextBlock Text="One row per semantic species. Domains: TerrestrialAnimal, AquaticAnimal, TerrestrialPlant, AquaticPlant. Model identifiers and habitat IDs are semicolon-separated." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+          <DataGrid x:Name="SpeciesGrid" Grid.Row="1" ItemsSource="{Binding SpeciesRows}"
+                    AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                    HeadersVisibility="All" GridLinesVisibility="Horizontal" SelectionUnit="FullRow">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Stable ID" Binding="{Binding Id, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+              <DataGridTextColumn Header="Domain" Binding="{Binding Domain, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+              <DataGridTextColumn Header="Model identifiers (;)" Binding="{Binding ModelIdentifiers, UpdateSourceTrigger=PropertyChanged}" Width="190"/>
+              <DataGridTextColumn Header="Habitat IDs (;)" Binding="{Binding HabitatIds, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+              <DataGridTextColumn Header="Behaviour profile ID" Binding="{Binding BehaviourProfileId, UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+              <DataGridTextColumn Header="Behaviour definition JSON" Binding="{Binding BehaviourDefinitionJson, UpdateSourceTrigger=PropertyChanged}" Width="300"/>
+              <DataGridTextColumn Header="Confirmed candidate indexes (;)" Binding="{Binding EvidenceCandidateIndexes, UpdateSourceTrigger=PropertyChanged}" Width="170"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Habitats">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <TextBlock Text="Declare every habitat referenced by species and population entries. Aquatic habitats should reference a water-body ID." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+          <DataGrid x:Name="HabitatGrid" Grid.Row="1" ItemsSource="{Binding HabitatRows}"
+                    AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                    HeadersVisibility="All" GridLinesVisibility="Horizontal" SelectionUnit="FullRow">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Stable ID" Binding="{Binding Id, UpdateSourceTrigger=PropertyChanged}" Width="130"/>
+              <DataGridTextColumn Header="Habitat type" Binding="{Binding HabitatType, UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+              <DataGridTextColumn Header="Water body ID (optional)" Binding="{Binding WaterBodyId, UpdateSourceTrigger=PropertyChanged}" Width="170"/>
+              <DataGridTextColumn Header="Definition JSON" Binding="{Binding DefinitionJson, UpdateSourceTrigger=PropertyChanged}" Width="360"/>
+              <DataGridTextColumn Header="Confirmed candidate indexes (;)" Binding="{Binding EvidenceCandidateIndexes, UpdateSourceTrigger=PropertyChanged}" Width="190"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Population">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <TextBlock Text="Population entries connect a species to a declared habitat. New and original population identities must be represented explicitly." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+          <DataGrid x:Name="PopulationGrid" Grid.Row="1" ItemsSource="{Binding PopulationRows}"
+                    AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                    HeadersVisibility="All" GridLinesVisibility="Horizontal" SelectionUnit="FullRow">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Stable ID" Binding="{Binding Id, UpdateSourceTrigger=PropertyChanged}" Width="130"/>
+              <DataGridTextColumn Header="Species ID" Binding="{Binding SpeciesId, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+              <DataGridTextColumn Header="Habitat ID" Binding="{Binding HabitatId, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+              <DataGridTextColumn Header="Definition JSON" Binding="{Binding DefinitionJson, UpdateSourceTrigger=PropertyChanged}" Width="360"/>
+              <DataGridTextColumn Header="Confirmed candidate indexes (;)" Binding="{Binding EvidenceCandidateIndexes, UpdateSourceTrigger=PropertyChanged}" Width="190"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Water bodies">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <TextBlock Text="Water geometry metadata is useful evidence, but simulation, interaction and rendering definitions must each be reviewed and entered separately. A water-quad record alone is not a complete water system." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+          <DataGrid x:Name="WaterGrid" Grid.Row="1" ItemsSource="{Binding WaterRows}"
+                    AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                    HeadersVisibility="All" GridLinesVisibility="Horizontal" SelectionUnit="FullRow">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Stable ID" Binding="{Binding Id, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+              <DataGridTextColumn Header="Water type" Binding="{Binding WaterType, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+              <DataGridTextColumn Header="Simulation profile ID" Binding="{Binding SimulationProfileId, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+              <DataGridTextColumn Header="Interaction profile ID" Binding="{Binding InteractionProfileId, UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+              <DataGridTextColumn Header="Rendering profile ID" Binding="{Binding RenderingProfileId, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+              <DataGridTextColumn Header="Simulation JSON" Binding="{Binding SimulationDefinitionJson, UpdateSourceTrigger=PropertyChanged}" Width="250"/>
+              <DataGridTextColumn Header="Interaction JSON" Binding="{Binding InteractionDefinitionJson, UpdateSourceTrigger=PropertyChanged}" Width="250"/>
+              <DataGridTextColumn Header="Rendering JSON" Binding="{Binding RenderingDefinitionJson, UpdateSourceTrigger=PropertyChanged}" Width="250"/>
+              <DataGridTextColumn Header="Confirmed candidate indexes (;)" Binding="{Binding EvidenceCandidateIndexes, UpdateSourceTrigger=PropertyChanged}" Width="180"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <TextBlock x:Name="CurationStatusText" Grid.Row="3" Text="Edit the curation tables, then save a draft or export a normalized snapshot." Foreground="{StaticResource SecondaryText}" TextWrapping="Wrap" Margin="0,10,0,8"/>
+
+    <DockPanel Grid.Row="4" LastChildFill="False">
+      <TextBlock DockPanel.Dock="Left" Text="CompletenessVerified = false · PackageEligibilityUnlocked = false" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+      <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+        <Button Content="Save draft" Padding="14,8" Margin="0,0,8,0" Click="SaveDraftButton_Click"/>
+        <Button Content="Export normalized snapshot" Padding="14,8" Margin="0,0,8,0" Click="ExportSnapshotButton_Click"/>
+        <Button Content="Close" Padding="14,8" Click="CloseButton_Click"/>
+      </StackPanel>
+    </DockPanel>
+  </Grid>
+</Window>

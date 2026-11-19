@@ -1,0 +1,94 @@
+# Production readiness status
+
+Last reviewed: 2026-11-19
+
+This document distinguishes implemented development-branch functions from release requirements that have not yet been verified. The product is not yet a production release.
+
+## Implemented in the current development branch
+
+| Area | Status |
+|---|---|
+| Windows WPF application foundation | Implemented |
+| Single-instance guard | Implemented |
+| GTA V Legacy executable selection | Implemented with file identity and numeric version checks; real-edition identification still needs testing |
+| Process lock | Implemented; fails closed on process-inspection errors and checks Legacy/Enhanced process names |
+| Local ZIP package import | Implemented |
+| Direct HTTPS package acquisition | Implemented for user-supplied direct URLs; bounded streaming, redirect validation and DNS validation at socket connection |
+| OpenRAGE v0.4.0 external toolchain | Implemented: pinned GitHub release/archive SHA-256, safe extraction, retained upstream archive, installed CLI hash comparison, version verification, preview/install/list/uninstall/undo UI, exact OIV hash binding between preview and install, separate consent for direct game-folder files. OpenRAGE GPL-3.0-only source and licence remain external; OIV operations use its own journal |
+| OpenIV OIV 2.2 installation | Implemented as an optional external OpenRAGE v0.4.0 backend. The Hub downloads only the official Windows x64 release, verifies the upstream archive SHA-256, validates the installed CLI against the archive and version, derives keys from the selected local GTA V installation, previews OIV operations, refuses upstream blockers, binds the reviewed preview to the exact OIV SHA-256, requires explicit install consent and a separate acknowledgement for direct game-folder files, and exposes OpenRAGE list/uninstall/undo. OIV actions are recorded in OpenRAGE's separate journal, not the Hub ZIP transaction journal. OIV compatibility is not auto-approved |
+| Ecology preservation and semantic comparison | Fail-closed terrestrial/aquatic classifier and parser-independent inventory comparison engine implemented; ALL ecology-sensitive packages remain blocked until trusted exact-build asset extractors, provenance and package-bound evidence are integrated |
+| Ecology inventory evidence comparison | Implemented local normalized-snapshot comparison: both inputs must match the selected GTA5.exe build/hash; source archive hashes and semantic records are checked; input/report hashes are stored. Empty inventories reject. Completeness and package eligibility deliberately remain false until an exhaustive trusted parser exists |
+| External asset inspection toolchain | Optional user-selected rage-cli v0.28.1 Windows x64 integration; verifies pinned SHA/version, runs strict model/texture cataloguing, scans seven metadata extensions in nested RPFs (10,000-hit cap per extension), and dumps supported resources as JSON in resumable 50-candidate batches. Batch indexes store a global candidate index, first-unprocessed resume cursor, exact GTA5.exe/source/nested-RPF/JSON hashes and bounded JSON structure summaries. Staging is removed after each candidate. Adds a heuristic candidate-analysis report that merges selected batch indexes for one discovery report, checks global candidate-index coverage, and records source/dump fingerprints; its field/path classifications are review hints only. Model-name/hash/archetype/JOAAT values receive a separate ModelIdentifier tag while retaining species/population context; JSON traversal node-limit hits and the 10,000-record output cap mark input review incomplete. These safeguards are not semantic proof or a complete ecology baseline |
+| Shared mutation lock and protected destinations | Implemented for deployment, removal, rollback and recovery, including a lock-already-held recovery path; executable, RPF and save/profile paths blocked |
+| Story Mode save backup | Implemented as read-only ZIP archive backup of a user-selected Profiles folder; verification handles are closed before final archive rename |
+| Hardware/performance guidance | Implemented as conservative recommendation only; no game settings are modified |
+| ZIP path traversal, link, duplicate, undeclared-entry and size checks | Implemented |
+| Bounded ZIP decompression | Implemented for manifest and payload extraction |
+| Manifest-declared SHA-256 and size verification | Implemented |
+| Local imported-package inventory | Implemented |
+| Local profile persistence | Implemented, including exact package-version pins and backward-compatible legacy profile loading |
+| Profile package selection | Implemented; ambiguous legacy profiles require manual version selection |
+| Profile activation | Implemented against active deployment journals; stale package removal and missing package deployment are covered by tests |
+| Transaction journal, backups and rollback | Implemented, including multi-step profile rollback and ownership-only removal records for already-missing files |
+| Managed package removal | Implemented with active deployment ownership and hash checks |
+| Startup recovery for interrupted transactions | Implemented |
+| Explicit third-party execution-risk acknowledgement | Implemented in the UI |
+| RSA publisher signatures | Implemented for package manifests using RSA-2048+, SHA-256 and PKCS#1 v1.5 |
+| Local trusted-publisher key store | Implemented with independent fingerprint matching and an add-key dialog |
+| Signature-aware package preflight | Implemented; unsigned and unknown-publisher packages warn, invalid trusted-key signatures reject |
+| Windows x64 CI build, test and publish workflow | Verified on commit `e5dd1f4573823481175ac87820921f7d19a1df61`: strict build succeeded, 248 automated tests passed (0 failed/0 skipped), self-contained win-x64 publish and artifact upload passed |
+| Per-user Windows x64 installer | Verified package `0.1.0-dev.224`: Inno Setup compilation, silent install/uninstall smoke test, SHA-256 manifest and artifact upload passed. The binary and installer are unsigned because no signing certificate secrets are configured |
+| Real-game gameplay/performance/rollback test protocol | Test plan and evidence requirements documented; no real GTA V gameplay or performance run has been executed from this environment |
+| Vanilla ecology identity validation | Preservation rules and semantic comparator exist; complete exact-build inventory and real-game package validation remain blocked |
+| Release packaging workflow | Implemented: self-contained publish, test gate, installer compilation, SHA-256 checksums and tag-based GitHub release |
+| Authenticode signing automation | Implemented conditionally for application EXE and installer; certificate secrets and a real signed release have not yet been configured or verified |
+
+| In-game UI package contract | Implemented: UI surfaces, implementation type, input/resolution/accessibility declarations, native-action preservation and HTTPS evidence references are validated; overlapping selected surfaces are rejected |
+| UI package publisher signatures | Implemented with signature version 3; v1/v2 canonical payloads remain backward-compatible; deployment requires a trusted publisher key and compatibility attestation |
+| Hub accessibility preferences | Implemented locally: high contrast, 100–150% text scale and reduced-motion preference persist across app restarts; these settings do not modify GTA V |
+| Story Mode test evidence recorder | Implemented: required mission lifecycle / input / recovery / rollback scenario matrix saved against package archive SHA-256 and exact GTA5.exe SHA-256; never auto-approves a package |
+| GTA5.exe evidence fingerprint | Implemented SHA-256 calculation and validation for exact-build test records |
+| Saved game installation | Implemented local path/build/SHA-256 persistence; startup revalidates Rockstar Legacy identity, exact build and executable hash before restoring the selection |
+
+| Compatibility and performance evidence recorder | Implemented full package-stack evidence capture: 19 required scenarios spanning launch, story/save, character switching, city/rural ecology, water/underwater, police/combat, UI/input, recovery/rollback, benchmark and 60-minute soak. Records exact GTA5.exe SHA-256 and each selected package archive/version/signature. Performance passes require warm-up, at least 3 repeats, FPS/frame-time/RAM/VRAM data and a 60-minute soak. Saving evidence does not approve compatibility |
+| Compatibility evidence input safeguards | Vanilla baseline is explicitly labelled user-declared and requires confirmation; Hub cannot automatically detect external manual mods/loaders. Evidence remains tester-authored and non-authoritative until real-game review |
+| Resumable metadata extraction | Implemented: discovery searches supported metadata extensions, up to 10,000 matches per extension; JSON extraction processes 50 candidate resources per batch, persists each global candidate index and advances only past candidates with a saved payload. A failed candidate remains the next retry position. This remains an unreviewed metadata candidate set, not a complete ecological baseline |
+| Multi-batch ecology candidate review | Implemented: the analysis UI accepts multiple dump-index files, enforces common GTA5.exe/tool/discovery provenance, merges candidate rows by global index, detects missing coverage and rejects conflicting evidence. It separately reports one-million-node traversal truncation and the 10,000-record candidate output cap, so incomplete field scans are not labelled complete. Model identity fields have their own review tag while retaining context categories. These heuristic tags are not species/habitat/water determinations; all ecology packages remain blocked |
+
+## Not yet production-ready
+
+| Area | Remaining work |
+|---|---|
+| Trusted publisher management | Local add/revoke UI and independent fingerprint confirmation are implemented; signed central catalogue and signed application-update channel remain outstanding |
+| Automatic package downloads | Direct user-supplied HTTPS URL downloads implemented; no HTML scraping, host API crawling or signed catalogue feed |
+| Mod-host-specific installers | OpenRAGE v0.4.0 provides an external OIV 2.2 preview/install/uninstall path with upstream-supported RPF, text/XML and loose-file operations; upstream blockers remain fail-closed. The Hub still has no native installer for arbitrary ZIP/RAR script bundles, stand-alone ASI/DLL packages, manual folder layouts or unsupported PSO/host-specific operations |
+| Tested package catalogue | Current mod candidates remain research-only; no third-party mod is marked Tested or preselected in the RTX 4050 profile. The OIV picker can run a user-supplied OIV preview and installation after explicit consent, but this does not mark the catalogue entry compatible or bypass the Tester evidence gate. All ecology-sensitive packages remain blocked |
+| Exact ecological extraction | Implement semantic interpretation of the dumped resources, complete coverage beyond the 10,000-hit-per-extension discovery ceiling, exact-build population/species/habitat/behaviour/water definition inventories, and package-bound snapshots wired to preflight |
+| Build compatibility | Numeric executable version detection exists, but supported builds have not been exhaustively tested against real mod releases |
+| Game launch integration | Direct GTA5.exe launch can require Steam or Rockstar Games Launcher and needs real-world verification |
+| Performance and stability | No repeatable in-game benchmark matrix or extended gameplay soak tests |
+| Game-side interface transformation | Not implemented as a complete integrated UI. Prebuilt GTA VI-inspired HUD/minimap and pause-menu extension candidates are listed for research, but no full title screen, pause navigation, map/settings or HUD stack has passed exact-build and real-game tests |
+
+| Actual in-game UI surface replacements | Not implemented. The signed UI descriptor and surface-conflict gate are management safeguards only; no title, pause, map, settings, HUD, phone, radial or loading-screen replacement is currently verified |
+| Story Mode mission implementation | Not implemented by the Hub. It can validate and manage community-authored story packages and record tester evidence; it cannot author or execute GTA VI's proprietary campaign |
+| Game-side accessibility mods | Research only; not installed or verified |
+| Windows release signing | No code-signing certificate or signed installer configured |
+| Upgrade/uninstall migration | No migration of older manual mod installations or complete application updater |
+| Real-world rollback testing | Automated filesystem tests exist; tests on cloned real GTA V Legacy installations remain required |
+
+## Mandatory release gates
+
+The detailed test matrix and evidence record are defined in [Gameplay, compatibility, performance and rollback test plan](GAMEPLAY_COMPATIBILITY_PERFORMANCE_TEST_PLAN.md). Test results must be recorded per exact game executable/archive fingerprint.
+
+1. The latest Windows CI run must complete with a successful application build, all tests passing and a self-contained publish artifact produced.
+2. Review all compiler warnings and test failures; do not suppress failures to obtain a green build.
+3. Test install, rollback, interrupted-deployment recovery, package removal, profile reconciliation and removal rollback against disposable copies of each supported GTA V Legacy build.
+4. Verify that user saves, launcher files and the original game executable remain untouched.
+5. Test actual launch through supported Steam/Rockstar installation paths.
+6. Test each approved package individually and in documented combinations on a hardware matrix; record frame-time, VRAM/RAM use and stability.
+7. Review third-party licences and obtain required permissions. Do not redistribute binaries without explicit permission.
+8. Verify publisher key fingerprints through independent channels and establish signed catalogue/update metadata before enabling a curated one-click catalogue.
+9. Complete accessibility review for the Windows app and validate any game-side accessibility package separately.
+10. Sign the Windows executable/installer and publish release notes, hashes, supported builds and rollback instructions.
+
+A successful CI run is necessary but does not prove the platform is production-ready. The OpenRAGE OIV integration is an installer backend for user-supplied prebuilt OIV packages; it does not author mods, validate a mod's gameplay compatibility, automatically reconcile OIV groups with Hub profiles or make research-stage mods safe. The optional rage-cli integration is an asset-catalogue first step only; it does not establish a complete ecological baseline and does not enable ecology-sensitive packages. Real game compatibility, licence review, publisher-key governance, signing and release testing are still mandatory.

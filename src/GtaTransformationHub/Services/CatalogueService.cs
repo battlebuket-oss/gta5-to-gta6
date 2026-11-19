@@ -18,6 +18,9 @@ public sealed class CatalogueService
 
     public CatalogueDocument Load(string cataloguePath)
     {
+        if (string.IsNullOrWhiteSpace(cataloguePath))
+            throw new ArgumentException("A catalogue path is required.", nameof(cataloguePath));
+
         var json = File.ReadAllText(cataloguePath);
         var catalogue = JsonSerializer.Deserialize<CatalogueDocument>(json, JsonOptions)
             ?? throw new InvalidDataException("The mod catalogue is empty or invalid.");
@@ -31,6 +34,9 @@ public sealed class CatalogueService
         IEnumerable<string> selectedPackageIds,
         string installedGameBuild)
     {
+        ArgumentNullException.ThrowIfNull(catalogue);
+        ArgumentNullException.ThrowIfNull(selectedPackageIds);
+
         var errors = new List<string>();
         var warnings = new List<string>();
         var selected = new HashSet<string>(selectedPackageIds, StringComparer.OrdinalIgnoreCase);
@@ -55,11 +61,12 @@ public sealed class CatalogueService
                 !package.Sha256.All(Uri.IsHexDigit))
                 errors.Add(package.Name + " has no valid package SHA-256 digest.");
 
-            if (package.SourceUri.Scheme != Uri.UriSchemeHttps)
+            if (package.SourceUri is null || package.SourceUri.Scheme != Uri.UriSchemeHttps)
                 errors.Add(package.Name + " does not use a secure HTTPS source.");
 
             if (!Version.TryParse(package.MinimumGameBuild, out var minimum) ||
-                !Version.TryParse(package.MaximumGameBuild, out var maximum))
+                !Version.TryParse(package.MaximumGameBuild, out var maximum) ||
+                minimum > maximum)
             {
                 errors.Add(package.Name + " has no exact, machine-readable supported game-build range.");
             }
@@ -77,8 +84,14 @@ public sealed class CatalogueService
 
             foreach (var conflict in package.Conflicts)
             {
-                if (selected.Contains(conflict))
-                    errors.Add(package.Name + " conflicts with package " + conflict + ".");
+                var conflictingPackage = packages.Values.FirstOrDefault(candidate =>
+                    candidate.Id.Equals(conflict, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrWhiteSpace(candidate.ExclusiveGroup) &&
+                     candidate.ExclusiveGroup.Equals(conflict, StringComparison.OrdinalIgnoreCase)));
+
+                if (selected.Contains(conflict) ||
+                    (conflictingPackage is not null && selected.Contains(conflictingPackage.Id)))
+                    errors.Add(package.Name + " conflicts with package/group " + conflict + ".");
             }
 
             if (package.ExternalRequirements is { Count: > 0 })
@@ -105,12 +118,18 @@ public sealed class CatalogueService
             throw new InvalidDataException("Unsupported catalogue schema version.");
         if (!string.Equals(catalogue.GameTarget, "GTA V Legacy", StringComparison.Ordinal))
             throw new InvalidDataException("This catalogue does not target GTA V Legacy.");
+        if (catalogue.Categories is null || catalogue.Packages is null || catalogue.Profiles is null)
+            throw new InvalidDataException("The catalogue must contain categories, packages and profiles arrays.");
 
         EnsureUnique(catalogue.Categories.Select(x => x.Id), "category");
         EnsureUnique(catalogue.Packages.Select(x => x.Id), "package");
         EnsureUnique(catalogue.Profiles.Select(x => x.Id), "profile");
 
-        var categoryIds = new HashSet<string>(catalogue.Categories.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+        var categoryIds = new HashSet<string>(
+            catalogue.Categories.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+        var packageIds = new HashSet<string>(
+            catalogue.Packages.Select(x => x.Id), StringComparer.OrdinalIgnoreCase);
+
         foreach (var package in catalogue.Packages)
         {
             if (!PackageIdValidator.IsValid(package.Id))
@@ -119,9 +138,43 @@ public sealed class CatalogueService
                 throw new InvalidDataException("Unknown category for package " + package.Id + ".");
             if (package.SourceUri is null || package.SourceUri.Scheme != Uri.UriSchemeHttps)
                 throw new InvalidDataException("Every package must have an HTTPS author/source URI.");
+            if (package.Dependencies is null || package.Conflicts is null)
+                throw new InvalidDataException("A package must declare dependency and conflict arrays, even when empty.");
+
             if (package.Dependencies.Any(x => !PackageIdValidator.IsValid(x)) ||
                 package.Conflicts.Any(x => !PackageIdValidator.IsValid(x)))
                 throw new InvalidDataException("A package contains an invalid dependency or conflict ID.");
+
+            if (package.Dependencies.Contains(package.Id, StringComparer.OrdinalIgnoreCase) ||
+                package.Conflicts.Contains(package.Id, StringComparer.OrdinalIgnoreCase))
+                throw new InvalidDataException("A package cannot depend on or conflict with itself.");
+
+            if (package.Status == CatalogueStatus.Tested)
+            {
+                if (string.IsNullOrWhiteSpace(package.Sha256) ||
+                    package.Sha256.Length != 64 ||
+                    !package.Sha256.All(Uri.IsHexDigit))
+                    throw new InvalidDataException("A Tested package must declare a valid SHA-256 digest.");
+
+                if (!Version.TryParse(package.MinimumGameBuild, out var minimum) ||
+                    !Version.TryParse(package.MaximumGameBuild, out var maximum) ||
+                    minimum > maximum)
+                    throw new InvalidDataException("A Tested package must declare an exact supported game-build range.");
+            }
+        }
+
+        foreach (var profile in catalogue.Profiles)
+        {
+            if (profile.EnabledPackageIds is null)
+                throw new InvalidDataException("A catalogue profile must declare an enabledPackageIds array.");
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var packageId in profile.EnabledPackageIds)
+            {
+                if (!packageIds.Contains(packageId) || !seen.Add(packageId))
+                    throw new InvalidDataException(
+                        "A catalogue profile contains an unknown or duplicate package ID: " + packageId);
+            }
         }
     }
 

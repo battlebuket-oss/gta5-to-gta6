@@ -1,32 +1,46 @@
 using System.Diagnostics;
+using System.ComponentModel;
 
 namespace GtaTransformationHub.Services;
 
 public sealed class GameProcessMonitor
 {
+    private static readonly string[] ProtectedProcessNames =
+    {
+        "GTA5",
+        "GTA5_Enhanced"
+    };
+
     public bool IsStoryModeProcessRunning()
     {
         try
         {
-            foreach (var process in Process.GetProcessesByName("GTA5"))
+            foreach (var processName in ProtectedProcessNames)
             {
-                using (process)
+                foreach (var process in Process.GetProcessesByName(processName))
                 {
-                    try
+                    using (process)
                     {
-                        if (!process.HasExited)
+                        try
+                        {
+                            if (!process.HasExited)
+                                return true;
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Process exited between enumeration and inspection.
+                        }
+                        catch (Win32Exception)
+                        {
+                            // If process inspection is denied, callers must fail closed.
                             return true;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        // Process exited between enumeration and inspection.
+                        }
                     }
                 }
             }
         }
-        catch (System.ComponentModel.Win32Exception)
+        catch (Win32Exception)
         {
-            // If process inspection is denied, callers must fail closed.
             return true;
         }
         catch
@@ -41,6 +55,7 @@ public sealed class GameProcessMonitor
     public void EnsureConfigurationUnlocked()
     {
         if (IsStoryModeProcessRunning())
-            throw new InvalidOperationException("GTA V is running. Mod configuration and deployment are locked until the game exits.");
+            throw new InvalidOperationException(
+                "GTA V is running or its process state cannot be verified. Mod configuration and deployment are locked until the game exits.");
     }
 }

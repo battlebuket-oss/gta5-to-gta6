@@ -4,4 +4,5 @@ public sealed record ModProfile(
     string Id,
     string Name,
     IReadOnlySet<string> EnabledPackageIds,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyDictionary<string, string>? PackageVersions = null);

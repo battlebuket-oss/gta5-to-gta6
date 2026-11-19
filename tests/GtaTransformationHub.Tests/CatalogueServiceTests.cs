@@ -18,8 +18,18 @@ public sealed class CatalogueServiceTests
 
         Assert.Equal("GTA V Legacy", catalogue.GameTarget);
         Assert.NotEmpty(catalogue.Packages);
-        Assert.All(catalogue.Packages, package => Assert.Equal(
-            GtaTransformationHub.Models.CatalogueStatus.Researching, package.Status));
+        Assert.All(catalogue.Packages, package => Assert.Contains(
+            package.Status,
+            new[]
+            {
+                GtaTransformationHub.Models.CatalogueStatus.Researching,
+                GtaTransformationHub.Models.CatalogueStatus.Blocked
+            }));
+        Assert.Contains(catalogue.Packages, package =>
+            package.Id == "blue-whales-humpback-replacer" &&
+            package.Status == GtaTransformationHub.Models.CatalogueStatus.Blocked);
+        Assert.DoesNotContain(catalogue.Packages, package =>
+            package.Status == GtaTransformationHub.Models.CatalogueStatus.Tested);
     }
 
     [Fact]

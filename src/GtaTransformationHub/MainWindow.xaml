@@ -1,8 +1,8 @@
 <Window x:Class="GtaTransformationHub.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="GTA VI Transformation Hub"
-        Width="1180" Height="760" MinWidth="980" MinHeight="640"
+        Title="GTA V Transformation Hub"
+        Width="1220" Height="800" MinWidth="1000" MinHeight="680"
         Background="{StaticResource WindowBackground}"
         Foreground="{StaticResource PrimaryText}"
         WindowStartupLocation="CenterScreen"
@@ -15,13 +15,13 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <DockPanel Grid.Row="0" Margin="0,0,0,22">
+    <DockPanel Grid.Row="0" Margin="0,0,0,20">
       <StackPanel>
-        <TextBlock Text="TRANSFORMATION HUB" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
-        <TextBlock Text="GTA V  /  MOD CONTROL" FontSize="27" FontWeight="SemiBold" Margin="0,4,0,0"/>
+        <TextBlock Text="GTA V TRANSFORMATION HUB" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="Bold"/>
+        <TextBlock Text="STORY MODE / MOD CONTROL" FontSize="27" FontWeight="SemiBold" Margin="0,4,0,0"/>
       </StackPanel>
       <Border DockPanel.Dock="Right" Background="#252830" CornerRadius="8" Padding="14,9" VerticalAlignment="Center">
-        <TextBlock x:Name="SessionStateText" Text="CONFIGURATION UNLOCKED" FontSize="11" FontWeight="Bold"/>
+        <TextBlock x:Name="SessionStateText" Text="STARTING SAFETY CHECK" FontSize="11" FontWeight="Bold"/>
       </Border>
     </DockPanel>
 
@@ -35,7 +35,7 @@
         <StackPanel>
           <TextBlock Text="GAME INSTALLATION" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold"/>
           <TextBlock x:Name="GamePathText" Text="GTA V Legacy not located" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
-          <TextBlock x:Name="DetectionText" Text="Locate your GTA5.exe installation to begin." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,4,0,0"/>
+          <TextBlock x:Name="DetectionText" Text="Select GTA5.exe to verify the installation and build." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,4,0,0"/>
         </StackPanel>
         <Button x:Name="LocateButton" AutomationProperties.Name="Locate GTA V Legacy executable" Grid.Column="1" Content="Locate game" Padding="18,10" Margin="12,0" Click="LocateButton_Click"/>
         <Button x:Name="RefreshButton" AutomationProperties.Name="Recheck GTA V process and installation state" Grid.Column="2" Content="Recheck" Padding="18,10" Click="RefreshButton_Click"/>
@@ -44,48 +44,438 @@
 
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="2*"/>
+        <ColumnDefinition Width="1.8*"/>
         <ColumnDefinition Width="1.1*"/>
       </Grid.ColumnDefinitions>
+
       <Border Grid.Column="0" Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="0,0,10,0">
-        <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
-            <TextBlock Text="MOD LOADOUT" FontSize="17" FontWeight="SemiBold"/>
-            <TextBlock Text="Select the mods to prepare before launching. This list is a UI foundation; no third-party mods are bundled." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <TextBlock Text="PACKAGE LIBRARY" FontSize="17" FontWeight="SemiBold"/>
+            <TextBlock Text="Import a ZIP containing gta-hub-manifest.json. Applying a profile reconciles installed packages and preserves an intact package that is already active." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
           </StackPanel>
-          <StackPanel x:Name="ModList">
-            <TextBlock Text="No verified mod packages installed yet." Foreground="{StaticResource SecondaryText}" Margin="0,12,0,0"/>
+
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button x:Name="ImportPackageButton" Content="Import package ZIP" Padding="14,9" Margin="0,0,8,0" Click="ImportPackageButton_Click"/>
+            <Button x:Name="TrustPublisherButton" Content="Trust publisher key" Padding="14,9" Margin="0,0,8,0" Click="TrustPublisherButton_Click"/>
+            <Button x:Name="ManagePublishersButton" Content="Manage trusted keys" Padding="14,9" Margin="0,0,8,0" Click="ManagePublishersButton_Click"/>
+            <Button x:Name="ValidateButton" Content="Validate selection" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="ValidateButton_Click"/>
+            <Button x:Name="ApplyButton" Content="Apply profile" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Background="{StaticResource AccentBrush}" Foreground="White" Click="ApplyButton_Click"/>
+            <Button x:Name="RemoveSelectedButton" Content="Remove selected" Padding="14,9" Margin="0,0,8,0" IsEnabled="False" Click="RemoveSelectedButton_Click"/>
+            <Button x:Name="RollbackButton" Content="Rollback latest" Padding="14,9" IsEnabled="False" Click="RollbackButton_Click"/>
+          </WrapPanel>
+
+          <CheckBox x:Name="TrustPackagesCheckBox"
+                    DockPanel.Dock="Top"
+                    Margin="0,0,0,12"
+                    IsEnabled="False"
+                    Checked="TrustAcknowledgement_Changed"
+                    Unchecked="TrustAcknowledgement_Changed"
+                    Content="I reviewed the source and licence, and accept that third-party mod files may execute inside GTA V."/>
+
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <TextBlock Text="PACKAGE ACQUISITION" FontWeight="SemiBold" FontSize="11" Foreground="{StaticResource SecondaryText}" Margin="0,0,0,5"/>
+            <TextBox x:Name="PackageDownloadUrlText" AutomationProperties.Name="Direct HTTPS package download URL" ToolTip="Paste a direct HTTPS ZIP or OIV download URL" Padding="8" Margin="0,0,0,6"/>
+            <Button x:Name="DownloadPackageButton" Content="Download package from direct HTTPS URL" Padding="10,7" HorizontalAlignment="Left" Click="DownloadPackageButton_Click"/>
+            <TextBlock Text="Direct HTTPS ZIP/OIV files only. Redirects are revalidated, downloads are size-limited, and HTML pages are not scraped." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0"/>
           </StackPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Select one or more imported packages:" Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,0,0,8"/>
+          <Expander x:Name="ResearchCatalogueExpander"
+                    DockPanel.Dock="Bottom"
+                    Header="RESEARCH CATALOGUE — UNAPPROVED MODS"
+                    IsExpanded="False"
+                    Margin="0,12,0,0">
+            <ListBox x:Name="ResearchCatalogueList"
+                     AutomationProperties.Name="Research-only mod catalogue"
+                     Height="190"
+                     Background="#121419"
+                     BorderBrush="#343841"
+                     Foreground="{StaticResource PrimaryText}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="5,5">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Author}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                    <TextBlock Text="{Binding Version}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                    <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryText}" FontSize="10" MaxHeight="42"/>
+                    <TextBlock Text="{Binding Status, StringFormat='Catalogue status: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                    <Button Content="Open mod author/source page"
+                            Tag="{Binding SourceUri}"
+                            HorizontalAlignment="Left"
+                            Padding="8,4"
+                            Margin="0,4,0,0"
+                            Click="OpenCatalogueSourceButton_Click"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Expander>
+
+          <ListBox x:Name="PackageList"
+                   AutomationProperties.Name="Imported mod packages"
+                   SelectionMode="Extended"
+                   SelectionChanged="PackageList_SelectionChanged"
+                   Background="#121419"
+                   BorderBrush="#343841"
+                   Foreground="{StaticResource PrimaryText}">
+            <ListBox.ItemTemplate>
+                            <DataTemplate>
+                <StackPanel Margin="5,4">
+                  <TextBlock Text="{Binding Manifest.Name}" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Manifest.Author}" Foreground="{StaticResource SecondaryText}" FontSize="11"/>
+                  <TextBlock Text="{Binding Manifest.Id}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <TextBlock Text="{Binding Manifest.Licence}" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding SignatureStatus, StringFormat='Signature: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <TextBlock Text="{Binding Manifest.StoryContent.ContentType, StringFormat='Story content: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <TextBlock Text="{Binding Manifest.StoryContent.ProgressionNamespace, StringFormat='Progression namespace: {0}'}" Foreground="{StaticResource SecondaryText}" FontSize="10"/>
+                  <Button Content="Open author/source page"
+                          Tag="{Binding Manifest.SourceUri}"
+                          HorizontalAlignment="Left"
+                          Padding="8,4"
+                          Margin="0,5,0,0"
+                          Click="OpenPackageSourceButton_Click"/>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
         </DockPanel>
       </Border>
-      <StackPanel Grid.Column="1">
+
+      <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
-            <TextBlock Text="DEFAULT EXPERIENCE" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold"/>
-            <TextBlock Text="Story Mode + World Expansion" FontSize="16" FontWeight="SemiBold" Margin="0,7,0,4"/>
-            <TextBlock Text="The original GTA V campaign stays intact. Separate profiles will manage verified story packs, side activities, world systems and visual changes." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Text="PROFILES" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Choose a saved profile, then save the current package selection as a profile." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,10"/>
+            <ComboBox x:Name="ProfileSelector"
+                      AutomationProperties.Name="Saved package profile"
+                      DisplayMemberPath="Name"
+                      SelectionChanged="ProfileSelector_SelectionChanged"
+                      Margin="0,0,0,8"/>
+            <TextBox x:Name="ProfileNameText" AutomationProperties.Name="New profile name" ToolTip="Enter a name for the current package selection" Margin="0,0,0,8" Padding="8"/>
+            <Button x:Name="SaveProfileButton" Content="Save current selection as profile" Padding="12,9" Click="SaveProfileButton_Click"/>
+            <TextBlock x:Name="ProfileWarningText" Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0"/>
           </StackPanel>
         </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="PREBUILT MOD INSTALLER" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Install existing OpenIV .oiv packages using the upstream OpenRAGE installer. The Hub requires OpenIV.asi and an existing mods folder, previews package changes, then requires Legacy-build/licence/backup confirmation. OpenRAGE keeps its own uninstall journal, separate from Hub ZIP deployment transactions. No mod files are bundled by this project."
+                       TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <WrapPanel Margin="0,0,0,7">
+              <Button x:Name="DownloadOpenRageButton"
+                      Content="Download and verify OpenRAGE v0.4.0"
+                      Padding="10,7"
+                      Click="DownloadOpenRageButton_Click"/>
+              <Button x:Name="OpenOpenRageSourceButton"
+                      Content="Open OpenRAGE source and licence"
+                      Padding="10,7"
+                      Margin="6,0,0,0"
+                      Click="OpenOpenRageSourceButton_Click"/>
+            </WrapPanel>
+            <TextBlock x:Name="OpenRageToolStatusText"
+                       Text="OpenRAGE has not been installed. Download the official upstream Windows x64 release to enable OIV preview/install."
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,7"/>
+            <WrapPanel Margin="0,0,0,7">
+              <Button x:Name="InstallOivButton"
+                      Content="Select, preview and install OIV"
+                      Padding="10,7"
+                      IsEnabled="False"
+                      Click="InstallOivButton_Click"/>
+              <Button x:Name="ListOpenRagePackagesButton"
+                      Content="List OpenRAGE-installed packages"
+                      Padding="10,7"
+                      Margin="6,0,0,0"
+                      IsEnabled="False"
+                      Click="ListOpenRagePackagesButton_Click"/>
+            </WrapPanel>
+            <TextBlock Text="For uninstall, copy the exact package group name from the OpenRAGE package list:"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,5"/>
+            <TextBox x:Name="OpenRageUninstallGroupText"
+                     AutomationProperties.Name="OpenRAGE OIV package group name"
+                     ToolTip="Exact name and version shown by openrage oiv list"
+                     Padding="7"
+                     Margin="0,0,0,7"/>
+            <WrapPanel Margin="0,0,0,7">
+              <Button x:Name="UninstallOpenRagePackageButton"
+                      Content="Uninstall selected OpenRAGE package"
+                      Padding="9,6"
+                      IsEnabled="False"
+                      Click="UninstallOpenRagePackageButton_Click"/>
+              <Button x:Name="UndoOpenRageLastChangeButton"
+                      Content="Undo latest OpenRAGE change"
+                      Padding="9,6"
+                      Margin="6,0,0,0"
+                      IsEnabled="False"
+                      Click="UndoOpenRageLastChangeButton_Click"/>
+            </WrapPanel>
+            <CheckBox x:Name="OpenRageLegacyCompatibilityConsentCheckBox"
+                      Content="I verified this package targets GTA V Legacy and the exact build shown above, reviewed the author licence/dependencies, and backed up this disposable game copy and Story Mode saves."
+                      IsThreeState="False"
+                      Margin="0,0,0,7"/>
+            <CheckBox x:Name="OpenRageExecutableConsentCheckBox"
+                      Content="I reviewed the OIV preview and allow any listed loose files to be written directly into the GTA V game folder (including possible ASI/DLL plugins)."
+                      IsThreeState="False"
+                      Margin="0,0,0,7"/>
+            <TextBlock x:Name="OpenRageStatusText"
+                       Text="No OpenRAGE OIV operation has been run."
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="OpenRAGE is GPL-3.0-only and remains an external upstream program. The Hub keeps the original official release archive and licence notices on your PC. OIV installs use OpenRAGE's journal and are not controlled by the Hub's own rollback button."
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="ECOLOGICAL FIDELITY" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Preserve every original land and aquatic animal, plant, underwater vegetation species, model identity and population entry. New species may only be added as unique additions. Existing water simulation and interaction behaviour must remain intact. Ecology-sensitive packages stay blocked until a trusted exact-build inventory is available." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Expander x:Name="AssetToolchainExpander"
+                      Header="ASSET INSPECTION TOOLCHAIN — OPTIONAL"
+                      IsExpanded="False"
+                      Margin="0,6,0,0">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock Text="Use a separately downloaded, checksum-pinned rage-cli v0.28.1 executable to inspect this GTA V installation. The Hub does not download or bundle the third-party binary." TextWrapping="Wrap" Foreground="{StaticResource SecondaryText}" FontSize="10" Margin="0,0,0,7"/>
+                <TextBox x:Name="RageCliExecutablePathText"
+                         AutomationProperties.Name="Verified rage-cli executable path"
+                         IsReadOnly="True"
+                         ToolTip="Select rage-windows-x86_64.exe v0.28.1"
+                         Padding="7"
+                         Margin="0,0,0,7"/>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="OpenRageCliReleaseButton" Content="Official release page" Padding="9,6" Margin="0,0,6,0" Click="OpenRageCliReleaseButton_Click"/>
+                  <Button x:Name="SelectRageCliButton" Content="Choose rage-cli" Padding="9,6" Margin="0,0,6,0" Click="SelectRageCliButton_Click"/>
+                  <Button x:Name="VerifyRageCliButton" Content="Verify version and checksum" Padding="9,6" Click="VerifyRageCliButton_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="BuildAssetCatalogueButton" Content="Build model/texture catalogue" Padding="9,6" IsEnabled="False" Click="BuildAssetCatalogueButton_Click"/>
+                  <Button x:Name="DiscoverEcologyMetadataButton" Content="Discover ecology metadata" Padding="9,6" Margin="6,0,0,0" IsEnabled="False" Click="DiscoverEcologyMetadataButton_Click"/>
+                  <Button x:Name="CancelAssetCatalogueButton" Content="Cancel scan" Padding="9,6" Margin="6,0,0,0" IsEnabled="False" Click="CancelAssetCatalogueButton_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="HarvestGtaNamesButton"
+                          Content="Harvest exact-build names"
+                          Padding="9,6"
+                          IsEnabled="False"
+                          Click="HarvestGtaNamesButton_Click"/>
+                  <TextBlock Text="Candidate offset (0-based)"
+                             VerticalAlignment="Center"
+                             Margin="10,0,5,0"
+                             Foreground="{StaticResource SecondaryText}"
+                             FontSize="10"/>
+                  <TextBox x:Name="MetadataCandidateOffsetText"
+                           Text="0"
+                           Width="76"
+                           Padding="6,4"
+                           VerticalContentAlignment="Center"
+                           AutomationProperties.Name="Starting metadata candidate index"
+                           ToolTip="Start index for the next metadata dump batch. The Hub advances this after a successful batch."/>
+                  <Button x:Name="DumpEcologyMetadataButton"
+                          Content="Dump next metadata batch"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="DumpEcologyMetadataButton_Click"/>
+                  <Button x:Name="AnalyzeEcologyMetadataButton"
+                          Content="Analyze metadata JSON"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="AnalyzeEcologyMetadataButton_Click"/>
+                  <Button x:Name="CompareEcologyInventoryButton"
+                          Content="Compare normalized ecology inventories"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="CompareEcologyInventoryButton_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,0,0,7">
+                  <Button x:Name="CreateEcologyCurationWorkspaceButton"
+                          Content="Create curation workspace"
+                          Padding="9,6"
+                          IsEnabled="False"
+                          Click="CreateEcologyCurationWorkspaceButton_Click"/>
+                  <Button x:Name="OpenEcologyCurationDraftButton"
+                          Content="Open curation draft"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="OpenEcologyCurationDraftButton_Click"/>
+                </WrapPanel>
+                <TextBlock x:Name="RageNamesStatusText"
+                           Text="Harvest the current build's JOAAT name list before dumping metadata to resolve hashed archetype and model names."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
+                <TextBlock x:Name="EcologyCandidateAnalysisStatusText"
+                           Text="Analyze a metadata dump index to extract provenance-linked heuristic candidates. Candidate matches are not verified species or water definitions."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
+                <TextBlock x:Name="EcologyComparisonStatusText"
+                           Text="A semantic comparison can be run only from normalized snapshots. It cannot certify scan completeness or unlock ecology packages."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
+                <TextBlock x:Name="EcologyCurationStatusText"
+                           Text="Create a curation workspace from a candidate analysis report, or reopen an existing exact-build draft."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
+                <TextBlock x:Name="RageCliStatusText" Text="No rage-cli executable has been verified." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
+                <TextBlock Text="Asset catalogue scans drawables, fragments, dictionaries and textures. Metadata discovery searches nested RPFs for population/model-set, water, animal, plant and map metadata candidates and fingerprints source archives. Both are discovery tools only: neither is a complete ecological baseline, and neither unlocks ecology packages." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,0"/>
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="STORY MODE FIRST" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="The project targets GTA V Legacy single-player. Preserve original game files and saves. Imported packages remain separate until a selected deployment is applied." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="RecordStoryTestEvidenceButton"
+                    AutomationProperties.Name="Record Story Mode mission and compatibility test evidence for the selected package"
+                    Content="Record Story Mode test evidence"
+                    Padding="10,7"
+                    HorizontalAlignment="Left"
+                    IsEnabled="False"
+                    Click="RecordStoryTestEvidenceButton_Click"/>
+            <TextBlock x:Name="StoryTestEvidenceStatusText"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
+            <Button x:Name="RecordCompatibilityTestEvidenceButton"
+                    AutomationProperties.Name="Record complete GTA V compatibility and performance test evidence for the selected package stack"
+                    Content="Record compatibility / performance test evidence"
+                    Padding="10,7"
+                    HorizontalAlignment="Left"
+                    Margin="0,8,0,0"
+                    IsEnabled="False"
+                    Click="RecordCompatibilityTestEvidenceButton_Click"/>
+            <TextBlock x:Name="CompatibilityTestEvidenceStatusText"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"
+                       Text="Run the full package-stack compatibility, ecology, water, input, rollback, benchmark and stability matrix after manual testing."/>
+            <Button x:Name="OpenCompatibilityEvidenceFolderButton"
+                    Content="Open saved compatibility evidence folder"
+                    Padding="9,6"
+                    HorizontalAlignment="Left"
+                    Margin="0,8,0,0"
+                    Click="OpenCompatibilityEvidenceFolderButton_Click"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="PERFORMANCE GUIDANCE" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Detect basic hardware resources and receive a conservative profile recommendation. This does not change game settings." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="DetectPerformanceButton" Content="Detect hardware and recommend profile" Padding="10,7" HorizontalAlignment="Left" Click="DetectPerformanceButton_Click"/>
+            <TextBlock x:Name="PerformanceGuidanceText" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
+          <StackPanel>
+            <TextBlock Text="STORY SAVE PROTECTION" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Create a read-only archive backup of the GTA V Profiles folder before experimenting with story or mission packages." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="BackupStorySavesButton" Content="Back up Story Mode saves" Padding="10,7" HorizontalAlignment="Left" Click="BackupStorySavesButton_Click"/>
+            <TextBlock x:Name="StorySaveBackupText" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
+          </StackPanel>
+        </Border>
+
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
             <TextBlock Text="ACCESSIBILITY" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock Text="Accessibility is a core track: subtitle readability, screen-reader compatibility, clear controls, scalable UI, contrast and motion comfort." TextWrapping="Wrap" Margin="0,8,0,0"/>
-            <TextBlock Text="Catalogue candidates are research-only until individually verified. Unsupported settings will never appear as working toggles." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock Text="These preferences affect the Hub only. Game-side subtitle, screen-reader, HUD and comfort features remain unavailable unless an actual compatible GTA V implementation is verified." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <CheckBox x:Name="HighContrastCheckBox"
+                      AutomationProperties.Name="Enable high contrast in the Transformation Hub"
+                      Content="High-contrast mode"
+                      Checked="AccessibilityPreference_Changed"
+                      Unchecked="AccessibilityPreference_Changed"
+                      Margin="0,0,0,7"/>
+            <TextBlock Text="Hub text size" Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,0,0,3"/>
+            <DockPanel Margin="0,0,0,7">
+              <TextBlock x:Name="TextScaleValueText" DockPanel.Dock="Right" Text="100%" Width="55" TextAlignment="Right" VerticalAlignment="Center"/>
+              <Slider x:Name="HubTextScaleSlider"
+                      AutomationProperties.Name="Hub text size from 100 to 150 percent"
+                      Minimum="1.0" Maximum="1.5" Value="1.0"
+                      TickFrequency="0.1" IsSnapToTickEnabled="True"
+                      ValueChanged="AccessibilityTextScale_ValueChanged"
+                      Margin="0,0,8,0"/>
+            </DockPanel>
+            <CheckBox x:Name="ReduceMotionCheckBox"
+                      AutomationProperties.Name="Reduce nonessential motion in the Transformation Hub"
+                      Content="Reduce nonessential motion"
+                      IsChecked="True"
+                      Checked="AccessibilityPreference_Changed"
+                      Unchecked="AccessibilityPreference_Changed"
+                      Margin="0,0,0,8"/>
+            <Button x:Name="SaveAccessibilityPreferencesButton"
+                    AutomationProperties.Name="Save Hub accessibility preferences"
+                    Content="Save accessibility preferences"
+                    Padding="10,7"
+                    HorizontalAlignment="Left"
+                    Click="SaveAccessibilityPreferencesButton_Click"/>
+            <TextBlock x:Name="AccessibilityStatusText"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"
+                       Text="Preferences are stored locally and never change GTA V settings."/>
           </StackPanel>
         </Border>
+
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,0">
           <StackPanel>
             <TextBlock Text="SESSION SAFETY" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock Text="Once GTA5.exe starts, all configuration controls lock. The app will not deploy, remove, or change mods until the game exits." TextWrapping="Wrap" Margin="0,8,0,0"/>
-            <TextBlock x:Name="LockExplanationText" Text="Game not running — configuration is available." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>
+            <TextBlock Text="Configuration and deployment are locked while GTA5.exe is running or process state is uncertain. The deployer copies declared files only and does not execute installers." TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock x:Name="LockExplanationText" Text="Waiting for startup recovery." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,0">
+          <StackPanel>
+            <TextBlock Text="SUPPORT DIAGNOSTICS" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="Export a local, redacted diagnostic bundle for troubleshooting. It contains recent application logs and basic system metadata only; it does not collect GTA V saves, game archives, mod binaries or environment secrets." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="ExportDiagnosticsButton" Content="Export support bundle" Padding="10,7" HorizontalAlignment="Left" Click="ExportDiagnosticsButton_Click"/>
+            <TextBlock x:Name="DiagnosticsStatusText" Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
           </StackPanel>
         </Border>
       </StackPanel>
+      </ScrollViewer>
     </Grid>
 
     <DockPanel Grid.Row="3" Margin="0,18,0,0">
-      <TextBlock x:Name="StatusText" Text="Ready. Locate GTA V Legacy to continue." Foreground="{StaticResource SecondaryText}" VerticalAlignment="Center"/>
-      <Button x:Name="LaunchButton" AutomationProperties.Name="Apply validated Story Mode profile and launch GTA V" DockPanel.Dock="Right" Content="APPLY PROFILE &amp; LAUNCH" Padding="24,13" FontWeight="Bold" Background="{StaticResource AccentBrush}" Foreground="White" IsEnabled="False" Click="LaunchButton_Click"/>
+      <TextBlock x:Name="StatusText" Text="Checking deployment recovery..." Foreground="{StaticResource SecondaryText}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      <Button x:Name="LaunchButton"
+              AutomationProperties.Name="Launch GTA V Story Mode after verified package deployment"
+              DockPanel.Dock="Right"
+              Content="LAUNCH GTA V"
+              Padding="24,13"
+              Margin="12,0,0,0"
+              FontWeight="Bold"
+              Background="{StaticResource AccentBrush}"
+              Foreground="White"
+              IsEnabled="False"
+              Click="LaunchButton_Click"/>
     </DockPanel>
   </Grid>
 </Window>
