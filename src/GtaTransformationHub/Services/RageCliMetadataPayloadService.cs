@@ -71,7 +71,8 @@ public sealed class RageCliMetadataPayloadService
         string rageExecutablePath,
         GameInstallation installation,
         string discoveryReportPath,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? namesFilePath = null)
     {
         ArgumentNullException.ThrowIfNull(installation);
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -215,7 +216,7 @@ public sealed class RageCliMetadataPayloadService
                 var dumpResult = await _processRunner.RunAsync(
                     verifiedTool.ExecutablePath,
                     BuildResourceDumpArguments(
-                        gameExecutable, currentArchive, resourcePath, temporaryJsonPath),
+                        gameExecutable, currentArchive, resourcePath, temporaryJsonPath, namesFilePath),
                     DumpTimeout,
                     cancellationToken);
 
@@ -442,8 +443,10 @@ public sealed class RageCliMetadataPayloadService
         string gameExecutablePath,
         string archivePath,
         string resourcePath,
-        string outputJsonPath) =>
-        new[]
+        string outputJsonPath,
+        string? namesFilePath = null)
+    {
+        var arguments = new List<string>
         {
             "--no-update-check",
             "--exe", Path.GetFullPath(gameExecutablePath),
@@ -451,9 +454,23 @@ public sealed class RageCliMetadataPayloadService
             "dump",
             resourcePath,
             "--archive", Path.GetFullPath(archivePath),
-            "--json",
-            "--output", Path.GetFullPath(outputJsonPath)
+            "--json"
         };
+
+        if (!string.IsNullOrWhiteSpace(namesFilePath))
+        {
+            var namesPath = Path.GetFullPath(namesFilePath);
+            if (!File.Exists(namesPath) ||
+                (File.GetAttributes(namesPath) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("The optional game names list is missing or redirected.");
+            arguments.Add("--names");
+            arguments.Add(namesPath);
+        }
+
+        arguments.Add("--output");
+        arguments.Add(Path.GetFullPath(outputJsonPath));
+        return arguments;
+    }
 
     private static string ValidateOwnedReportPath(string reportDirectory, string reportPath)
     {
