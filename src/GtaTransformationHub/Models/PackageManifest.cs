@@ -77,7 +77,9 @@ public sealed record UiPackageDescriptor(
     bool SubtitlesPreserved,
     bool OriginalCampaignPreserved,
     string CompatibilityEvidenceUri,
-    string RollbackEvidenceUri);
+    string RollbackEvidenceUri,
+    string VerifiedGameBuild,
+    string VerifiedGta5ExeSha256);
 
 public sealed record PackageManifestFile(
     string SourcePath,
