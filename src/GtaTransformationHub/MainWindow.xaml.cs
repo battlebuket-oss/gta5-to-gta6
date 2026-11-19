@@ -63,10 +63,27 @@ public partial class MainWindow : Window
             var entries = await new ImportedModLibraryService().LoadAsync(PackageLibraryRoot);
             ModList.Children.Clear();
 
+            // Restore the newest fully verified OIV after a Hub restart. The library
+            // service re-hashes the retained source archive as part of each package's
+            // inventory check; only entries with a complete OIV inspection can be
+            // offered to the external installer.
+            var latestVerifiedOiv = entries.FirstOrDefault(entry =>
+                entry.ManifestValid &&
+                entry.OriginalArchivePath is not null &&
+                string.Equals(Path.GetExtension(entry.OriginalArchivePath), ".oiv", StringComparison.OrdinalIgnoreCase) &&
+                entry.OivInspection is not null &&
+                entry.OriginalArchiveSha256 is { Length: 64 } digest &&
+                digest.All(Uri.IsHexDigit));
+
+            _lastImportedOivPath = latestVerifiedOiv?.OriginalArchivePath;
+            _lastOivArchiveSha256 = latestVerifiedOiv?.OriginalArchiveSha256;
+            _lastImportedOivPackageDirectory = latestVerifiedOiv?.PackageDirectory;
+            _lastOivInspection = latestVerifiedOiv?.OivInspection;
+
             var cleanInventories = entries.Count(entry => entry.ManifestValid);
             LibrarySummaryText.Text =
                 entries.Count + " imported package(s) | " + cleanInventories +
-                " per-file SHA-256 checks clear | source archive digest is not re-verified | no packages approved";
+                " source archive + extracted file SHA-256 checks clear | no packages approved";
 
             if (entries.Count == 0)
             {
