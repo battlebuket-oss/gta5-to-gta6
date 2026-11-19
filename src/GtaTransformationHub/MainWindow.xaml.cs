@@ -17,7 +17,9 @@ public partial class MainWindow : Window
     private string? _lastImportedOivPath;
     private string? _lastOivArchiveSha256;
     private string? _lastImportedOivPackageDirectory;
+    private string? _lastImportedOivPackageId;
     private OivManifestInspectionResult? _lastOivInspection;
+    private bool _openRageHudPrerequisitesReady = true;
     private bool _recoveryCompleted;
     private readonly DispatcherTimer _processTimer;
     private readonly PackageAcquisitionService _packageAcquisitionService;
@@ -87,7 +89,9 @@ public partial class MainWindow : Window
             _lastImportedOivPath = latestVerifiedOiv?.OriginalArchivePath;
             _lastOivArchiveSha256 = latestVerifiedOiv?.OriginalArchiveSha256;
             _lastImportedOivPackageDirectory = latestVerifiedOiv?.PackageDirectory;
+            _lastImportedOivPackageId = latestVerifiedOiv?.PackageId;
             _lastOivInspection = latestVerifiedOiv?.OivInspection;
+            _openRageHudPrerequisitesReady = true;
 
             var cleanInventories = entries.Count(entry => entry.ManifestValid);
             LibrarySummaryText.Text =
@@ -260,8 +264,10 @@ public partial class MainWindow : Window
                         _lastImportedOivPath = entry.OriginalArchivePath;
                         _lastOivArchiveSha256 = entry.OriginalArchiveSha256;
                         _lastImportedOivPackageDirectory = entry.PackageDirectory;
+                        _lastImportedOivPackageId = entry.PackageId;
                         _lastOivInspection = entry.OivInspection;
                         _reviewedOpenRageInspection = null;
+                        _openRageHudPrerequisitesReady = true;
                         OpenRageOutputText.Text =
                             "Selected OIV: " + entry.Name + Environment.NewLine +
                             "Version: " + entry.Version + Environment.NewLine +
@@ -306,7 +312,9 @@ public partial class MainWindow : Window
                         _lastImportedOivPath = entry.OriginalArchivePath;
                         _lastOivArchiveSha256 = entry.OriginalArchiveSha256;
                         _lastImportedOivPackageDirectory = entry.PackageDirectory;
+                        _lastImportedOivPackageId = entry.PackageId;
                         _lastOivInspection = entry.OivInspection;
+                        _openRageHudPrerequisitesReady = true;
                         RefreshSessionState();
                         OpenImportedOivButton_Click(this, new RoutedEventArgs());
                     };
@@ -462,14 +470,18 @@ public partial class MainWindow : Window
                 _lastImportedOivPath = result.OriginalArchivePath;
                 _lastOivArchiveSha256 = result.ArchiveSha256;
                 _lastImportedOivPackageDirectory = result.PackageDirectory;
+                _lastImportedOivPackageId = metadataDialog.Metadata.PackageId;
                 _lastOivInspection = result.OivInspection;
+                _openRageHudPrerequisitesReady = true;
             }
             else
             {
                 _lastImportedOivPath = null;
                 _lastOivArchiveSha256 = null;
                 _lastImportedOivPackageDirectory = null;
+                _lastImportedOivPackageId = null;
                 _lastOivInspection = null;
+                _openRageHudPrerequisitesReady = true;
             }
 
             var inspectionDetails = result.OivInspection is null
@@ -955,11 +967,31 @@ public partial class MainWindow : Window
             if (preview.GameFolderChanges.Count > 0)
                 sections.Add("GAME-FOLDER CHANGES:" + Environment.NewLine + string.Join(Environment.NewLine, preview.GameFolderChanges));
 
+            _openRageHudPrerequisitesReady = true;
+            if (string.Equals(_lastImportedOivPackageId, "gta-vi-inspired-hud-single-player",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                var hudPrerequisites = new GtaViInspiredHudPrerequisiteService().Inspect(installation);
+                _openRageHudPrerequisitesReady = hudPrerequisites.AllRequiredFilesPresent;
+                sections.Add("DOCUMENTED GTA VI-INSPIRED HUD PREREQUISITES:");
+                sections.AddRange(hudPrerequisites.Items.Select(item =>
+                    (item.IsPresent ? "[FOUND] " : "[MISSING] ") +
+                    item.RelativePath +
+                    (string.IsNullOrWhiteSpace(item.DetectedFileVersion)
+                        ? string.Empty
+                        : " | file version " + item.DetectedFileVersion)));
+                sections.Add("This is a file-presence check only. It cannot prove the installed Script Hook V supports this exact game build or that Script Hook V .NET is v3.7.0 Nightly 193 or newer.");
+                sections.Add("The HUD author documents English-only support; the character switcher is reported to crash with other game languages.");
+            }
+
             OpenRageOutputText.Text = string.Join(Environment.NewLine, sections);
-            InstallReviewedOpenRageOivButton.IsEnabled = preview.IsInstallable;
-            StatusText.Text = preview.IsInstallable
-                ? "OpenRAGE dry-run completed. Review every proposed operation before installing."
-                : "OpenRAGE blocked this OIV. Resolve the blockers before installation.";
+            InstallReviewedOpenRageOivButton.IsEnabled =
+                preview.IsInstallable && _openRageHudPrerequisitesReady;
+            StatusText.Text = !preview.IsInstallable
+                ? "OpenRAGE blocked this OIV. Resolve the blockers before installation."
+                : !_openRageHudPrerequisitesReady
+                    ? "OpenRAGE preview completed, but required HUD loader files are missing. Installation remains blocked."
+                    : "OpenRAGE dry-run completed. Review every proposed operation before installing.";
         }
         catch (Exception exception)
         {
@@ -983,12 +1015,50 @@ public partial class MainWindow : Window
 
         var reviewed = _reviewedOpenRageInspection;
         if (!_openRageReady || reviewed is null || !reviewed.IsInstallable ||
+            !_openRageHudPrerequisitesReady ||
             _lastImportedOivPath is null || _lastOivArchiveSha256 is null ||
             !string.Equals(reviewed.PackagePath, _lastImportedOivPath, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(reviewed.PackageSha256, _lastOivArchiveSha256, StringComparison.OrdinalIgnoreCase))
         {
             StatusText.Text = "No current, installable OpenRAGE preview is available. Preview the retained OIV again.";
             return;
+        }
+
+        if (string.Equals(_lastImportedOivPackageId, "gta-vi-inspired-hud-single-player",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            HudPrerequisiteInspection hudPrerequisites;
+            try
+            {
+                hudPrerequisites = new GtaViInspiredHudPrerequisiteService()
+                    .Inspect(GetOpenRageGameInstallation());
+            }
+            catch (Exception exception)
+            {
+                StatusText.Text = "The GTA VI-inspired HUD prerequisite check failed. Installation is blocked.";
+                MessageBox.Show(exception.Message, "HUD prerequisite check failed",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            _openRageHudPrerequisitesReady = hudPrerequisites.AllRequiredFilesPresent;
+            if (!_openRageHudPrerequisitesReady)
+            {
+                MessageBox.Show(
+                    "This HUD requires the documented Legacy loader files and OpenIV mods folder. Missing items:\n\n" +
+                    string.Join("\n", hudPrerequisites.MissingItems.Select(item => item.RelativePath)) +
+                    "\n\nInstall and verify the prerequisites first, then preview the OIV again.",
+                    "HUD prerequisites missing",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var runtimeAndLanguageConfirmed = MessageBox.Show(
+                "The HUD author documents GTA V set to English and requires Script Hook V .NET 3.7.0 Nightly 193 or newer. The Hub can check that prerequisite files exist, but it cannot prove the installed nightly build or that Script Hook V supports your exact GTA V patch.\n\nConfirm both: (1) GTA V is configured to English, and (2) you have checked the author-linked Script Hook V release for this exact game build and have SHVDN 3.7.0 Nightly 193 or newer.",
+                "Confirm HUD runtime and language compatibility",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (runtimeAndLanguageConfirmed != MessageBoxResult.Yes)
+                return;
         }
 
         var confirm = MessageBox.Show(
