@@ -23,8 +23,11 @@ The application does not inject code into a running GTA V process, modify files 
 - Transaction journal, per-file backups, staged copy, rollback, and protection against overwriting files changed after installation.
 - Fail-closed process monitor.
 - Research shortlist for potential Legacy mods; **research candidates are not yet approved or enabled packages**.
+- Quarantine-only ZIP/OIV import with HTTPS provenance, archive SHA-256, per-file SHA-256 inventory, size and compression-ratio limits, duplicate/case-collision rejection, path traversal checks, and symlink/reparse-point rejection.
+- WPF import dialog connected to the quarantine importer. Imported packages stay in the local research library with status `Researching`; no GTA V game files are changed by import.
+- Catalogue validation now rejects unresolved or self-referencing package dependencies and profiles that reference missing package IDs.
 
-The transactional service is not yet connected to the dashboard's launch flow. Do not treat the current UI as a finished mod manager or use it to install mods. Automated tests, interrupted-transaction recovery, catalogue approval, UI integration, and a signed Windows release remain required.
+The deployment service is still not connected to a production-approved profile/apply/rollback workflow. The new archive importer is inspection-only and deliberately does not install anything. The application is **not production-ready**: mod-specific installation adapters (especially OIV/RPF and script-loader packages), supported-build detection, full profile persistence/resolution, menu/HUD integrations, in-game validation, RTX 4050 benchmarks, signed installer/update delivery, and clean-machine release testing remain outstanding.
 
 ## Mod catalogue and redistribution
 
