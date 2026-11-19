@@ -35,6 +35,16 @@ For a user-imported OIV, the Hub can optionally open the retained source package
 
 The external installer is not bundled with the Hub. The OIV inspector supports manifest formats 2.0–2.2 and reports the operations it can parse; it does not independently inspect the contents of every RPF archive or establish that each operation is safe for the user's game build.
 
+## Read-only CodeWalker install-history audit
+
+The dashboard can read the backup/install records written by CodeWalker's OIV installer under:
+
+`<GTA V folder>/OIV_CW_Uninstall_Data/<package>/install.log`
+
+It reads package name, description, version, Legacy/Enhanced marker, install timestamp, and the number of recorded file operations. It does not invoke CodeWalker's `--list` command, execute an installer, modify game files, or change the package's `Researching` status.
+
+The audit applies size and directory-count limits, skips reparse-point directories/files, and skips malformed or oversized logs. The resulting list is **installer history only**. It does not prove that a package's files are still present, that no other mod overwrote them, that the package is currently active, that rollback works, or that gameplay is stable. Packages installed without CodeWalker's backup/log feature may not appear.
+
 ## Remaining work before installation
 
 - Parse/inspect RPF payload contents and establish a package-specific OpenIV deployment adapter. The current OIV inspector reads operation metadata only; it does not edit, unpack, or write RPF archives and does not execute OIV commands.
