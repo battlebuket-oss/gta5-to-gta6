@@ -291,7 +291,7 @@ public sealed class CompatibilityTestEvidenceService
             if (!metrics.WarmupCompleted || metrics.BenchmarkRepeats < 3 ||
                 metrics.AverageFps is null || metrics.OnePercentLowFps is null ||
                 metrics.FrameTimeP95Ms is null || metrics.FrameTimeP99Ms is null ||
-                metrics.PeakSystemRamMb is null || metrics.PeakVramMb is null)
+                metrics.PeakSystemRamMb is null or <= 0 || metrics.PeakVramMb is null or <= 0)
             {
                 errors.Add("A Passed performance benchmark requires a warm-up, at least 3 repeats and FPS/frame-time/RAM/VRAM measurements.");
             }
