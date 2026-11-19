@@ -284,7 +284,9 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         var result = OivManifestInspectionService.Inspect(archive);
 
         Assert.True(result.RequiresManualReview);
-        Assert.Contains(result.UnsupportedCommands, item => item.Contains("append", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.ManifestWarnings ?? Array.Empty<string>(),
+            item => item.Contains("append", StringComparison.OrdinalIgnoreCase));
+        Assert.Empty(result.UnsupportedCommands);
         Assert.Contains(result.Operations, item => item.Command == "xml:add");
     }
 
