@@ -1217,21 +1217,14 @@ public partial class MainWindow : Window
                 verifiedNamesPath,
                 startingCandidateIndex);
 
-            var batchEnd = result.Errors.Count == 0
-                ? result.NextCandidateIndex
-                : Math.Min(
-                    result.CandidateCount,
-                    startingCandidateIndex + RageCliMetadataPayloadService.MaximumCandidatesToDump);
-
-            if (result.Errors.Count == 0)
-                MetadataCandidateOffsetText.Text = result.NextCandidateIndex.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture);
+            var batchEnd = result.NextCandidateIndex;
+            MetadataCandidateOffsetText.Text = result.NextCandidateIndex.ToString(
+                System.Globalization.CultureInfo.InvariantCulture);
 
             var status = result.Complete
                 ? "All candidates in this discovery report have been dumped; the discovery itself still does not prove complete ecological coverage."
                 : result.Errors.Count > 0
-                    ? "This batch has errors. The cursor was kept at " + result.NextCandidateIndex +
-                      " so the same batch can be retried after inspecting the errors."
+                    ? "This batch has errors. The next offset points to the first candidate without a saved JSON payload. Retry from that offset after reviewing the errors."
                     : "Batch completed. Run the next batch from index " + result.NextCandidateIndex +
                       " of " + result.CandidateCount + " candidates.";
 
