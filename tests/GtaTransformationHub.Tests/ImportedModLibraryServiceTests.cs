@@ -19,7 +19,7 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadAsync_ListsResearchPackageAndChecksInventoryPresence()
+    public async Task LoadAsync_RecomputesFileHashesAndListsResearchPackage()
     {
         var bytes = Encoding.UTF8.GetBytes("sample-setting=true");
         var hash = Convert.ToHexString(SHA256.HashData(bytes));
@@ -37,8 +37,47 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
         Assert.Equal("Researching", entry.Status);
         Assert.True(entry.ManifestValid);
         Assert.Empty(entry.Warnings);
-        Assert.Contains("not been re-computed", entry.VerificationNote);
+        Assert.Contains("re-computed", entry.VerificationNote);
         Assert.Equal(packageDirectory, entry.PackageDirectory);
+    }
+
+    [Fact]
+    public async Task LoadAsync_FlagsFilesWhoseSha256DoesNotMatchManifest()
+    {
+        var bytes = Encoding.UTF8.GetBytes("edited-after-import=true");
+        CreatePackage(
+            "tampered-mod",
+            "Tampered Mod",
+            "d".PadRight(64, 'd'),
+            ("scripts/sample.ini", bytes, "e".PadRight(64, 'e')));
+
+        var entries = await new ImportedModLibraryService().LoadAsync(_root);
+
+        var entry = Assert.Single(entries);
+        Assert.False(entry.ManifestValid);
+        Assert.Contains(entry.Warnings, warning => warning.Contains("SHA-256 does not match"));
+    }
+
+    [Fact]
+    public async Task LoadAsync_DoesNotTrustEditedTestedStatusInLocalManifest()
+    {
+        var bytes = Encoding.UTF8.GetBytes("sample=true");
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        var directory = CreatePackage(
+            "forged-status",
+            "Forged Status",
+            "f".PadRight(64, 'f'),
+            ("scripts/sample.ini", bytes, hash));
+
+        var manifestPath = Path.Combine(directory, "package-manifest.json");
+        var json = await File.ReadAllTextAsync(manifestPath);
+        await File.WriteAllTextAsync(manifestPath, json.Replace("\"Researching\"", "\"Tested\"", StringComparison.Ordinal));
+
+        var entry = Assert.Single(await new ImportedModLibraryService().LoadAsync(_root));
+
+        Assert.Equal("Researching", entry.Status);
+        Assert.False(entry.ManifestValid);
+        Assert.Contains(entry.Warnings, warning => warning.Contains("status was changed"));
     }
 
     [Fact]
