@@ -229,6 +229,87 @@ public partial class MainWindow : Window
         }
     }
 
+    private string BenchmarkReportRoot => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "GtaTransformationHub", "Benchmarks");
+
+    private async void ImportBenchmarkButton_Click(object sender, RoutedEventArgs e)
+    {
+        var csvDialog = new OpenFileDialog
+        {
+            Title = "Select a PresentMon GTA V frame capture",
+            Filter = "PresentMon CSV (*.csv)|*.csv",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (csvDialog.ShowDialog() != true)
+            return;
+
+        var metadataDialog = new BenchmarkImportDialog { Owner = this };
+        if (!string.IsNullOrWhiteSpace(_gameExecutable) && File.Exists(_gameExecutable))
+        {
+            try
+            {
+                metadataDialog.SetGameBuild(new GameInstallationDetector().Inspect(_gameExecutable).FileVersion);
+            }
+            catch
+            {
+                // The user must still provide the exact build manually in the metadata form.
+            }
+        }
+
+        if (metadataDialog.ShowDialog() != true || metadataDialog.Metadata is null)
+            return;
+
+        ImportBenchmarkButton.IsEnabled = false;
+        StatusText.Text = "Analysing GTA5.exe frame timing from PresentMon CSV...";
+        try
+        {
+            var analyzer = new PresentMonCsvAnalyzer();
+            var report = await analyzer.AnalyzeAsync(csvDialog.FileName, metadataDialog.Metadata);
+            var reportPath = await analyzer.SaveReportAsync(report, BenchmarkReportRoot);
+
+            BenchmarkSummaryText.Text =
+                report.AverageFps.ToString("F1") + " average FPS | " +
+                report.EstimatedOnePercentLowFps.ToString("F1") + " estimated 1% low | " +
+                report.P95FrameTimeMs.ToString("F2") + " ms P95 | " +
+                report.P99FrameTimeMs.ToString("F2") + " ms P99 | " +
+                report.DroppedFrames + " dropped frames. Report: " + reportPath;
+
+            StatusText.Text = "Benchmark report saved. Compare runs only when route, resolution, game build and settings match.";
+            MessageBox.Show(
+                "PresentMon analysis completed.\n\n" +
+                "Frames analysed: " + report.FramesAnalyzed + "\n" +
+                "Average FPS: " + report.AverageFps.ToString("F1") + "\n" +
+                "Estimated 1% low: " + report.EstimatedOnePercentLowFps.ToString("F1") + "\n" +
+                "Mean frame time: " + report.MeanFrameTimeMs.ToString("F2") + " ms\n" +
+                "P95 / P99 frame time: " + report.P95FrameTimeMs.ToString("F2") + " / " +
+                report.P99FrameTimeMs.ToString("F2") + " ms\n" +
+                "Dropped frames: " + report.DroppedFrames + "\n" +
+                "Average CPU/GPU busy: " +
+                (report.AverageCpuBusyMs?.ToString("F2") ?? "n/a") + " / " +
+                (report.AverageGpuBusyMs?.ToString("F2") ?? "n/a") + " ms\n\n" +
+                "Saved report: " + reportPath + "\n\n" +
+                "PresentMon does not supply a complete RTX 4050 profile. VRAM, temperature, utilisation, clocks and power must be measured separately.",
+                "Performance analysis completed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = "Benchmark analysis failed. No GTA V files were changed.";
+            MessageBox.Show(
+                "The CSV was not accepted or could not be analysed.\n\n" + exception.Message,
+                "PresentMon analysis failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            ImportBenchmarkButton.IsEnabled = true;
+        }
+    }
+
     private async void ImportArchiveButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning() || !_recoveryCompleted)
