@@ -7,6 +7,7 @@ public sealed record RageCliNestedArchiveExtractionPlan(
     string ResourcePath);
 
 public sealed record RageCliMetadataPayload(
+    int CandidateIndex,
     string SourceArchivePath,
     string SourceArchiveSha256,
     string InternalPath,
@@ -23,11 +24,18 @@ public sealed record RageCliMetadataDumpResult(
     string IndexReportPath,
     string IndexReportSha256,
     int CandidateCount,
+    int StartingCandidateIndex,
+    int NextCandidateIndex,
     int DumpedCount,
     bool Complete,
     TimeSpan Duration,
     IReadOnlyList<RageCliMetadataPayload> Payloads,
     IReadOnlyList<string> Errors);
+
+public sealed record RageCliMetadataBatchWindow(
+    int StartingCandidateIndex,
+    int NextCandidateIndex,
+    int CandidateCount);
 
 /// <summary>
 /// Extracts only explicitly identified nested RPF containers, then asks the pinned
@@ -72,7 +80,8 @@ public sealed class RageCliMetadataPayloadService
         GameInstallation installation,
         string discoveryReportPath,
         CancellationToken cancellationToken = default,
-        string? namesFilePath = null)
+        string? namesFilePath = null,
+        int startingCandidateIndex = 0)
     {
         ArgumentNullException.ThrowIfNull(installation);
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -109,14 +118,22 @@ public sealed class RageCliMetadataPayloadService
             .DistinctBy(item => item.ArchivePath + "\u001f" + item.InternalPath, StringComparer.OrdinalIgnoreCase)
             .OrderBy(GetCandidatePriority)
             .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.ArchivePath, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.InternalPath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var selected = eligible.Take(MaximumCandidatesToDump).ToArray();
+        var batch = GetBatchWindow(eligible.Length, startingCandidateIndex);
+        var selected = eligible
+            .Skip(batch.StartingCandidateIndex)
+            .Take(batch.CandidateCount)
+            .ToArray();
         var errors = new List<string>();
-        var wasCapped = eligible.Length > selected.Length;
-        if (wasCapped)
-            errors.Add("The metadata dump cap of " + MaximumCandidatesToDump +
-                       " candidates was reached. Remaining candidates were not dumped.");
+        var hasMoreBatches = batch.NextCandidateIndex < eligible.Length;
+        if (hasMoreBatches)
+            errors.Add("This batch contains " + selected.Length + " candidate(s). " +
+                       (eligible.Length - batch.NextCandidateIndex) +
+                       " candidate(s) remain; run the next batch using index " +
+                       batch.NextCandidateIndex + ".");
 
         Directory.CreateDirectory(_dataRoot);
         EnsureDirectoryIsNotReparsePoint(_dataRoot);
@@ -274,6 +291,7 @@ public sealed class RageCliMetadataPayloadService
                 totalDumpJsonBytes += finalInfo.Length;
                 payloads.Add(new RageCliMetadataPayload(
                     sourceArchive,
+                    startingCandidateIndex + index,
                     candidate.SourceArchiveSha256,
                     candidate.InternalPath,
                     candidate.Name,
@@ -316,7 +334,7 @@ public sealed class RageCliMetadataPayloadService
             throw new IOException("GTA5.exe changed during metadata extraction. The result index was rejected.");
 
         var indexReport = new MetadataDumpIndexReport(
-            SchemaVersion: 1,
+            SchemaVersion: 2,
             ToolVersion: verifiedTool.Version,
             ToolSha256: verifiedTool.Sha256,
             GameBuild: installation.BuildVersion,
@@ -324,8 +342,12 @@ public sealed class RageCliMetadataPayloadService
             DiscoveryReportPath: safeDiscoveryReport,
             DiscoveryReportSha256: await RageCliToolchainService.ComputeSha256Async(
                 safeDiscoveryReport, cancellationToken),
-            CandidateCount: selected.Length,
-            CandidateCapReached: wasCapped,
+            CandidateCount: eligible.Length,
+            StartingCandidateIndex: batch.StartingCandidateIndex,
+            NextCandidateIndex: GetNextCandidateIndex(batch, errors, payloads, selected.Length),
+            SelectedCandidateCount: selected.Length,
+            CandidateCapReached: hasMoreBatches,
+            BatchComplete: errors.Count == 0 && payloads.Count == selected.Length,
             Errors: errors,
             Payloads: payloads);
 
@@ -366,16 +388,47 @@ public sealed class RageCliMetadataPayloadService
                 item.TryGetProperty("OutputTruncated", out var truncated) && truncated.ValueKind == JsonValueKind.False &&
                 item.TryGetProperty("HasArchiveErrors", out var archiveErrors) && archiveErrors.ValueKind == JsonValueKind.False);
 
+        var nextCandidateIndex = GetNextCandidateIndex(batch, errors, payloads, selected.Length);
         return new RageCliMetadataDumpResult(
             indexReportPath,
             indexHash,
-            selected.Length,
+            eligible.Length,
+            batch.StartingCandidateIndex,
+            nextCandidateIndex,
             payloads.Count,
-            discoveryComplete && !wasCapped && errors.Count == 0 && payloads.Count == selected.Length,
+            discoveryComplete && nextCandidateIndex == eligible.Length &&
+                errors.Count == 0 && payloads.Count == selected.Length,
             timer.Elapsed,
             payloads,
             errors);
     }
+
+    public static RageCliMetadataBatchWindow GetBatchWindow(
+        int totalCandidateCount,
+        int startingCandidateIndex)
+    {
+        if (totalCandidateCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(totalCandidateCount));
+        if (startingCandidateIndex < 0 || startingCandidateIndex > totalCandidateCount)
+            throw new ArgumentOutOfRangeException(
+                nameof(startingCandidateIndex),
+                "The starting candidate index must be between zero and the total candidate count.");
+
+        var selectedCount = Math.Min(MaximumCandidatesToDump, totalCandidateCount - startingCandidateIndex);
+        return new RageCliMetadataBatchWindow(
+            startingCandidateIndex,
+            startingCandidateIndex + selectedCount,
+            selectedCount);
+    }
+
+    private static int GetNextCandidateIndex(
+        RageCliMetadataBatchWindow batch,
+        IReadOnlyCollection<string> errors,
+        IReadOnlyCollection<RageCliMetadataPayload> payloads,
+        int selectedCount) =>
+        errors.Count == 0 && payloads.Count == selectedCount
+            ? batch.NextCandidateIndex
+            : batch.StartingCandidateIndex;
 
     public static RageCliNestedArchiveExtractionPlan BuildNestedArchiveExtractionPlan(
         string internalPath,
@@ -639,7 +692,11 @@ public sealed class RageCliMetadataPayloadService
         string DiscoveryReportPath,
         string DiscoveryReportSha256,
         int CandidateCount,
+        int StartingCandidateIndex,
+        int NextCandidateIndex,
+        int SelectedCandidateCount,
         bool CandidateCapReached,
+        bool BatchComplete,
         IReadOnlyList<string> Errors,
         IReadOnlyList<RageCliMetadataPayload> Payloads);
 }
