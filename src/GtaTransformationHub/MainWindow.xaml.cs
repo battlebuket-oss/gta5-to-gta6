@@ -2153,6 +2153,16 @@ public partial class MainWindow : Window
                 return;
             }
 
+            if (OpenRageLegacyCompatibilityConsentCheckBox.IsChecked != true)
+            {
+                MessageBox.Show(
+                    "Before installing a research-stage mod, confirm that this OIV is for the GTA V Legacy edition and the exact build selected above, you have reviewed the author licence/dependencies, and you have a disposable game copy plus Story Mode save backup.",
+                    "Legacy compatibility confirmation required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             if (inspection.RequiresExecutableConsent && OpenRageExecutableConsentCheckBox.IsChecked != true)
             {
                 MessageBox.Show(
@@ -2225,6 +2235,7 @@ public partial class MainWindow : Window
         finally
         {
             OpenRageExecutableConsentCheckBox.IsChecked = false;
+            OpenRageLegacyCompatibilityConsentCheckBox.IsChecked = false;
             _operationInProgress = false;
             RefreshSessionState();
         }
@@ -2354,6 +2365,7 @@ public partial class MainWindow : Window
         UninstallOpenRagePackageButton.IsEnabled = canConfigure && _installation is not null && _openRageReady;
         UndoOpenRageLastChangeButton.IsEnabled = canConfigure && _installation is not null && _openRageReady;
         OpenRageExecutableConsentCheckBox.IsEnabled = canConfigure && _openRageReady;
+        OpenRageLegacyCompatibilityConsentCheckBox.IsEnabled = canConfigure && _openRageReady;
         DetectPerformanceButton.IsEnabled = canConfigure;
         BackupStorySavesButton.IsEnabled = canConfigure;
         TrustPublisherButton.IsEnabled = canConfigure;
