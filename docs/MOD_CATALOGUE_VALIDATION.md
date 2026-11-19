@@ -10,9 +10,9 @@ The catalogue is descriptive research data; it is not an installer feed. The Win
 - Every source is an absolute HTTPS URI.
 - Dependency/conflict/external-requirement lists cannot contain empty or duplicate values.
 - Dependencies and profile selections must reference existing package IDs.
-- An `Approved` entry must have a 64-character SHA-256, numeric minimum and maximum game builds, an implemented adapter, and no unresolved licence language.
+- A `Tested` entry must have a 64-character SHA-256, numeric minimum and maximum game builds, an implemented adapter, and no unresolved licence language.
 
-The approval gate is intentionally strict. A package must not be promoted to Approved merely because a download page exists. The archive itself still needs inspection, exact-build support evidence, a complete file manifest, dependency and conflict review, licence clearance, a reversible deployment plan and real-game test evidence.
+The approval gate is intentionally strict. A package must not be promoted to Tested merely because a download page exists. The archive itself still needs inspection, exact-build support evidence, a complete file manifest, dependency and conflict review, licence clearance, a reversible deployment plan and real-game test evidence.
 
 ## Current limitation
 
