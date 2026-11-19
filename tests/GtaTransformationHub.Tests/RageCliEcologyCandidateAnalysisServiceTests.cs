@@ -39,6 +39,29 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
         Assert.Empty(errors);
     }
 
+    [Fact]
+    public void ValidateDumpBatchContract_RejectsPartialBatchWithoutRecordedErrors()
+    {
+        var indexes = Enumerable.Range(0, 50).Where(index => index != 4).ToArray();
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 0, 4, 50, true, false,
+            indexes,
+            Array.Empty<string>());
+
+        Assert.Contains(errors, error => error.Contains("must record at least one", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidateDumpBatchContract_RejectsMissingErrorCollection()
+    {
+        var errors = RageCliEcologyCandidateAnalysisService.ValidateDumpBatchContract(
+            3, 135, 0, 50, 50, true, true,
+            Enumerable.Range(0, 50).ToArray(),
+            null);
+
+        Assert.Contains(errors, error => error.Contains("error collection is missing", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(1, 135, 0, 50, 50, true, true)]
     [InlineData(3, 135, 0, 50, 50, false, true)]
