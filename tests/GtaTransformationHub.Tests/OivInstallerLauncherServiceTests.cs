@@ -57,6 +57,52 @@ public sealed class OivInstallerLauncherServiceTests : IDisposable
     }
 
     [Fact]
+    public void CreateSetGameStartInfo_PassesGameFolderAsOneSafeArgument()
+    {
+        var installer = Path.Combine(_root, "OIV Engine", "CodeWalker.OIVInstaller.exe");
+        var gameFolder = Path.Combine(_root, "Game Folder", "GTA V Legacy");
+        Directory.CreateDirectory(Path.GetDirectoryName(installer)!);
+        Directory.CreateDirectory(gameFolder);
+
+        var info = OivInstallerLauncherService.CreateSetGameStartInfo(installer, gameFolder);
+
+        Assert.Equal(installer, info.FileName);
+        Assert.Equal("--set-game", info.ArgumentList[0]);
+        Assert.Equal(Path.GetFullPath(gameFolder), info.ArgumentList[1]);
+        Assert.False(info.UseShellExecute);
+        Assert.True(info.RedirectStandardOutput);
+        Assert.True(info.RedirectStandardError);
+    }
+
+    [Fact]
+    public void CreateGetGameStartInfo_UsesTheInstallerReadBackCommand()
+    {
+        var installer = Path.Combine(_root, "OIV Engine", "CodeWalker.OIVInstaller.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(installer)!);
+
+        var info = OivInstallerLauncherService.CreateGetGameStartInfo(installer);
+
+        Assert.Equal(installer, info.FileName);
+        Assert.Single(info.ArgumentList);
+        Assert.Equal("--get-game", info.ArgumentList[0]);
+    }
+
+    [Theory]
+    [InlineData("Default game folder: C:\\Games\\GTA V\\", "C:\\Games\\GTA V", true)]
+    [InlineData("Default game folder: C:\\Games\\Other", "C:\\Games\\GTA V", false)]
+    [InlineData("No default game folder set.", "C:\\Games\\GTA V", false)]
+    [InlineData("Default game folder: /tmp/gta", "C:\\Games\\GTA V", false)]
+    public void OutputConfirmsDefaultGameFolder_RequiresExactReadBack(
+        string output,
+        string expectedGameFolder,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            OivInstallerLauncherService.OutputConfirmsDefaultGameFolder(output, expectedGameFolder));
+    }
+
+    [Fact]
     public void InspectRetainedPackage_RechecksTheOriginalArchiveDigestAndManifest()
     {
         var package = CreateValidOivPackage();
