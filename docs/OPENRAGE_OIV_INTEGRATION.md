@@ -73,27 +73,33 @@ A failed preview does not install anything. A failed external install command ma
 - The original campaign, Rockstar-proprietary GTA VI missions/dialogue/cutscenes/assets, or exact GTA VI game systems are not reproduced by this OIV adapter.
 
 
-## GTA VI-Inspired HUD Legacy package: loader and root-plugin gate
+## GTA VI-Inspired HUD Legacy package: loader, profile and root-plugin integration
 
-The catalogue entry `gta-vi-inspired-hud-single-player` remains `Researching`; a clean OIV preview is not package approval.
+The catalogue entry `gta-vi-inspired-hud-single-player` remains `Researching`; a clean OIV preview and a successful installer command are not a gameplay approval.
 
-For this specific package only, the Hub performs a documented prerequisite presence check before enabling installation. The check looks for:
+For this specific package only, the Hub performs a documented prerequisite presence check before enabling profile installation. The check looks for:
 
 - `ScriptHookV.dll` and `dinput8.dll`
 - `ScriptHookVDotNet-Loader.asi`, `ScriptHookVDotNet.dll`, `ScriptHookVDotNet2.dll`, `ScriptHookVDotNet3.dll`, and `ScriptHookVDotNet.ini`
 - `OpenIV.asi` and the `mods/` folder
 
-File presence does not establish runtime compatibility. The HUD's author requires Script Hook V .NET 3.7.0 Nightly 193 or newer and warns that the HUD is supported in English; the Hub cannot authoritatively infer that SHVDN nightly requirement from Windows file version metadata. Immediately before installation, the UI asks the user to confirm that GTA V is configured to English and that the exact Legacy game patch is supported by the installed Script Hook V, with the required SHVDN nightly.
+File presence does not establish runtime compatibility. The HUD's author requires Script Hook V .NET 3.7.0 Nightly 193 or newer and warns that the HUD is supported in English. The Hub cannot authoritatively infer that nightly requirement from Windows file metadata. Before profile installation, the UI requires the user to confirm the game is configured to English and that the exact Legacy patch is supported by the installed Script Hook V and SHVDN nightly.
 
-After the OIV is installed into the `mods` folder, the author documents two files that must be beside `GTA5.exe`:
+### Real ON/OFF profile adapter
 
-- `ViMinimap.asi`
-- `ViPreload.asi`
+The Mod Control Centre currently supports a real apply/disable path for this exact pinned HUD package only:
 
-The Hub's **Deploy VI HUD root plugins** action accepts only those two hard-coded filenames and only reads their source from the selected installation's `mods` folder. It hashes both files, asks before copying them to the game root, backs up different existing root files, and commits through the Hub's journalled deployment engine. It stores the transaction ID in LocalAppData so the user can use **Roll back VI HUD root plugins** after restarting the Hub. Rollback preflights both files and refuses to overwrite either one if it has changed since deployment.
+1. The desired ON/OFF state is saved locally as a profile selection.
+2. Before apply, the Hub requires the pinned release archive to exist in the local package library and re-verifies its archive and extracted-file inventory.
+3. The Hub reads OpenRAGE's installed OIV journal and derives the exact group name from the imported OIV manifest's metadata name and parsed version. It does not use the catalogue display name to guess the group.
+4. For ON, OpenRAGE performs a fresh OIV dry-run, the Hub checks the pinned SHA-256 and documented loader files, obtains explicit runtime/language and game-root-file consent, installs through OpenRAGE, then verifies the exact group appears in the installed list.
+5. For OFF, OpenRAGE uninstalls only that exact group. The Hub lists packages again and reports success only when the group is absent.
 
-This adapter does not move any other OIV file into the root, does not install generic ASI/DLL packages, and does not make the HUD Tested. The user must still validate Story Mode launch, menus, character switching, missions, saves and rollback on the exact Legacy game build.
+The HUD package's loose root-file operations, including `ViMinimap.asi` and `ViPreload.asi`, are handled by OpenRAGE as part of the OIV. The Hub does not copy these files a second time. The separate generic copy-based root-plugin prototype is not part of this active profile path.
 
+The adapter fails closed when the local OIV inventory cannot be verified, OpenRAGE output cannot be parsed, required files are missing, the dry-run reports blockers, or the follow-up installed-group check disagrees with the requested state. Other selected catalogue packages remain blocked from Apply until their own verified adapters are implemented.
+
+This does not make the HUD Tested. The user must still validate Story Mode startup, missions, map/pause UI, character switching, saves, conflicts and the uninstall/restore path on the exact Legacy build.
 
 ## Pinned GTA VI-Inspired HUD Legacy 2.8.2 acquisition
 
