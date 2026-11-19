@@ -18,7 +18,6 @@ public partial class MainWindow : Window
     private readonly TransactionalRemovalService _removalService = new();
     private readonly GameInstallationService _gameInstallationService;
     private readonly GameInstallationStoreService _gameInstallationStore = new();
-    private readonly GameInstallationStoreService _gameInstallationStoreService = new();
     private readonly PackageArchiveService _archiveService = new();
     private readonly OivPackageImportService _oivImportService = new();
     private readonly PackageAcquisitionService _acquisitionService = new();
@@ -216,7 +215,7 @@ public partial class MainWindow : Window
         try
         {
             var validated = _gameInstallationService.ValidateExecutable(dialog.FileName);
-            await _gameInstallationStoreService.SaveAsync(validated);
+            await _gameInstallationStore.SaveAsync(validated);
             _installation = validated;
             _rollbackTransactionIds.Clear();
             GamePathText.Text = _installation.RootPath;
@@ -254,7 +253,7 @@ public partial class MainWindow : Window
         try
         {
             var validated = _gameInstallationService.ValidateExecutable(_installation.ExecutablePath);
-            await _gameInstallationStoreService.SaveAsync(validated);
+            await _gameInstallationStore.SaveAsync(validated);
             _installation = validated;
             DetectionText.Text = "GTA V Legacy build " + _installation.BuildVersion + " and executable fingerprint verified.";
             StatusText.Text = "Installation check passed and the saved fingerprint was refreshed.";
