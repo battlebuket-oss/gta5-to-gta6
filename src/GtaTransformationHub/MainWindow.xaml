@@ -252,6 +252,12 @@
                        TextWrapping="Wrap"
                        Margin="0,8,0,0"
                        Text="Run the full package-stack compatibility, ecology, water, input, rollback, benchmark and stability matrix after manual testing."/>
+            <Button x:Name="OpenCompatibilityEvidenceFolderButton"
+                    Content="Open saved compatibility evidence folder"
+                    Padding="9,6"
+                    HorizontalAlignment="Left"
+                    Margin="0,8,0,0"
+                    Click="OpenCompatibilityEvidenceFolderButton_Click"/>
           </StackPanel>
         </Border>
 
