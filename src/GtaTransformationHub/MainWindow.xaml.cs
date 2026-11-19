@@ -795,12 +795,15 @@ public partial class MainWindow : Window
             StatusText.Text = "Computing exact GTA5.exe fingerprint for compatibility evidence...";
             var fingerprint = await GameExecutableFingerprintService.ComputeSha256Async(
                 _installation.ExecutablePath);
+            var environment = PerformanceProfileService.FormatHardwareEvidence(
+                PerformanceProfileService.CaptureHardware());
             var dialog = new CompatibilityTestEvidenceWindow(
                 _installation.BuildVersion,
                 fingerprint,
                 profileName,
                 packages,
-                _compatibilityTestEvidenceService)
+                _compatibilityTestEvidenceService,
+                environment)
             {
                 Owner = this
             };
