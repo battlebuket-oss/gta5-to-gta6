@@ -549,7 +549,6 @@ public partial class MainWindow : Window
                 _lastImportedOivPath,
                 _lastOivArchiveSha256,
                 _gameExecutable,
-                inspection,
                 allowUnspecifiedLegacyTarget: allowUnspecified);
             var processId = process.Id;
             process.Dispose();
