@@ -86,9 +86,9 @@ public sealed class PackageDeploymentCoordinator
                     errors.Add(manifest.Name + " must use signature version 3 to authenticate its UI replacement contract.");
                 if (signature.Status != PackageSignatureStatus.TrustedPublisher)
                     errors.Add(manifest.Name + " is an in-game UI package and requires a valid signature from a locally trusted publisher.");
-                if (!manifest.Ui.VerifiedGameBuild.Equals(installation.BuildVersion, StringComparison.OrdinalIgnoreCase) ||
+                if (!string.Equals(manifest.Ui.VerifiedGameBuild, installation.BuildVersion, StringComparison.OrdinalIgnoreCase) ||
                     actualUiExecutableSha256 is null ||
-                    !manifest.Ui.VerifiedGta5ExeSha256.Equals(actualUiExecutableSha256, StringComparison.OrdinalIgnoreCase))
+                    !string.Equals(manifest.Ui.VerifiedGta5ExeSha256, actualUiExecutableSha256, StringComparison.OrdinalIgnoreCase))
                     errors.Add(manifest.Name + " was validated against a different exact GTA5.exe build or SHA-256 fingerprint.");
             }
             switch (signature.Status)
