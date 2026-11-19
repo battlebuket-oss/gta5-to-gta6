@@ -72,6 +72,19 @@ public partial class MainWindow : Window
             var result = await new ModArchiveImportService().ImportAsync(
                 archiveDialog.FileName, importRoot, metadataDialog.Metadata);
 
+            var inspectionDetails = result.OivInspection is null
+                ? "OIV manifest: not applicable (ZIP inventory only)."
+                : "OIV format: " + result.OivInspection.FormatVersion + "\n" +
+                  "OIV target: " + result.OivInspection.Target + "\n" +
+                  "Manifest package: " + result.OivInspection.Name + " (" + result.OivInspection.ModVersion + ")\n" +
+                  "Operations: " + result.OivInspection.Operations.Count +
+                  " | file adds/replacements: " + result.OivInspection.FileAddCount +
+                  " | deletes: " + result.OivInspection.DeleteCount +
+                  " | archive edits: " + result.OivInspection.ArchiveEditCount + "\n" +
+                  "Payload issues: " + result.OivInspection.PayloadSourceIssues.Count +
+                  " | unrecognised commands: " + result.OivInspection.UnsupportedCommands.Count + "\n" +
+                  "Manual review required: " + (result.OivInspection.RequiresManualReview ? "Yes" : "No");
+
             StatusText.Text = "Imported " + metadataDialog.Metadata.Name +
                               " for review. No GTA V files were changed; package status remains Researching.";
             DetectionText.Text = "Research package stored at: " + result.PackageDirectory;
@@ -79,6 +92,7 @@ public partial class MainWindow : Window
                 "Archive imported and hashed successfully.\n\n" +
                 "Files: " + result.Files.Count + "\n" +
                 "SHA-256: " + result.ArchiveSha256 + "\n\n" +
+                inspectionDetails + "\n\n" +
                 "This import is quarantined for inspection only. It has NOT been approved or installed.",
                 "Mod archive imported",
                 MessageBoxButton.OK,
