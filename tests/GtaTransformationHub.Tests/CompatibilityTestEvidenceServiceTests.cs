@@ -112,6 +112,31 @@ public sealed class CompatibilityTestEvidenceServiceTests : IDisposable
     }
 
     [Fact]
+    public void Summarize_MalformedScenarioListNeverThrowsOrPasses()
+    {
+        var scenarios = CompatibilityTestEvidenceService.CreateScenarioResults()
+            .Select(item => new CompatibilityTestScenarioResult
+            {
+                ScenarioId = item.ScenarioId,
+                Name = item.Name,
+                Outcome = CompatibilityTestOutcome.Passed
+            })
+            .Cast<CompatibilityTestScenarioResult?>()
+            .Append(null)
+            .Select(item => item!)
+            .ToArray();
+
+        var record = CreateRecord() with { Scenarios = scenarios };
+
+        var summary = CompatibilityTestEvidenceService.Summarize(record);
+
+        Assert.False(summary.IsCompletePass);
+        Assert.Equal(summary.Total, summary.Passed);
+        Assert.Contains(CompatibilityTestEvidenceService.Validate(record),
+            error => error.Contains("empty scenario", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task SaveAndList_FiltersEvidenceByExactGta5ExecutableFingerprint()
     {
         var service = new CompatibilityTestEvidenceService(_root);
