@@ -96,6 +96,17 @@ public sealed class EcologyInventoryEvidenceService
         ValidateExactInstallation(baseline, "Baseline", currentBuild, executableSha256);
         ValidateExactInstallation(candidate, "Candidate", currentBuild, executableSha256);
 
+        if (!string.Equals(baseline.ExtractorId, candidate.ExtractorId, StringComparison.Ordinal) ||
+            !string.Equals(baseline.ExtractorVersion, candidate.ExtractorVersion, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "Baseline and candidate snapshots must be produced by the same semantic extractor ID and version.");
+
+        var baselineArchives = baseline.SourceArchiveSha256.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var candidateArchives = candidate.SourceArchiveSha256.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!baselineArchives.SetEquals(candidateArchives))
+            throw new InvalidDataException(
+                "Baseline and candidate snapshots do not contain the same original GTA V source-archive fingerprint set.");
+
         var diff = EcologyInventoryDiffService.Compare(baseline, candidate);
         var limitation =
             "This report compares only the semantic records supplied in these two JSON snapshots. " +
