@@ -768,6 +768,30 @@ public partial class MainWindow : Window
         StatusText.Text = "Launch is intentionally disabled until verified mod deployment and profile validation are connected.";
     }
 
+    private void ManageModsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted)
+            return;
+
+        string? installedBuild = null;
+        if (!string.IsNullOrWhiteSpace(_gameExecutable))
+        {
+            try
+            {
+                installedBuild = new GameInstallationDetector().Inspect(_gameExecutable).FileVersion;
+            }
+            catch
+            {
+                // The catalogue window remains usable for profile preparation, but readiness
+                // checks will correctly fail until the exact Legacy build is detected.
+            }
+        }
+
+        var window = new ModCatalogueWindow(installedBuild) { Owner = this };
+        window.ShowDialog();
+        StatusText.Text = "Mod profile window closed. Saved selections do not install files; use readiness checks before deployment.";
+    }
+
     private bool IsGameRunning()
     {
         try
@@ -805,6 +829,7 @@ public partial class MainWindow : Window
     {
         var running = IsGameRunning();
         LocateButton.IsEnabled = !running && _recoveryCompleted;
+        ManageModsButton.IsEnabled = !running && _recoveryCompleted;
         ImportArchiveButton.IsEnabled = !running && _recoveryCompleted;
         RefreshButton.IsEnabled = !running && _recoveryCompleted;
         RefreshLibraryButton.IsEnabled = !running && _recoveryCompleted;
