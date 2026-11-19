@@ -72,6 +72,7 @@ public sealed class ModArchiveImportService
                     var isDirectory = entry.FullName.EndsWith("/", StringComparison.Ordinal) ||
                                       entry.FullName.EndsWith("\\", StringComparison.Ordinal);
                     var relativePath = NormalizeArchivePath(entry.FullName, isDirectory);
+                    ValidateArchiveEntryType(entry, isDirectory);
                     if (nodes.ContainsKey(relativePath))
                         throw new InvalidDataException("The archive contains duplicate or case-colliding paths: " + relativePath);
 
@@ -88,7 +89,6 @@ public sealed class ModArchiveImportService
                         if (nodes.Keys.Any(existing => existing.StartsWith(relativePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
                             throw new InvalidDataException("A file entry conflicts with an existing child path: " + relativePath);
 
-                        ValidateArchiveEntryType(entry);
                         if (entry.Length < 0 || entry.Length > _limits.MaximumEntryBytes)
                             throw new InvalidDataException("An archive entry exceeds the per-file size limit: " + relativePath);
                         declaredTotal = checked(declaredTotal + entry.Length);
@@ -234,15 +234,22 @@ public sealed class ModArchiveImportService
         return Path.Combine(segments);
     }
 
-    private static void ValidateArchiveEntryType(ZipArchiveEntry entry)
+    private static void ValidateArchiveEntryType(ZipArchiveEntry entry, bool isDirectory)
     {
         var attributes = entry.ExternalAttributes;
         var unixType = (attributes >> 16) & 0xF000;
         if ((attributes & 0x400) != 0 || unixType == 0xA000)
             throw new InvalidDataException("Symbolic links and reparse-point entries are not accepted.");
 
-        if (unixType != 0 && unixType != 0x8000)
+        if (isDirectory)
+        {
+            if (entry.Length != 0 || (unixType != 0 && unixType != 0x4000))
+                throw new InvalidDataException("The archive contains an invalid directory entry.");
+        }
+        else if (unixType != 0 && unixType != 0x8000)
+        {
             throw new InvalidDataException("The archive contains a non-regular file entry.");
+        }
     }
 
     private static string ResolveContainedPath(string root, string relativePath)
