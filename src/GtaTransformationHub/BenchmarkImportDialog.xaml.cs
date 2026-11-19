@@ -14,6 +14,12 @@ public partial class BenchmarkImportDialog : Window
         InitializeComponent();
     }
 
+    public void SetGameBuild(string gameBuild)
+    {
+        if (!string.IsNullOrWhiteSpace(gameBuild))
+            GameBuildText.Text = gameBuild.Trim();
+    }
+
     private void AnalyseButton_Click(object sender, RoutedEventArgs e)
     {
         var gameBuild = GameBuildText.Text.Trim();
