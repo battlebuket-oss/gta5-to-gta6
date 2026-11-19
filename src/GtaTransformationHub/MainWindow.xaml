@@ -110,6 +110,23 @@
                          BorderThickness="0" MinHeight="55" MaxHeight="150"
                          Padding="7" FontSize="10"
                          Text="OpenRAGE preview/install results will appear here. Install requires an inspected OIV, clean archive hashes and explicit confirmation."/>
+                <TextBlock Text="GTA VI HUD ROOT PLUGINS · TWO FILES ONLY"
+                           Foreground="{StaticResource SecondaryText}" FontSize="10"
+                           FontWeight="Bold" Margin="0,12,0,5"/>
+                <WrapPanel>
+                  <Button x:Name="DeployHudRootPluginsButton"
+                          Content="DEPLOY VI HUD ROOT PLUGINS"
+                          Padding="9,7" Margin="0,0,6,6"
+                          IsEnabled="False" Click="DeployHudRootPluginsButton_Click"/>
+                  <Button x:Name="RollbackHudRootPluginsButton"
+                          Content="ROLL BACK VI HUD ROOT PLUGINS"
+                          Padding="9,7" Margin="0,0,6,6"
+                          IsEnabled="False" Click="RollbackHudRootPluginsButton_Click"/>
+                </WrapPanel>
+                <TextBlock x:Name="HudRootPluginStatusText"
+                           Text="Select the GTA VI-Inspired HUD OIV. After its OIV install, the Hub can transactionally copy only ViMinimap.asi and ViPreload.asi from the mods folder to the GTA V root."
+                           Foreground="{StaticResource SecondaryText}" FontSize="10"
+                           TextWrapping="Wrap" Margin="0,2,0,0"/>
               </StackPanel>
             </Expander>
             <TextBlock Text="RTX 4050 / FRAME-TIME BENCHMARK" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,14,0,6"/>
