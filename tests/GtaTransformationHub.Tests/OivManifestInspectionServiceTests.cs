@@ -238,6 +238,7 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         var path = Path.Combine(_root, name);
         using var file = File.Create(path);
         using var archive = new ZipArchive(file, ZipArchiveMode.Create);
+        archive.CreateEntry("content/");
         WriteEntry(archive, "assembly.xml", manifest);
         foreach (var (entryPath, content) in payloads)
             WriteEntry(archive, entryPath, content);
