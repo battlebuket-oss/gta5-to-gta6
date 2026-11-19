@@ -52,3 +52,14 @@ A tester must record, for every supported game build and package version: missio
 ## Current research entries
 
 Existing research leads include Lowriders DLC in Single Player, Big Bank Heists, The Golden Train Heist and GTA V New Game+. They remain unapproved until their exact archives, permissions, framework versions, build ranges, save behaviour and compatibility are independently established. The Hub must link to the genuine author source and must not redistribute packages where permission is absent.
+
+
+## Manifest and signature contract
+
+The Story Mode manager uses the optional `storyContent` descriptor in a package manifest. Its validation contract is implemented in `StoryContentValidationService` and runs both during ZIP import and again during deployment preflight. The descriptor is bound into publisher signatures using signature version 2.
+
+A complete descriptor declares `contentType`, ordered `missionIds`, `protagonistRequirements`, `startLocations`, a unique `progressionNamespace`, `saveCompatibility`, `requiresSaveBackup`, `preservesOriginalCampaign`, `voiceLanguages`, `subtitleLanguages`, and an optional HTTPS `testEvidenceUri`.
+
+Signature version 1 is retained only for legacy manifests without newer compatibility, ecology, or Story Mode metadata. A version-1 signed package that is later augmented with such metadata is rejected as an invalid signature. New content publishers should sign version-2 manifests.
+
+The Hub validates metadata and manages package files; it does not execute opaque installers, create gameplay missions, or guarantee that an external plugin actually isolates its progression data. The tester must supply mission lifecycle evidence for every supported build and package combination.
