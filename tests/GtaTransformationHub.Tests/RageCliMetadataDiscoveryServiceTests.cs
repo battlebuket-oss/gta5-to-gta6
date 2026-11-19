@@ -31,7 +31,9 @@ public sealed class RageCliMetadataDiscoveryServiceTests
         Assert.Contains("*.ymap", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
         Assert.Contains("*.ymf", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
         Assert.Contains("*.pso", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
-        Assert.Contains("*.xml", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*water*.xml", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.Contains("*popcycle.dat", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
+        Assert.DoesNotContain("*.xml", RageCliMetadataDiscoveryService.EcologyMetadataPatterns);
     }
 
     [Fact]
