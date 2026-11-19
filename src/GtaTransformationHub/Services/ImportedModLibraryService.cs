@@ -364,7 +364,8 @@ public sealed class ImportedModLibraryService
                 verificationNote,
                 warnings,
                 originalArchivePath,
-                manifest.OivInspection);
+                manifest.OivInspection,
+                manifest.ArchiveSha256);
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or JsonException or
@@ -511,7 +512,8 @@ public sealed record ImportedModLibraryEntry(
     string VerificationNote,
     IReadOnlyList<string> Warnings,
     string? OriginalArchivePath = null,
-    OivManifestInspectionResult? OivInspection = null);
+    OivManifestInspectionResult? OivInspection = null,
+    string? OriginalArchiveSha256 = null);
 
 public sealed record ImportedModVerificationResult(
     bool IsValid,
