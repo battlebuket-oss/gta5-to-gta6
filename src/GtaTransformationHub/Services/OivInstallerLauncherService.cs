@@ -133,6 +133,29 @@ public sealed class OivInstallerLauncherService
 
     public static void ValidatePackageForLegacyTarget(
         string packagePath,
+        string expectedArchiveSha256,
+        OivManifestInspectionResult inspection,
+        bool allowUnspecifiedLegacyTarget = false)
+    {
+        if (!IsSha256(expectedArchiveSha256))
+            throw new InvalidDataException("A valid expected source-archive SHA-256 digest is required.");
+
+        var fullPackagePath = Path.GetFullPath(packagePath);
+        if (!File.Exists(fullPackagePath))
+            throw new FileNotFoundException("The original OIV package is no longer available.", fullPackagePath);
+
+        using (var stream = new FileStream(fullPackagePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var actualHash = Convert.ToHexString(SHA256.HashData(stream));
+            if (!actualHash.Equals(expectedArchiveSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The OIV archive changed after inspection. Re-import it before continuing.");
+        }
+
+        ValidatePackageForLegacyTarget(fullPackagePath, inspection, allowUnspecifiedLegacyTarget);
+    }
+
+    public static void ValidatePackageForLegacyTarget(
+        string packagePath,
         OivManifestInspectionResult inspection,
         bool allowUnspecifiedLegacyTarget = false)
     {
