@@ -88,6 +88,15 @@ A UI package needs explicit metadata beyond a generic mod entry:
 5. Expand to map, settings, phone, radial, title/entry and loading screens only after each surface passes acceptance.
 6. Deliver a cohesive UI profile and accessibility validation before calling the track production-ready.
 
+
+## Implemented package contract (application-side)
+
+The package model now has an optional `ui` descriptor. It declares the replaced surfaces (title, frontend, pause, map, settings, HUD, phone, radial, loading or accessibility), implementation type (Scaleform, game script or asset replacement), supported input methods, tested resolutions, accessibility capabilities, native-action preservation, mission/cutscene/subtitle/original-campaign preservation, compatibility evidence URL and rollback evidence URL.
+
+The Hub validates these declarations and rejects UI impact packages that omit the descriptor, use unsupported surfaces or implementation types, claim companion-only overlays as in-game replacements, omit keyboard/controller support, omit evidence references, or fail to preserve native gameplay functions. Preflight rejects two selected packages that replace the same surface. UI packages additionally require `CompatibilityVerified=true`, a locally trusted publisher signature and signature version 3. Signature v3 authenticates the entire UI descriptor. Version 1 and 2 canonical payload formats remain unchanged for existing packages.
+
+These checks validate package declarations and trust provenance; they do not prove that the linked evidence is accurate. The current catalogue candidates remain Researching, and no actual title, pause, map, settings, HUD, phone or radial replacement has been approved or deployed. Real GTA V screen integration remains gated on archive inspection and game-side tests.
+
 ## Release gate
 
 The UI/UX track is production-ready only when all shipped screens have verified compatibility, complete native-action coverage, input/accessibility evidence, performance measurements, clean rollback and no unresolved critical defects. A mock-up, screenshot or dashboard panel does not satisfy this gate.
