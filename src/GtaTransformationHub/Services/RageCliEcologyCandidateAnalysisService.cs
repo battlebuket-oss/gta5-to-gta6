@@ -695,6 +695,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
         }
 
         Visit(root, "$", string.Empty, null, string.Empty);
+        nodesVisited = Math.Min(nodes, maximumNodes);
         return !nodeLimitReached;
     }
 
