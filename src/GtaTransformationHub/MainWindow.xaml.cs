@@ -1873,6 +1873,7 @@ public partial class MainWindow : Window
                                           _installation is not null &&
                                           !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath) &&
                                           _assetCatalogueCancellation is null;
+        MetadataCandidateOffsetText.IsEnabled = canConfigure;
         DumpEcologyMetadataButton.IsEnabled = canConfigure &&
                                               _installation is not null &&
                                               !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath) &&
