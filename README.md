@@ -43,6 +43,7 @@ See:
 - [Delivery roadmap](docs/DELIVERY_ROADMAP.md)
 - [Mod catalogue policy](docs/MOD_CATALOGUE_POLICY.md)
 - [Safe archive import](docs/SAFE_ARCHIVE_IMPORT.md)
+- [OpenRAGE OIV integration](docs/OPENRAGE_OIV_INTEGRATION.md)
 - [Initial mod research shortlist](docs/MOD_RESEARCH_SHORTLIST.md)
 - [GTA VI-inspired experience coverage matrix](docs/GTA6_EXPERIENCE_COVERAGE_MATRIX.md)
 - [Performance benchmarking](docs/PERFORMANCE_BENCHMARKING.md)
