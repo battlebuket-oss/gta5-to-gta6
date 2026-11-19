@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     private string? _gameExecutable;
     private string? _oivInstallerExecutable;
     private string? _lastImportedOivPath;
+    private string? _lastImportedOivPackageDirectory;
     private OivManifestInspectionResult? _lastOivInspection;
     private bool _recoveryCompleted;
     private readonly DispatcherTimer _processTimer;
@@ -338,12 +339,14 @@ public partial class MainWindow : Window
 
             if (string.Equals(Path.GetExtension(archiveDialog.FileName), ".oiv", StringComparison.OrdinalIgnoreCase))
             {
-                _lastImportedOivPath = Path.GetFullPath(archiveDialog.FileName);
+                _lastImportedOivPath = result.OriginalArchivePath;
+                _lastImportedOivPackageDirectory = result.PackageDirectory;
                 _lastOivInspection = result.OivInspection;
             }
             else
             {
                 _lastImportedOivPath = null;
+                _lastImportedOivPackageDirectory = null;
                 _lastOivInspection = null;
             }
 
@@ -447,13 +450,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OpenImportedOivButton_Click(object sender, RoutedEventArgs e)
+    private async void OpenImportedOivButton_Click(object sender, RoutedEventArgs e)
     {
         if (IsGameRunning() || !_recoveryCompleted)
             return;
         if (string.IsNullOrWhiteSpace(_gameExecutable) ||
             string.IsNullOrWhiteSpace(_oivInstallerExecutable) ||
             string.IsNullOrWhiteSpace(_lastImportedOivPath) ||
+            string.IsNullOrWhiteSpace(_lastImportedOivPackageDirectory) ||
             _lastOivInspection is null)
         {
             StatusText.Text = "Select and verify GTA V Legacy, select the external OIV engine, and import an OIV package first.";
@@ -513,6 +517,21 @@ public partial class MainWindow : Window
 
         try
         {
+            var verification = await new ImportedModLibraryService().VerifyAsync(
+                PackageLibraryRoot, _lastImportedOivPackageDirectory);
+            if (!verification.IsValid)
+            {
+                MessageBox.Show(
+                    "The retained OIV archive or its extracted inventory failed SHA-256 verification. " +
+                    "The package will not be opened in the external installer.\n\n" +
+                    string.Join(Environment.NewLine, verification.Errors.Take(12)),
+                    "OIV integrity verification failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                StatusText.Text = "OIV integrity verification failed. External installer handoff blocked.";
+                return;
+            }
+
             var process = new OivInstallerLauncherService().OpenPackageInInstaller(
                 _oivInstallerExecutable,
                 _lastImportedOivPath,
