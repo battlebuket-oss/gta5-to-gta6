@@ -4,6 +4,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace GtaTransformationHub.Services;
 
@@ -95,6 +97,160 @@ public sealed class OivInstallerLauncherService
         var startInfo = CreateStartInfo(installer.ExecutablePath, packagePath);
         var process = Process.Start(startInfo);
         return process ?? throw new InvalidOperationException("Windows did not start the external OIV installer.");
+    }
+
+    public async Task<Process> OpenPackageInInstallerAsync(
+        string installerExecutablePath,
+        string expectedInstallerSha256,
+        string packagePath,
+        string expectedArchiveSha256,
+        string gameExecutablePath,
+        bool allowUnspecifiedLegacyTarget = false,
+        CancellationToken cancellationToken = default)
+    {
+        _processMonitor.EnsureConfigurationUnlocked();
+
+        var installer = InspectInstallerExecutable(installerExecutablePath);
+        if (!IsSha256(expectedInstallerSha256) ||
+            !installer.Sha256.Equals(expectedInstallerSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException(
+                "The selected OIV installer changed after it was approved. Re-select the external installer.");
+
+        var game = new GameInstallationDetector().Inspect(gameExecutablePath);
+        var inspection = InspectRetainedPackage(packagePath, expectedArchiveSha256);
+        ValidatePackageForLegacyTarget(packagePath, inspection, allowUnspecifiedLegacyTarget);
+
+        // CodeWalker's GUI loads its saved GTA V folder before showing the OIV.
+        // Set that folder to the game installation detected by this Hub, then ask
+        // the installer itself to report the saved path back before opening anything.
+        await ConfigureDefaultGameFolderAsync(installer.ExecutablePath, game.GameDirectory, cancellationToken);
+
+        _processMonitor.EnsureConfigurationUnlocked();
+        var process = Process.Start(CreateStartInfo(installer.ExecutablePath, packagePath));
+        return process ?? throw new InvalidOperationException("Windows did not start the external OIV installer.");
+    }
+
+    public static ProcessStartInfo CreateSetGameStartInfo(string installerExecutablePath, string gameFolder)
+    {
+        var startInfo = CreateCliStartInfo(installerExecutablePath);
+        startInfo.ArgumentList.Add("--set-game");
+        startInfo.ArgumentList.Add(Path.GetFullPath(gameFolder));
+        return startInfo;
+    }
+
+    public static ProcessStartInfo CreateGetGameStartInfo(string installerExecutablePath)
+    {
+        var startInfo = CreateCliStartInfo(installerExecutablePath);
+        startInfo.ArgumentList.Add("--get-game");
+        return startInfo;
+    }
+
+    public static bool OutputConfirmsDefaultGameFolder(string output, string expectedGameFolder)
+    {
+        if (string.IsNullOrWhiteSpace(output) || string.IsNullOrWhiteSpace(expectedGameFolder))
+            return false;
+
+        const string prefix = "Default game folder:";
+        foreach (var line in output.Split(new[] { "\\r\\n", "\\n" }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (!trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var actualPath = trimmed[prefix.Length..].Trim();
+            try
+            {
+                return string.Equals(
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(actualPath)),
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(expectedGameFolder)),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or IOException or NotSupportedException)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static ProcessStartInfo CreateCliStartInfo(string installerExecutablePath)
+    {
+        var installer = Path.GetFullPath(installerExecutablePath);
+        if (!string.Equals(
+                Path.GetFileName(installer),
+                "CodeWalker.OIVInstaller.exe",
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The selected executable is not CodeWalker.OIVInstaller.exe.");
+
+        return new ProcessStartInfo
+        {
+            FileName = installer,
+            WorkingDirectory = Path.GetDirectoryName(installer)!,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+    }
+
+    private static async Task ConfigureDefaultGameFolderAsync(
+        string installerExecutablePath,
+        string gameFolder,
+        CancellationToken cancellationToken)
+    {
+        var setResult = await RunCliCommandAsync(
+            CreateSetGameStartInfo(installerExecutablePath, gameFolder), cancellationToken);
+        if (setResult.ExitCode != 0)
+            throw new InvalidOperationException(
+                "CodeWalker rejected the selected GTA V Legacy folder. " +
+                setResult.StandardError + Environment.NewLine + setResult.StandardOutput);
+
+        var getResult = await RunCliCommandAsync(
+            CreateGetGameStartInfo(installerExecutablePath), cancellationToken);
+        if (getResult.ExitCode != 0 ||
+            !OutputConfirmsDefaultGameFolder(getResult.StandardOutput, gameFolder))
+            throw new InvalidOperationException(
+                "CodeWalker did not confirm the selected GTA V Legacy folder as its active OIV target. " +
+                "The package was not opened. " +
+                getResult.StandardError + Environment.NewLine + getResult.StandardOutput);
+    }
+
+    private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunCliCommandAsync(
+        ProcessStartInfo startInfo,
+        CancellationToken cancellationToken)
+    {
+        using var process = new Process { StartInfo = startInfo };
+        if (!process.Start())
+            throw new InvalidOperationException("Windows did not start the CodeWalker OIV installer CLI.");
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(15));
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+                // Preserve the timeout/cancellation exception.
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException("CodeWalker did not complete the game-folder command within 15 seconds.");
+        }
+
+        return (process.ExitCode, await stdoutTask, await stderrTask);
     }
 
     public static OivManifestInspectionResult InspectRetainedPackage(
