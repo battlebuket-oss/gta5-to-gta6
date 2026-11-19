@@ -148,6 +148,26 @@ public sealed class GtaViInspiredHudProfileAdapter
                 "OpenRAGE lists the HUD package group, but one or both required root plugins are missing. " +
                 "The installation state is inconsistent and has not been treated as ON.");
         }
+
+        if (journalGroup is not null)
+        {
+            var minimapCount = presence.LocatedFiles.Count(path =>
+                string.Equals(Path.GetFileName(path), "ViMinimap.asi", StringComparison.OrdinalIgnoreCase));
+            var preloadCount = presence.LocatedFiles.Count(path =>
+                string.Equals(Path.GetFileName(path), "ViPreload.asi", StringComparison.OrdinalIgnoreCase));
+            if (minimapCount != 1 || preloadCount != 1)
+            {
+                throw new InvalidDataException(
+                    "The OpenRAGE journal lists the HUD, but its required ASI plugins are duplicated across the game root and mods folder. " +
+                    "The Hub refuses to treat an ambiguous loader layout as ON.");
+            }
+
+            if (journalGroup.RecordedChanges <= 0)
+            {
+                throw new InvalidDataException(
+                    "OpenRAGE lists the HUD package group with no recorded file changes. The installed state is inconsistent.");
+            }
+        }
     }
 
     public async Task<OpenRageInstalledOivGroup?> GetInstalledStateAsync(
