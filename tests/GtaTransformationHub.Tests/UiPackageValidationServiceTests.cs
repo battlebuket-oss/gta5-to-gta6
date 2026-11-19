@@ -60,6 +60,18 @@ public sealed class UiPackageValidationServiceTests
     }
 
     [Fact]
+    public void Validate_RejectsMissingExactBuildFingerprint()
+    {
+        var manifest = CreateManifest() with
+        {
+            Ui = CreateDescriptor() with { VerifiedGta5ExeSha256 = "not-a-fingerprint" }
+        };
+
+        Assert.Contains(UiPackageValidationService.Validate(manifest),
+            error => error.Contains("GTA5.exe SHA-256", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ValidateSelection_RejectsCompetingReplacementsForSameSurface()
     {
         var first = CreatePackage("hud-stack-a", "HUD A", "hud");
@@ -110,5 +122,7 @@ public sealed class UiPackageValidationServiceTests
         new[] { "KeyboardNavigation", "ControllerNavigation", "VisibleFocus", "HighContrast", "SubtitleSafeArea" },
         true, true, true, true, true,
         "https://example.com/compatibility",
-        "https://example.com/rollback");
+        "https://example.com/rollback",
+        "1.0.1000.0",
+        new string('A', 64));
 }
