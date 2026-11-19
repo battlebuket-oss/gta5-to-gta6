@@ -135,6 +135,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var index = await ReadJsonAsync<MetadataDumpIndexReport>(safeIndexPath, cancellationToken);
 
         ValidateIndexProvenance(index, installation.BuildVersion, gameHash, tool);
+        if (string.IsNullOrWhiteSpace(index.DiscoveryReportPath))
+            throw new InvalidDataException("The metadata dump index has no discovery report path.");
 
         var discoveryDirectory = Path.Combine(_dataRoot, "catalogue", buildDirectory);
         var discoveryPath = ValidateOwnedFile(
@@ -177,7 +179,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         if (discovery.Errors is { Count: > 0 })
             warnings.AddRange(discovery.Errors.Take(100));
         if (discovery.PatternResults is null ||
-            discovery.PatternResults.Any(result => result.HitLimit || result.OutputTruncated || result.HasArchiveErrors))
+            discovery.PatternResults.Any(result => result is null ||
+                result.HitLimit || result.OutputTruncated || result.HasArchiveErrors))
             warnings.Add("One or more discovery patterns hit a limit, truncated output or had archive errors.");
 
         var candidates = new List<EcologyMetadataCandidate>();
@@ -187,8 +190,15 @@ public sealed class RageCliEcologyCandidateAnalysisService
         foreach (var payload in index.Payloads)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!IsSha256(payload.SourceArchiveSha256) || !IsSha256(payload.DumpJsonSha256))
-                throw new InvalidDataException("The metadata payload is missing a valid source or dump SHA-256.");
+            if (payload is null ||
+                string.IsNullOrWhiteSpace(payload.SourceArchivePath) ||
+                string.IsNullOrWhiteSpace(payload.DumpJsonPath) ||
+                string.IsNullOrWhiteSpace(payload.ResourceName) ||
+                string.IsNullOrWhiteSpace(payload.InternalPath) ||
+                !IsSha256(payload.SourceArchiveSha256) ||
+                !IsSha256(payload.DumpJsonSha256) ||
+                payload.DumpJsonBytes <= 0)
+                throw new InvalidDataException("The metadata payload is missing one or more required provenance fields.");
             var sourceArchive = ValidateSourceArchive(gameRoot, payload.SourceArchivePath);
             var currentArchiveHash = await RageCliToolchainService.ComputeSha256Async(sourceArchive, cancellationToken);
             if (!currentArchiveHash.Equals(payload.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase))
@@ -328,13 +338,16 @@ public sealed class RageCliEcologyCandidateAnalysisService
     }
 
     public static string? ClassifyCandidateField(
-        string resourceName,
-        string structureType,
-        string jsonPath,
-        string fieldName)
+        string? resourceName,
+        string? structureType,
+        string? jsonPath,
+        string? fieldName)
     {
-        var pathContext = (structureType + "/" + jsonPath + "/" + fieldName).ToLowerInvariant();
-        var fileContext = resourceName.ToLowerInvariant();
+        var pathContext = ((structureType ?? string.Empty) + "/" +
+                           (jsonPath ?? string.Empty) + "/" +
+                           (fieldName ?? string.Empty)).ToLowerInvariant();
+        var fileContext = (resourceName ?? string.Empty).ToLowerInvariant();
+        var normalizedFieldName = (fieldName ?? string.Empty).ToLowerInvariant();
 
         if (ContainsAny(pathContext, "water", "ocean", "river", "lake", "wave", "underwater", "shoreline", "waterbody"))
             return "Water";
@@ -346,7 +359,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
             return "Plant";
         if (ContainsAny(pathContext, "animal", "fauna", "wildlife", "fish", "marine", "bird", "deer", "coyote", "boar", "shark", "whale"))
             return "Animal";
-        if (ContainsAny(fieldName.ToLowerInvariant(), "modelname", "model_name", "archetype", "speciesmodel") &&
+        if (ContainsAny(normalizedFieldName, "modelname", "model_name", "archetype", "speciesmodel") &&
             ContainsAny(fileContext, "animal", "fauna", "wildlife", "fish", "plant", "flora", "vegetation"))
             return "ModelIdentifier";
 
@@ -361,6 +374,13 @@ public sealed class RageCliEcologyCandidateAnalysisService
         string sourceArchiveSha256,
         string dumpJsonSha256)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        ArgumentException.ThrowIfNullOrWhiteSpace(resourceName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(internalArchivePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceArchivePath);
+        if (!IsSha256(sourceArchiveSha256) || !IsSha256(dumpJsonSha256))
+            throw new ArgumentException("Valid source archive and dumped JSON SHA-256 fingerprints are required.");
+
         using var document = JsonDocument.Parse(
             json, new JsonDocumentOptions { MaxDepth = RageCliJsonStructureAnalyzer.MaximumDepth });
         var candidates = new List<EcologyMetadataCandidate>();
