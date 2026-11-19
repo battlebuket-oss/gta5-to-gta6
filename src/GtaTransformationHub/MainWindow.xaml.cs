@@ -1152,6 +1152,23 @@ public partial class MainWindow : Window
             string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
             return;
 
+        if (!int.TryParse(
+                MetadataCandidateOffsetText.Text,
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var startingCandidateIndex) ||
+            startingCandidateIndex < 0)
+        {
+            MessageBox.Show(
+                "Enter a non-negative whole-number candidate offset. The offset is zero-based.",
+                "Invalid metadata candidate offset",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            MetadataCandidateOffsetText.Focus();
+            MetadataCandidateOffsetText.SelectAll();
+            return;
+        }
+
         var dialog = new OpenFileDialog
         {
             Title = "Select a metadata discovery report for this GTA V build",
@@ -1167,10 +1184,11 @@ public partial class MainWindow : Window
             return;
 
         var confirmation = MessageBox.Show(
-            "The Hub will re-verify the discovery report against the selected GTA5.exe and pinned rage-cli binary, extract only the nested RPF layers required for up to " +
+            "The Hub will verify the discovery report against the selected GTA5.exe and pinned rage-cli binary, then dump up to " +
             RageCliMetadataPayloadService.MaximumCandidatesToDump +
-            " supported metadata candidates, and dump those resources as JSON into the Hub's local metadata-dumps folder. It will not modify the game installation. Nested archive extraction is capped at 512 MB per candidate and each JSON dump is capped at 128 MB. This is still not a complete or approved ecological baseline. Continue?",
-            "Extract and dump ecological metadata",
+            " supported metadata candidates starting at zero-based index " + startingCandidateIndex +
+            ". Later batches use the next index shown by the Hub. Only required nested RPF layers are extracted; the game installation remains read only. Nested archive extraction is capped at 512 MB per candidate, each JSON dump at 128 MB, and each batch at 512 MB aggregate output. This is still not a complete or approved ecological baseline. Continue?",
+            "Extract metadata batch",
             MessageBoxButton.YesNo,
             MessageBoxImage.Information);
 
@@ -1181,8 +1199,8 @@ public partial class MainWindow : Window
         _assetCatalogueCancellation = new CancellationTokenSource();
         _operationInProgress = true;
         RefreshSessionState();
-        RageCliStatusText.Text = "Verifying the discovery report and extracting selected metadata resources from nested RPF archives...";
-        StatusText.Text = "Dumping metadata payloads. Game files remain read only.";
+        RageCliStatusText.Text = "Verifying the discovery report and extracting metadata batch from nested RPF archives...";
+        StatusText.Text = "Dumping metadata batch. Game files remain read only.";
 
         try
         {
@@ -1196,16 +1214,34 @@ public partial class MainWindow : Window
                 _installation,
                 dialog.FileName,
                 _assetCatalogueCancellation.Token,
-                verifiedNamesPath);
+                verifiedNamesPath,
+                startingCandidateIndex);
+
+            var batchEnd = result.Errors.Count == 0
+                ? result.NextCandidateIndex
+                : Math.Min(
+                    result.CandidateCount,
+                    startingCandidateIndex + RageCliMetadataPayloadService.MaximumCandidatesToDump);
+
+            if (result.Errors.Count == 0)
+                MetadataCandidateOffsetText.Text = result.NextCandidateIndex.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
 
             var status = result.Complete
-                ? "All selected candidates were dumped and the discovery search had no known limits/errors."
-                : "Metadata payload extraction is INCOMPLETE. Review the index errors and candidate cap.";
+                ? "All candidates in this discovery report have been dumped; the discovery itself still does not prove complete ecological coverage."
+                : result.Errors.Count > 0
+                    ? "This batch has errors. The cursor was kept at " + result.NextCandidateIndex +
+                      " so the same batch can be retried after inspecting the errors."
+                    : "Batch completed. Run the next batch from index " + result.NextCandidateIndex +
+                      " of " + result.CandidateCount + " candidates.";
 
             RageCliStatusText.Text =
-                "Metadata JSON dump index created." + Environment.NewLine +
-                "Candidates selected: " + result.CandidateCount + Environment.NewLine +
-                "JSON payloads dumped: " + result.DumpedCount + Environment.NewLine +
+                "Metadata JSON batch index created." + Environment.NewLine +
+                "Total eligible candidates in report: " + result.CandidateCount + Environment.NewLine +
+                "Batch start (zero-based): " + result.StartingCandidateIndex + Environment.NewLine +
+                "Batch end (exclusive): " + batchEnd + Environment.NewLine +
+                "JSON payloads dumped in this batch: " + result.DumpedCount + Environment.NewLine +
+                "Next candidate offset: " + result.NextCandidateIndex + Environment.NewLine +
                 "Index report: " + result.IndexReportPath + Environment.NewLine +
                 "Index SHA-256: " + result.IndexReportSha256 + Environment.NewLine +
                 "Game name dictionary: " + (verifiedNamesPath is null ? "Not available (raw hashed names may remain unresolved)" : "Verified exact-build dictionary applied") + Environment.NewLine +
@@ -1215,110 +1251,18 @@ public partial class MainWindow : Window
                     ? string.Empty
                     : Environment.NewLine + "Errors: " + string.Join(" | ", result.Errors.Take(4)));
 
-            StatusText.Text = "Metadata payload JSON saved. Semantic species/water analysis and package approval remain blocked.";
+            StatusText.Text = "Metadata payload batch saved. Semantic species/water analysis and package approval remain blocked.";
         }
         catch (OperationCanceledException)
         {
             RageCliStatusText.Text =
-                "Metadata payload dumping was cancelled. Any JSON files already written remain local but the incomplete index must not be treated as complete.";
+                "Metadata batch dumping was cancelled. JSON files already written remain local. The candidate offset was not advanced; retry the same batch.";
             StatusText.Text = "Metadata payload dumping cancelled.";
         }
         catch (Exception exception)
         {
             RageCliStatusText.Text = "Metadata payload dumping failed: " + exception.Message;
-            StatusText.Text = "No complete metadata payload index was accepted.";
-        }
-        finally
-        {
-            _assetCatalogueCancellation?.Dispose();
-            _assetCatalogueCancellation = null;
-            _operationInProgress = false;
-            RefreshSessionState();
-        }
-    }
-
-
-    private async void AnalyzeEcologyMetadataButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!CanChangeConfiguration() || _installation is null ||
-            string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath))
-            return;
-
-        var dialog = new OpenFileDialog
-        {
-            Title = "Select a metadata dump index for the current GTA V build",
-            Filter = "GTA Hub metadata dump index (metadata-dump-index-*.json)|metadata-dump-index-*.json",
-            InitialDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "GtaTransformationHub", "rage-cli", "metadata-dumps"),
-            CheckFileExists = true,
-            Multiselect = false
-        };
-        if (dialog.ShowDialog() != true)
-            return;
-
-        var confirmation = MessageBox.Show(
-            "The Hub will verify the dump index, discovery report, source RPF hashes, JSON dump hashes, exact GTA5.exe SHA-256 and pinned rage-cli release. It will then extract heuristic candidates from metadata fields that resemble species, models, population, habitats and water settings. The report is for manual review only: field-name matches may be false positives, missed resources remain possible, and ecology package deployment will stay blocked. Continue?",
-            "Analyze ecological metadata candidates",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Information);
-        if (confirmation != MessageBoxResult.Yes)
-            return;
-
-        _assetCatalogueCancellation?.Dispose();
-        _assetCatalogueCancellation = new CancellationTokenSource();
-        _operationInProgress = true;
-        RefreshSessionState();
-        EcologyCandidateAnalysisStatusText.Text = "Verifying provenance and analyzing the selected metadata JSON dumps...";
-        StatusText.Text = "Extracting ecology metadata candidates. No package eligibility is being changed.";
-
-        try
-        {
-            var result = await _rageCliEcologyCandidateAnalysisService.AnalyzeAsync(
-                _verifiedRageCliExecutablePath,
-                _installation,
-                dialog.FileName,
-                _assetCatalogueCancellation.Token);
-
-            var categorySummary = result.CategoryCounts.Count == 0
-                ? "No fields matched the current candidate rules."
-                : string.Join(", ", result.CategoryCounts
-                    .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
-                    .Select(item => item.Key + ": " + item.Value));
-
-            EcologyCandidateAnalysisStatusText.Text =
-                "Candidate report saved: " + result.ReportPath + Environment.NewLine +
-                "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
-                "Metadata payloads reviewed: " + result.PayloadsReviewed + Environment.NewLine +
-                "Heuristic candidate records: " + result.CandidateCount + Environment.NewLine +
-                categorySummary + Environment.NewLine +
-                "Input dump/discovery stage complete: " + (result.InputIndexWasComplete ? "No known caps/errors" : "INCOMPLETE / warnings present") + Environment.NewLine +
-                "Semantic inventory complete: No" + Environment.NewLine +
-                "Ecology package eligibility unlocked: No" +
-                (result.Warnings.Count == 0
-                    ? string.Empty
-                    : Environment.NewLine + "Review warnings: " + string.Join(" | ", result.Warnings.Take(4)));
-
-            StatusText.Text = "Ecology metadata candidate report created. It requires review and does not approve ecology packages.";
-            App.Diagnostics.Write(
-                result.InputIndexWasComplete ? AuditLogLevel.Information : AuditLogLevel.Warning,
-                "EcologyMetadataCandidateAnalysisCompleted",
-                "Analyzed exact-build metadata dumps. Payloads=" + result.PayloadsReviewed +
-                "; candidates=" + result.CandidateCount +
-                "; inputIndexComplete=" + result.InputIndexWasComplete +
-                "; semanticCompletenessVerified=false; packageEligibilityUnlocked=false.");
-        }
-        catch (OperationCanceledException)
-        {
-            EcologyCandidateAnalysisStatusText.Text = "Metadata candidate analysis was cancelled. No complete analysis report was accepted.";
-            StatusText.Text = "Ecology metadata candidate analysis cancelled.";
-        }
-        catch (Exception exception)
-        {
-            EcologyCandidateAnalysisStatusText.Text = "Metadata candidate analysis failed: " + exception.Message;
-            StatusText.Text = "No ecology candidate report was accepted.";
-            MessageBox.Show(exception.Message, "Ecology metadata candidate analysis",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            StatusText.Text = "No complete metadata payload batch was accepted.";
         }
         finally
         {
