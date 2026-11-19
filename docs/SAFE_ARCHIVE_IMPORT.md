@@ -27,7 +27,7 @@ Import is **not installation**. It does not modify the GTA V installation, execu
 
 For a user-imported OIV, the Hub can optionally open the retained source package in the separate CodeWalker OIV Package Installer. This is a **manual review handoff**, not a Hub deployment adapter.
 
-1. The user obtains the CodeWalker OIV installer from its [release page](https://github.com/crxhvrd/CodeWalkerProjects/releases/latest) and selects `CodeWalker.OIVInstaller.exe` in the Hub. The Hub records its file version and SHA-256. The publisher signature is not verified by the Hub; use only a trusted release source.
+1. The user obtains the [CodeWalker OIV Package Installer listing](https://www.gta5-mods.com/tools/oiv-package-installer) and selects `CodeWalker.OIVInstaller.exe` in the Hub. The listing currently shows version 2.1.1 (128 MB, dated 1 August 2026); GTA V Legacy requires `OpenIV.asi`. The Hub records the selected executable's file version and SHA-256. The publisher signature is not verified by the Hub; the user must decide whether to trust the third-party download.
 2. The Hub verifies the imported package library inventory, checks the retained `.oiv` source hash, re-parses `assembly.xml`, and confirms the manifest still matches the inspection shown to the user.
 3. Before opening the GUI, the Hub asks CodeWalker to set its default game folder to the selected GTA V Legacy installation using `--set-game`, then reads it back using `--get-game`. If the returned folder does not match, the handoff stops.
 4. CodeWalker opens the OIV for review. The user must inspect the package and choose whether to click Install. The Hub does not execute OIV operations, click Install, alter RPF files itself, or assert that installation succeeded.
