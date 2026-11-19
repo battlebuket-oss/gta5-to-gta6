@@ -24,7 +24,8 @@ public partial class CompatibilityTestEvidenceWindow : Window
         string gameExecutableSha256,
         string profileName,
         IReadOnlyList<CompatibilityTestPackage> packages,
-        CompatibilityTestEvidenceService? evidenceService = null)
+        CompatibilityTestEvidenceService? evidenceService = null,
+        string? initialEnvironment = null)
     {
         _gameBuild = gameBuild;
         _gameExecutableSha256 = gameExecutableSha256;
@@ -45,16 +46,10 @@ public partial class CompatibilityTestEvidenceWindow : Window
                   " · " + package.PackageId + " · archive SHA-256 " + package.ArchiveSha256 +
                   " · signature " + package.SignatureStatus));
 
-        TestEnvironmentTextBox.Text =
-            "Windows: " + Environment.OSVersion + Environment.NewLine +
-            "Architecture: " + RuntimeInformation.OSArchitecture + Environment.NewLine +
-            "Logical processors: " + Environment.ProcessorCount + Environment.NewLine +
-            "CPU: enter exact model" + Environment.NewLine +
-            "GPU / driver / VRAM: enter exact model, driver and VRAM" + Environment.NewLine +
-            "Installed RAM: enter installed RAM" + Environment.NewLine +
-            "Launcher: enter Steam or Rockstar Games Launcher" + Environment.NewLine +
-            "Display / settings: enter resolution, refresh rate and graphics settings" + Environment.NewLine +
-            "Loaders / scripts: enter Script Hook V, SHVDN and other runtime versions";
+        TestEnvironmentTextBox.Text = string.IsNullOrWhiteSpace(initialEnvironment)
+            ? PerformanceProfileService.FormatHardwareEvidence(PerformanceProfileService.CaptureHardware())
+            : initialEnvironment;
+
 
         foreach (var scenario in CompatibilityTestEvidenceService.CreateScenarioResults())
             ScenarioResults.Add(scenario);
