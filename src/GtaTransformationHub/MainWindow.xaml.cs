@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private readonly RageCliToolchainService _rageCliToolchainService = new();
     private readonly RageCliMetadataDiscoveryService _rageCliMetadataDiscoveryService;
     private readonly RageCliMetadataPayloadService _rageCliMetadataPayloadService;
+    private readonly EcologyInventoryEvidenceService _ecologyInventoryEvidenceService = new();
     private readonly PackageLibraryService _packageLibrary = new();
     private readonly PackageDeploymentCoordinator _deploymentCoordinator;
     private readonly ProfileActivationService _profileActivationService;
@@ -1038,6 +1039,92 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private async void CompareEcologyInventoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanChangeConfiguration() || _installation is null)
+            return;
+
+        var baselineDialog = new OpenFileDialog
+        {
+            Title = "Select the vanilla GTA V Legacy ecology inventory baseline",
+            Filter = "Normalized ecology inventory (*.json)|*.json",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (baselineDialog.ShowDialog() != true)
+            return;
+
+        var candidateDialog = new OpenFileDialog
+        {
+            Title = "Select the candidate ecology inventory to compare",
+            Filter = "Normalized ecology inventory (*.json)|*.json",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (candidateDialog.ShowDialog() != true)
+            return;
+
+        var confirmation = MessageBox.Show(
+            "The Hub will hash both JSON snapshots, verify that each targets the selected GTA V Legacy build and exact GTA5.exe SHA-256, and compare the supplied species, model, habitat, population and water-system identities. This only validates the records supplied in those files. The current rage-cli workflow does not yet enumerate every ecological resource, so this comparison cannot certify a complete baseline or approve/unlock ecology-sensitive packages. Continue?",
+            "Compare exact-build ecology inventories",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+        if (confirmation != MessageBoxResult.Yes)
+            return;
+
+        _operationInProgress = true;
+        RefreshSessionState();
+        EcologyComparisonStatusText.Text = "Hashing and validating both inventory snapshots against the selected GTA5.exe...";
+        StatusText.Text = "Comparing exact-build ecology inventories. Ecology packages remain blocked.";
+
+        try
+        {
+            var result = await _ecologyInventoryEvidenceService.CompareAndRecordAsync(
+                baselineDialog.FileName,
+                candidateDialog.FileName,
+                _installation);
+
+            var semanticStatus = result.Diff.VanillaPreserved
+                ? "SEMANTIC COMPARISON PASSED for the records supplied."
+                : "SEMANTIC COMPARISON FAILED. One or more original identities or references changed.";
+            EcologyComparisonStatusText.Text =
+                semanticStatus + Environment.NewLine +
+                "Added species in candidate: " + result.Diff.AddedSpecies.Count + Environment.NewLine +
+                "Comparison report: " + result.ReportPath + Environment.NewLine +
+                "Report SHA-256: " + result.ReportSha256 + Environment.NewLine +
+                "Completeness verified: No." + Environment.NewLine +
+                "Ecology package eligibility unlocked: No." +
+                (result.Diff.Errors.Count == 0
+                    ? string.Empty
+                    : Environment.NewLine + "Findings: " + string.Join(" | ", result.Diff.Errors.Take(8))) +
+                Environment.NewLine + result.Limitation;
+
+            StatusText.Text = result.Diff.VanillaPreserved
+                ? "Semantic identity comparison passed for the submitted records. Ecology packages remain blocked."
+                : "Ecology semantic comparison found changes. Review the saved report before proceeding.";
+
+            App.Diagnostics.Write(
+                result.Diff.VanillaPreserved ? AuditLogLevel.Information : AuditLogLevel.Warning,
+                "EcologyInventoryComparisonCompleted",
+                "Completed a user-selected ecology inventory comparison. SemanticPass=" +
+                result.Diff.VanillaPreserved + "; addedSpecies=" + result.Diff.AddedSpecies.Count +
+                "; packageEligibilityUnlocked=false.");
+        }
+        catch (Exception exception)
+        {
+            EcologyComparisonStatusText.Text = "Ecology inventory comparison failed: " + exception.Message;
+            StatusText.Text = "No ecology comparison report was accepted.";
+            MessageBox.Show(exception.Message, "Ecology inventory comparison",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _operationInProgress = false;
+            RefreshSessionState();
+        }
+    }
+
     private void CancelAssetCatalogueButton_Click(object sender, RoutedEventArgs e)
     {
         if (_assetCatalogueCancellation is null)
@@ -1558,6 +1645,7 @@ public partial class MainWindow : Window
         DumpEcologyMetadataButton.IsEnabled = canConfigure &&
                                               _installation is not null &&
                                               !string.IsNullOrWhiteSpace(_verifiedRageCliExecutablePath);
+        CompareEcologyInventoryButton.IsEnabled = canConfigure && _installation is not null;
         CancelAssetCatalogueButton.IsEnabled = _operationInProgress &&
                                                _assetCatalogueCancellation is not null;
 
