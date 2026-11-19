@@ -92,6 +92,9 @@ public static class OivManifestInspectionService
         var operations = new List<OivOperationSummary>();
         var unsupported = new List<string>();
         var sourceIssues = new List<string>();
+        if (gameVersionNode is not null)
+            unsupported.Add("non-standard gameversion extension; verify game edition independently");
+
         var contentEntries = archive.Entries
             .Where(entry => entry.FullName.StartsWith("content/", StringComparison.OrdinalIgnoreCase))
             .ToArray();
@@ -217,7 +220,7 @@ public static class OivManifestInspectionService
 
             _ = RequiredAttribute(element, "xpath");
             if (command == "add")
-                ValidateXmlAppendAttribute(element, formatVersion);
+                ValidateXmlAppendAttribute(element, formatVersion, unsupported);
 
             AddOperation(operations, new OivOperationSummary(
                 patchKind + ":" + command, containingArchive, target, null));
@@ -278,13 +281,17 @@ public static class OivManifestInspectionService
             throw new InvalidDataException("An OIV text command has an invalid condition value.");
     }
 
-    private static void ValidateXmlAppendAttribute(XElement element, string formatVersion)
+    private static void ValidateXmlAppendAttribute(
+        XElement element,
+        string formatVersion,
+        List<string> unsupported)
     {
         var append = (string?)element.Attribute("append");
         if (string.IsNullOrWhiteSpace(append))
         {
             // The specification marks append as required, but its own 2.2 example contains
             // an add command without it. Preserve the inventory and require human review.
+            unsupported.Add("XML add command omits the specification-required append attribute");
             return;
         }
 
