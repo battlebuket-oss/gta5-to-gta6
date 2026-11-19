@@ -197,7 +197,19 @@
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
             <TextBlock Text="STORY MODE FIRST" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock Text="The project targets GTA V Legacy single-player. Preserve original game files and saves. Imported packages remain separate until a selected deployment is applied." TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock Text="The project targets GTA V Legacy single-player. Preserve original game files and saves. Imported packages remain separate until a selected deployment is applied." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <Button x:Name="RecordStoryTestEvidenceButton"
+                    AutomationProperties.Name="Record Story Mode mission and compatibility test evidence for the selected package"
+                    Content="Record Story Mode test evidence"
+                    Padding="10,7"
+                    HorizontalAlignment="Left"
+                    IsEnabled="False"
+                    Click="RecordStoryTestEvidenceButton_Click"/>
+            <TextBlock x:Name="StoryTestEvidenceStatusText"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
           </StackPanel>
         </Border>
 
@@ -222,7 +234,42 @@
         <Border Background="{StaticResource PanelBackground}" CornerRadius="12" Padding="18" Margin="10,0,0,12">
           <StackPanel>
             <TextBlock Text="ACCESSIBILITY" FontSize="15" FontWeight="SemiBold"/>
-            <TextBlock Text="The Hub uses standard Windows controls and keyboard navigation. Game-side subtitle, screen-reader, HUD and comfort features are shown only when an actual compatible implementation is verified." TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock Text="These preferences affect the Hub only. Game-side subtitle, screen-reader, HUD and comfort features remain unavailable unless an actual compatible GTA V implementation is verified." TextWrapping="Wrap" Margin="0,8,0,8"/>
+            <CheckBox x:Name="HighContrastCheckBox"
+                      AutomationProperties.Name="Enable high contrast in the Transformation Hub"
+                      Content="High-contrast mode"
+                      Checked="AccessibilityPreference_Changed"
+                      Unchecked="AccessibilityPreference_Changed"
+                      Margin="0,0,0,7"/>
+            <TextBlock Text="Hub text size" Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,0,0,3"/>
+            <DockPanel Margin="0,0,0,7">
+              <TextBlock x:Name="TextScaleValueText" DockPanel.Dock="Right" Text="100%" Width="55" TextAlignment="Right" VerticalAlignment="Center"/>
+              <Slider x:Name="HubTextScaleSlider"
+                      AutomationProperties.Name="Hub text size from 100 to 150 percent"
+                      Minimum="1.0" Maximum="1.5" Value="1.0"
+                      TickFrequency="0.1" IsSnapToTickEnabled="True"
+                      ValueChanged="AccessibilityTextScale_ValueChanged"
+                      Margin="0,0,8,0"/>
+            </DockPanel>
+            <CheckBox x:Name="ReduceMotionCheckBox"
+                      AutomationProperties.Name="Reduce nonessential motion in the Transformation Hub"
+                      Content="Reduce nonessential motion"
+                      IsChecked="True"
+                      Checked="AccessibilityPreference_Changed"
+                      Unchecked="AccessibilityPreference_Changed"
+                      Margin="0,0,0,8"/>
+            <Button x:Name="SaveAccessibilityPreferencesButton"
+                    AutomationProperties.Name="Save Hub accessibility preferences"
+                    Content="Save accessibility preferences"
+                    Padding="10,7"
+                    HorizontalAlignment="Left"
+                    Click="SaveAccessibilityPreferencesButton_Click"/>
+            <TextBlock x:Name="AccessibilityStatusText"
+                       Foreground="{StaticResource SecondaryText}"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"
+                       Text="Preferences are stored locally and never change GTA V settings."/>
           </StackPanel>
         </Border>
 
