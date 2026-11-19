@@ -94,3 +94,9 @@ Until all of those steps exist, ecology-sensitive packages remain blocked.
 - The tool receives the selected local game path so it can read the files and derive retail archive keys from that installation.
 - The Hub does not upload game files, derived keys, catalogue databases or scan reports.
 - Only run the official release binary obtained from the linked upstream release page.
+
+## Normalized ecology inventory comparison
+
+The Windows Hub now accepts two normalized semantic inventory snapshots, validates both against the currently selected GTA5.exe build and SHA-256, runs the semantic preservation comparator, hashes the input files and stores a local report. See [Normalized ecology inventory snapshot schema](ECOLOGY_INVENTORY_SNAPSHOT_SCHEMA.md) for the exact JSON contract and workflow.
+
+This is a comparison and evidence-recording tool, not a new extractor. The current bounded rage-cli discovery/dump stage does not automatically produce complete semantic snapshots. Every report explicitly leaves `completenessVerified=false` and `packageEligibilityUnlocked=false`; a clean comparison of supplied rows does not unblock animals, plants, population or water packages.
