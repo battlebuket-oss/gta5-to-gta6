@@ -24,6 +24,10 @@ function New-ValidCatalogue {
             licence = 'Research-only test fixture'
             version = '1.0.0'
             status = 'Researching'
+            installAdapter = 'Manifest-only test fixture'
+            restoreStrategy = 'No files are deployed by this fixture'
+            performanceTier = 'Unknown; test fixture only'
+            notes = 'Synthetic fixture used only to test catalogue validation.'
             dependencies = @()
             conflicts = @()
             externalRequirements = @()
@@ -51,14 +55,16 @@ function Invoke-CatalogueCase {
     $json = ConvertTo-Json -InputObject $Catalogue -Depth 100
     [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false))
     $actualPass = $true
+    $validationError = $null
     try {
         & $validatorPath -CataloguePath $path | Out-Null
     } catch {
         $actualPass = $false
+        $validationError = $_.Exception.Message
     }
 
     if ($actualPass -ne $ShouldPass) {
-        throw "Catalogue validator test '$Name' failed. Expected pass=$ShouldPass, actual pass=$actualPass."
+        throw "Catalogue validator test '$Name' failed. Expected pass=$ShouldPass, actual pass=$actualPass. Validator error: $validationError"
     }
     Write-Host "PASS: $Name"
 }
