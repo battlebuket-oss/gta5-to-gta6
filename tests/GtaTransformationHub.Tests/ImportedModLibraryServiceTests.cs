@@ -83,11 +83,14 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
     [Fact]
     public async Task LoadAsync_FlagsMissingFilesWithoutFailingTheWholeLibrary()
     {
-        CreatePackage(
+        var bytes = Encoding.UTF8.GetBytes("missing");
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        var packageDirectory = CreatePackage(
             "missing-mod",
             "Missing Mod",
             "b".PadRight(64, 'b'),
-            ("scripts/missing.ini", Encoding.UTF8.GetBytes("missing"), "c".PadRight(64, 'c')));
+            ("scripts/missing.ini", bytes, hash));
+        File.Delete(Path.Combine(packageDirectory, "scripts", "missing.ini"));
 
         var entries = await new ImportedModLibraryService().LoadAsync(_root);
 
@@ -124,9 +127,11 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
             "Tampered Mod",
             "e".PadRight(64, 'e'),
             ("scripts/changed.ini", original, originalHash));
-        await File.WriteAllTextAsync(
+        // Keep the byte length unchanged so this test reaches the SHA-256
+        // comparison rather than being rejected by the earlier size check.
+        await File.WriteAllBytesAsync(
             Path.Combine(packageDirectory, "scripts", "changed.ini"),
-            "modified after import");
+            Encoding.UTF8.GetBytes("modified"));
 
         var result = await new ImportedModLibraryService().VerifyAsync(_root, packageDirectory);
 
