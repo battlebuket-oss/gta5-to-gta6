@@ -679,14 +679,22 @@ public sealed class EcologyInventoryCurationService
             return;
         }
 
+        var acceptedCategories = requiredCategory.ToUpperInvariant() switch
+        {
+            "TERRESTRIALANIMAL" or "AQUATICANIMAL" =>
+                new HashSet<string>(new[] { "Animal", "ModelIdentifier" }, StringComparer.OrdinalIgnoreCase),
+            "TERRESTRIALPLANT" or "AQUATICPLANT" =>
+                new HashSet<string>(new[] { "Plant", "ModelIdentifier" }, StringComparer.OrdinalIgnoreCase),
+            _ => new HashSet<string>(new[] { requiredCategory, "ModelIdentifier" }, StringComparer.OrdinalIgnoreCase)
+        };
+
         foreach (var index in indexes)
         {
             if (!candidates.TryGetValue(index, out var rows) ||
                 !rows.Any(row =>
-                    row.ReviewDecision.Equals("Confirmed", StringComparison.OrdinalIgnoreCase) &&
-                    row.CanonicalId.Equals(canonicalId, StringComparison.OrdinalIgnoreCase) &&
-                    (row.Category.Equals(requiredCategory, StringComparison.OrdinalIgnoreCase) ||
-                     row.Category.Equals("ModelIdentifier", StringComparison.OrdinalIgnoreCase))))
+                    string.Equals(row?.ReviewDecision, "Confirmed", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(row?.CanonicalId, canonicalId, StringComparison.OrdinalIgnoreCase) &&
+                    acceptedCategories.Contains(row?.Category ?? string.Empty)))
             {
                 errors.Add("Curation record '" + canonicalId + "' has no confirmed matching candidate evidence for index " + index + ".");
             }
