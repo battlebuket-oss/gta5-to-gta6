@@ -144,7 +144,9 @@ public sealed class RageCliEcologyCandidateAnalysisService
 
         if (index.Payloads is null || index.Payloads.Count == 0 ||
             index.Payloads.Count > RageCliMetadataPayloadService.MaximumCandidatesToDump ||
-            index.CandidateCount != index.Payloads.Count)
+            index.CandidateCount <= 0 ||
+            index.CandidateCount > RageCliMetadataPayloadService.MaximumCandidatesToDump ||
+            index.Payloads.Count > index.CandidateCount)
             throw new InvalidDataException("The metadata dump index has an invalid payload count.");
 
         var warnings = new List<string>();
@@ -412,11 +414,20 @@ public sealed class RageCliEcologyCandidateAnalysisService
                     JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False))
                 return;
 
+            var categories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var currentCategory = ClassifyCandidateField(string.Empty, structureType, path, fieldName);
             var inheritedCategory = ClassifyCandidateField(string.Empty, inheritedContext, path, fieldName);
-            var category = currentCategory ?? inheritedCategory ??
-                           ClassifyCandidateField(resourceName, structureType, path, fieldName);
-            if (category is null)
+            if (!string.IsNullOrWhiteSpace(currentCategory))
+                categories.Add(currentCategory);
+            if (!string.IsNullOrWhiteSpace(inheritedCategory))
+                categories.Add(inheritedCategory);
+            if (categories.Count == 0)
+            {
+                var resourceCategory = ClassifyCandidateField(resourceName, structureType, path, fieldName);
+                if (!string.IsNullOrWhiteSpace(resourceCategory))
+                    categories.Add(resourceCategory);
+            }
+            if (categories.Count == 0)
                 return;
 
             var value = element.ValueKind == JsonValueKind.String
@@ -428,24 +439,28 @@ public sealed class RageCliEcologyCandidateAnalysisService
             var truncated = value.Length > MaximumValueLength;
             if (truncated)
                 value = value[..MaximumValueLength] + "...[truncated]";
-            var key = category + "|" + path + "|" + value;
-            if (!seen.Add(key))
-                return;
 
-            output.Add(new EcologyMetadataCandidate(
-                category,
-                resourceName,
-                internalArchivePath,
-                path,
-                structureType,
-                fieldName,
-                value,
-                sourceArchivePath,
-                sourceArchiveSha256,
-                dumpJsonSha256,
-                truncated
-                    ? "Heuristic field/path match; candidate value was truncated."
-                    : "Heuristic field/path match only; verify the underlying resource semantics."));
+            foreach (var category in categories)
+            {
+                var key = category + "|" + path + "|" + value;
+                if (!seen.Add(key))
+                    continue;
+
+                output.Add(new EcologyMetadataCandidate(
+                    category,
+                    resourceName,
+                    internalArchivePath,
+                    path,
+                    structureType,
+                    fieldName,
+                    value,
+                    sourceArchivePath,
+                    sourceArchiveSha256,
+                    dumpJsonSha256,
+                    truncated
+                        ? "Heuristic field/path match; candidate value was truncated."
+                        : "Heuristic field/path match only; verify the underlying resource semantics."));
+            }
         }
 
         Visit(root, "$", string.Empty, null, string.Empty);
