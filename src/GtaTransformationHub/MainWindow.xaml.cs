@@ -72,6 +72,7 @@ public partial class MainWindow : Window
         {
             var recovered = await _deploymentService.RecoverInterruptedTransactionsAsync();
             _recoveryCompleted = true;
+            App.Diagnostics.Write(AuditLogLevel.Information, "StartupRecoveryCompleted", "Startup transaction recovery completed. Recovered transactions: " + recovered.Count + ".");
 
             try
             {
@@ -108,6 +109,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             _recoveryCompleted = false;
+            App.Diagnostics.Write(AuditLogLevel.Critical, "StartupRecoveryFailed", "Startup transaction recovery could not be verified; configuration remains locked.", exception);
             DetectionText.Text = "Recovery could not be verified. Game configuration remains locked.";
             StatusText.Text = "Safety recovery failed: " + exception.Message;
         }
@@ -293,6 +295,7 @@ public partial class MainWindow : Window
             PackageList.SelectedItem = duplicate ?? imported;
             StatusText.Text = "Imported " + imported.Manifest.Name +
                               ". File hashes verify integrity, not publisher identity or package safety.";
+            App.Diagnostics.Write(AuditLogLevel.Information, "PackageImported", "Imported package " + imported.Manifest.Id + " version " + imported.Manifest.Version + ".");
         }
         catch (Exception exception)
         {
@@ -362,6 +365,42 @@ public partial class MainWindow : Window
         }
 
         RefreshSessionState();
+    }
+
+    private void ExportDiagnosticsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export Transformation Hub support diagnostics",
+            Filter = "Support diagnostics archive (*.zip)|*.zip",
+            DefaultExt = ".zip",
+            AddExtension = true,
+            FileName = "GtaTransformationHub-support-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmm") + ".zip",
+            OverwritePrompt = true
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var result = App.Diagnostics.ExportSupportBundle(dialog.FileName);
+            DiagnosticsStatusText.Text = "Exported " + result.IncludedLogFiles +
+                " redacted log file(s), " + result.IncludedLogBytes + " log bytes." +
+                Environment.NewLine + result.ArchivePath;
+            StatusText.Text = "Support diagnostics bundle exported.";
+            MessageBox.Show(
+                "The support bundle contains recent redacted application logs and basic system metadata. It does not include game saves, GTA V archives, mod binaries or environment secrets.",
+                "Support bundle exported",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            App.Diagnostics.Write(AuditLogLevel.Error, "SupportBundleExportFailed", "Could not export the support diagnostics bundle.", exception);
+            DiagnosticsStatusText.Text = "Export failed: " + exception.Message;
+            StatusText.Text = "Support diagnostics could not be exported.";
+        }
     }
 
     private void DetectPerformanceButton_Click(object sender, RoutedEventArgs e)
@@ -926,6 +965,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             StatusText.Text = "Profile activation failed. The previous package state was preserved where rollback was possible.";
+            App.Diagnostics.Write(AuditLogLevel.Error, "ProfileActivationFailed", "Profile activation failed.", exception);
             MessageBox.Show(
                 exception.Message,
                 "Profile activation failed",
