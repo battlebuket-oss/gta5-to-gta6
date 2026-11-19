@@ -531,11 +531,9 @@ public partial class MainWindow : Window
         }
 
         var finalAnswer = MessageBox.Show(
-            "The Hub will configure CodeWalker to the verified GTA V Legacy folder, then open the external installer.\n\n" +
-            "This version opens the installer without auto-loading the OIV. In CodeWalker, use Browse or drag the retained package into its window:\n" +
-            _lastImportedOivPath + "\n\n" +
-            "Review the author, files, game target and backup plan there. Click Install yourself only after reviewing. " +
-            "The Hub is not performing or verifying the installation.\n\n" +
+            "The Hub will configure CodeWalker to the verified GTA V Legacy folder, then open the OIV in its review window.\n\n" +
+            "The package will be preloaded for review, but it will not be installed automatically. Check the package identity, author, file operations, game target and backup plan in CodeWalker. " +
+            "Click Install yourself only after reviewing. The Hub does not perform the install or confirm the result.\n\n" +
             "Continue?",
             "Open OIV for manual installation",
             MessageBoxButton.YesNo,
