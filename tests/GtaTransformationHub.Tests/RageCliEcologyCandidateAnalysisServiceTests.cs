@@ -120,6 +120,21 @@ public sealed class RageCliEcologyCandidateAnalysisServiceTests
     }
 
     [Fact]
+    public void HasCompleteCandidateCoverage_MergesConsecutiveBatchesAndRetryOverlaps()
+    {
+        Assert.True(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 2, 3, 4, 5 }));
+        Assert.True(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 2, 2, 3, 4, 5 }));
+        Assert.False(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 3, 4, 5 }));
+        Assert.False(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            6, new[] { 0, 1, 2, 3, 4, 6 }));
+        Assert.False(RageCliEcologyCandidateAnalysisService.HasCompleteCandidateCoverage(
+            0, Array.Empty<int>()));
+    }
+
+    [Fact]
     public void ClassifyCandidateField_LeavesGenericFieldsUnclassified()
     {
         Assert.Null(RageCliEcologyCandidateAnalysisService.ClassifyCandidateField(
