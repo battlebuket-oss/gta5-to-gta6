@@ -177,7 +177,7 @@ public sealed class ModArchiveImportService
             return new ModArchiveImportResult(
                 metadata.PackageId, destination,
                 Path.Combine(destination, "package-manifest.json"),
-                archiveHash, files);
+                archiveHash, files, oivInspection);
         }
         catch
         {
@@ -344,7 +344,8 @@ public sealed record ModArchiveImportResult(
     string PackageDirectory,
     string ManifestPath,
     string ArchiveSha256,
-    IReadOnlyList<ImportedModFile> Files);
+    IReadOnlyList<ImportedModFile> Files,
+    OivManifestInspectionResult? OivInspection = null);
 
 public sealed record ImportedModManifest(
     int SchemaVersion,
