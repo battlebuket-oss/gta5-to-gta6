@@ -259,7 +259,8 @@ public partial class MainWindow : Window
                   "Operations: " + result.OivInspection.Operations.Count +
                   " | file adds/replacements: " + result.OivInspection.FileAddCount +
                   " | deletes: " + result.OivInspection.DeleteCount +
-                  " | archive edits: " + result.OivInspection.ArchiveEditCount + "\n" +
+                  " | archive edits: " + result.OivInspection.ArchiveEditCount +
+                  " | patch commands: " + result.OivInspection.PatchOperationCount + "\n" +
                   "Payload issues: " + result.OivInspection.PayloadSourceIssues.Count +
                   " | unrecognised commands: " + result.OivInspection.UnsupportedCommands.Count + "\n" +
                   "Manifest structural warnings: " + (result.OivInspection.RequiresManualReview ? "Present" : "None detected") + "\\n" +
