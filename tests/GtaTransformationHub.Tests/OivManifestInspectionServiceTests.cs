@@ -240,8 +240,6 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         using var archive = new ZipArchive(file, ZipArchiveMode.Create);
         archive.CreateEntry("content/");
         WriteEntry(archive, "assembly.xml", manifest);
-        if (payloads.Length == 0)
-            _ = archive.CreateEntry("content/");
         foreach (var (entryPath, content) in payloads)
             WriteEntry(archive, entryPath, content);
         return path;
