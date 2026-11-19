@@ -254,7 +254,21 @@ public sealed class RageCliEcologyCandidateAnalysisService
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        var indexComplete = index.BatchComplete &&
+        var payloadIndexes = index.Payloads
+            .Select(payload => payload.CandidateIndex)
+            .OrderBy(value => value)
+            .ToArray();
+        var currentIndexCoversEveryCandidate =
+            index.CandidateCount > 0 &&
+            payloadIndexes.Length == index.CandidateCount &&
+            payloadIndexes.SequenceEqual(Enumerable.Range(0, index.CandidateCount));
+
+        if (!currentIndexCoversEveryCandidate)
+            warnings.Add(
+                "This index contains only one bounded batch. It does not include all prior batches, so the full candidate set has not been analyzed in this report.");
+
+        var indexComplete = currentIndexCoversEveryCandidate &&
+                            index.BatchComplete &&
                             !index.MoreBatchesAvailable &&
                             index.Errors is { Count: 0 } &&
                             discovery.Errors is { Count: 0 } &&
