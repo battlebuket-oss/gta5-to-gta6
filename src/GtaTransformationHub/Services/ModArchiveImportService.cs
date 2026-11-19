@@ -1,6 +1,8 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using GtaTransformationHub.Models;
 
 namespace GtaTransformationHub.Services;
 
@@ -147,7 +149,11 @@ public sealed class ModArchiveImportService
             {
                 await JsonSerializer.SerializeAsync(
                     manifestStream, manifest,
-                    new JsonSerializerOptions { WriteIndented = true },
+                    new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
+                },
                     cancellationToken);
                 await manifestStream.FlushAsync(cancellationToken);
             }
@@ -174,7 +180,7 @@ public sealed class ModArchiveImportService
         }
     }
 
-    private static void ValidateMetadata(ModArchiveMetadata metadata)
+    public static void ValidateMetadata(ModArchiveMetadata metadata)
     {
         if (metadata is null)
             throw new ArgumentNullException(nameof(metadata));
@@ -217,7 +223,7 @@ public sealed class ModArchiveImportService
                 segment.EndsWith(".", StringComparison.Ordinal) ||
                 segment.IndexOfAny(new[] { '<', '>', ':', '"', '|', '?', '*' }) >= 0 ||
                 segment.Any(char.IsControl) ||
-                Path.GetInvalidFileNameChars().Any(segment.Contains))
+                Path.GetInvalidFileNameChars().Any(invalidCharacter => segment.Contains(invalidCharacter)))
                 throw new InvalidDataException("The archive contains an unsafe path segment: " + segment);
 
             var baseName = segment.Split('.')[0];
