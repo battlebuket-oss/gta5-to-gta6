@@ -176,6 +176,7 @@ public sealed class EcologyCandidateAnalysisAggregationService
         var warnings = new List<string>();
         var batches = new List<BatchProvenance>();
         var batchIndexes = new List<int>();
+        var candidatePayloadFingerprints = new Dictionary<int, string>();
         var allCandidates = new List<EcologyMetadataCandidate>();
         var verifiedPayloads = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -312,6 +313,17 @@ public sealed class EcologyCandidateAnalysisAggregationService
 
                 var payloadKey = payload.CandidateIndex.ToString(System.Globalization.CultureInfo.InvariantCulture) +
                                  "|" + payload.DumpJsonSha256;
+                var payloadFingerprint = payload.SourceArchiveSha256 + "|" +
+                                         payload.DumpJsonSha256 + "|" + payload.InternalPath;
+                if (candidatePayloadFingerprints.TryGetValue(payload.CandidateIndex, out var existingFingerprint) &&
+                    !EqualsIgnoreCase(existingFingerprint, payloadFingerprint))
+                {
+                    throw new InvalidDataException(
+                        "A retried candidate index resolves to different source or JSON content: " +
+                        payload.CandidateIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+
+                candidatePayloadFingerprints[payload.CandidateIndex] = payloadFingerprint;
                 verifiedPayloads.Add(payloadKey);
                 batchIndexes.Add(payload.CandidateIndex);
             }
@@ -345,6 +357,9 @@ public sealed class EcologyCandidateAnalysisAggregationService
                     !IsSha256(candidate.DumpJsonSha256))
                     throw new InvalidDataException("A candidate row is missing required identity or provenance fields.");
             }
+
+            if (allCandidates.Count + report.Candidates.Count > MaximumAggregateCandidates)
+                throw new InvalidDataException("The combined ecology candidate report would exceed 250,000 heuristic candidate rows.");
 
             allCandidates.AddRange(report.Candidates);
             reports.Add(report);
@@ -407,7 +422,7 @@ public sealed class EcologyCandidateAnalysisAggregationService
 
         var coverage = EvaluateBatchCoverage(
             sharedCandidateCount.Value,
-            batchIndexes,
+            batchIndexes.Distinct(),
             isDiscoveryComplete,
             batches.All(batch => batch.BatchComplete));
 
