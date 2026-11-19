@@ -40,6 +40,7 @@ public sealed record EcologyMetadataCandidateAnalysisResult(
 public sealed class RageCliEcologyCandidateAnalysisService
 {
     public const int MaximumCandidates = 10000;
+    public const int MaximumDiscoveredCandidates = 150_000;
     public const int MaximumNodesPerPayload = 1_000_000;
     public const int MaximumValueLength = 256;
     public const long MaximumIndexBytes = 64L * 1024 * 1024;
@@ -64,7 +65,11 @@ public sealed class RageCliEcologyCandidateAnalysisService
         string DiscoveryReportPath,
         string DiscoveryReportSha256,
         int CandidateCount,
-        bool CandidateCapReached,
+        int StartingCandidateIndex,
+        int NextCandidateIndex,
+        int SelectedCandidateCount,
+        bool MoreBatchesAvailable,
+        bool BatchComplete,
         IReadOnlyList<string> Errors,
         IReadOnlyList<RageCliMetadataPayload> Payloads);
 
@@ -142,17 +147,31 @@ public sealed class RageCliEcologyCandidateAnalysisService
         var discovery = await ReadJsonAsync<DiscoveryProvenanceReport>(discoveryPath, cancellationToken);
         ValidateDiscoveryProvenance(discovery, installation.BuildVersion, gameHash, tool);
 
-        if (index.Payloads is null || index.Payloads.Count == 0 ||
-            index.Payloads.Any(payload => payload is null) ||
-            index.Payloads.Count > RageCliMetadataPayloadService.MaximumCandidatesToDump ||
-            index.CandidateCount <= 0 ||
-            index.CandidateCount > RageCliMetadataPayloadService.MaximumCandidatesToDump ||
-            index.Payloads.Count > index.CandidateCount)
-            throw new InvalidDataException("The metadata dump index has an invalid payload count.");
+        if (index.Payloads is null || index.Payloads.Any(payload => payload is null))
+            throw new InvalidDataException("The metadata dump index has no valid payload collection.");
+
+        var batchErrors = ValidateDumpBatchContract(
+            index.SchemaVersion,
+            index.CandidateCount,
+            index.StartingCandidateIndex,
+            index.NextCandidateIndex,
+            index.SelectedCandidateCount,
+            index.MoreBatchesAvailable,
+            index.BatchComplete,
+            index.Payloads.Select(payload => payload.CandidateIndex).ToArray(),
+            index.Errors);
+
+        if (batchErrors.Count > 0)
+            throw new InvalidDataException(
+                "The metadata dump index has an invalid resumable-batch contract: " +
+                string.Join(" ", batchErrors));
 
         var warnings = new List<string>();
-        if (index.CandidateCapReached)
-            warnings.Add("The original metadata discovery or dump stage reached a candidate cap.");
+        if (index.MoreBatchesAvailable)
+            warnings.Add("Additional metadata batches remain. Continue from candidate offset " +
+                         index.NextCandidateIndex.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".");
+        if (!index.BatchComplete)
+            warnings.Add("This metadata batch is incomplete. Successful payloads are analysed, but failed candidates must be retried.");
         if (index.Errors is { Count: > 0 })
             warnings.AddRange(index.Errors.Take(100));
         if (discovery.Errors is { Count: > 0 })
@@ -160,8 +179,6 @@ public sealed class RageCliEcologyCandidateAnalysisService
         if (discovery.PatternResults is null ||
             discovery.PatternResults.Any(result => result.HitLimit || result.OutputTruncated || result.HasArchiveErrors))
             warnings.Add("One or more discovery patterns hit a limit, truncated output or had archive errors.");
-        if (index.Payloads.Count < index.CandidateCount)
-            warnings.Add("The dump index contains fewer payloads than its declared candidate count.");
 
         var candidates = new List<EcologyMetadataCandidate>();
         var payloadsReviewed = 0;
@@ -227,13 +244,13 @@ public sealed class RageCliEcologyCandidateAnalysisService
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        var indexComplete = index.Errors is { Count: 0 } &&
+        var indexComplete = index.BatchComplete &&
+                            !index.MoreBatchesAvailable &&
+                            index.Errors is { Count: 0 } &&
                             discovery.Errors is { Count: 0 } &&
                             discovery.PatternResults is { Count: > 0 } &&
                             discovery.PatternResults.All(item =>
-                                !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors) &&
-                            !index.CandidateCapReached &&
-                            index.Payloads.Count == index.CandidateCount;
+                                !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors);
 
         const string limitation =
             "Candidates are heuristic field/path matches from the bounded metadata resources that were successfully dumped. " +
@@ -468,13 +485,82 @@ public sealed class RageCliEcologyCandidateAnalysisService
         Visit(root, "$", string.Empty, null, string.Empty);
     }
 
+    /// <summary>
+    /// Validates the resumable metadata dump-index schema. CandidateCount describes
+    /// the full discovered set; Payloads contains only one bounded batch. The cursor
+    /// advances to the first missing candidate so failed resources can be retried.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateDumpBatchContract(
+        int schemaVersion,
+        int totalCandidateCount,
+        int startingCandidateIndex,
+        int nextCandidateIndex,
+        int selectedCandidateCount,
+        bool moreBatchesAvailable,
+        bool batchComplete,
+        IReadOnlyCollection<int>? dumpedCandidateIndexes,
+        IReadOnlyCollection<string>? errors)
+    {
+        var validationErrors = new List<string>();
+
+        if (schemaVersion != 3)
+            validationErrors.Add("Unsupported metadata dump-index schema version.");
+        if (totalCandidateCount < 1 || totalCandidateCount > MaximumDiscoveredCandidates)
+            validationErrors.Add("The total discovered candidate count is outside the supported range.");
+        if (startingCandidateIndex < 0 || startingCandidateIndex >= totalCandidateCount)
+            validationErrors.Add("The starting candidate index is outside the discovered candidate list.");
+        if (dumpedCandidateIndexes is null)
+        {
+            validationErrors.Add("The batch has no candidate-index collection.");
+            return validationErrors;
+        }
+
+        if (totalCandidateCount < 1 || startingCandidateIndex < 0 ||
+            startingCandidateIndex >= totalCandidateCount)
+            return validationErrors;
+
+        var expectedSelectedCount = Math.Min(
+            RageCliMetadataPayloadService.MaximumCandidatesToDump,
+            totalCandidateCount - startingCandidateIndex);
+        var expectedEnd = startingCandidateIndex + expectedSelectedCount;
+
+        if (selectedCandidateCount != expectedSelectedCount)
+            validationErrors.Add("The selected batch size does not match the expected bounded candidate window.");
+        if (dumpedCandidateIndexes.Count > selectedCandidateCount)
+            validationErrors.Add("The number of dumped candidate indexes exceeds the selected batch size.");
+        if (dumpedCandidateIndexes.Distinct().Count() != dumpedCandidateIndexes.Count)
+            validationErrors.Add("The batch contains duplicate candidate indexes.");
+        if (dumpedCandidateIndexes.Any(index =>
+                index < startingCandidateIndex || index >= expectedEnd))
+            validationErrors.Add("A dumped candidate index is outside the selected batch window.");
+
+        var dumped = dumpedCandidateIndexes.ToHashSet();
+        var firstMissing = startingCandidateIndex;
+        while (firstMissing < expectedEnd && dumped.Contains(firstMissing))
+            firstMissing++;
+
+        if (nextCandidateIndex != firstMissing)
+            validationErrors.Add("The next candidate offset does not point to the first undumped candidate.");
+        if (moreBatchesAvailable != (expectedEnd < totalCandidateCount))
+            validationErrors.Add("The more-batches flag does not match the remaining candidate window.");
+
+        var hasErrors = errors is { Count: > 0 };
+        var allSelectedDumped = firstMissing == expectedEnd;
+        if (batchComplete && (hasErrors || !allSelectedDumped || nextCandidateIndex != expectedEnd))
+            validationErrors.Add("A completed batch must contain all selected payloads, have no errors and advance to its end.");
+        if (!batchComplete && !hasErrors && allSelectedDumped)
+            validationErrors.Add("A batch with all payloads and no errors must be marked complete.");
+
+        return validationErrors;
+    }
+
     private static void ValidateIndexProvenance(
         MetadataDumpIndexReport index,
         string expectedBuild,
         string expectedGameHash,
         RageCliToolchainInfo tool)
     {
-        if (index.SchemaVersion != 1 ||
+        if (index.SchemaVersion != 3 ||
             !string.Equals(index.GameBuild, expectedBuild, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(index.GameExecutableSha256, expectedGameHash, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(index.ToolVersion, tool.Version, StringComparison.OrdinalIgnoreCase) ||
