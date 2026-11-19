@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -9,8 +10,8 @@ using System.Xml.Linq;
 namespace GtaTransformationHub.Services;
 
 /// <summary>
-/// Reads an OpenIV OIV assembly.xml manifest and reports the install operations.
-/// It never applies those operations or opens/modifies RPF archives.
+/// Reads an OpenIV OIV assembly.xml manifest and reports its install operations.
+/// It never applies those operations, executes scripts, or opens/modifies RPF archives.
 /// </summary>
 public static class OivManifestInspectionService
 {
@@ -60,27 +61,23 @@ public static class OivManifestInspectionService
             throw new InvalidDataException("The OIV package ID must be a GUID.");
 
         var target = RequiredAttribute(root, "target");
-        var metadata = root.Elements().SingleOrDefault(element => NameIs(element, "metadata"));
-        var content = root.Elements().SingleOrDefault(element => NameIs(element, "content"));
-        if (metadata is null || content is null)
-            throw new InvalidDataException("The OIV manifest must contain one <metadata> and one <content> element.");
+        var metadata = ExactlyOneChild(root, "metadata", "metadata");
+        var colors = ExactlyOneChild(root, "colors", "colors");
+        var content = ExactlyOneChild(root, "content", "content");
 
         var name = RequiredValue(metadata, "name", "OIV package name");
-        var authorNode = metadata.Elements().FirstOrDefault(element => NameIs(element, "author"));
-        var author = authorNode?.Elements().FirstOrDefault(element => NameIs(element, "displayName"))?.Value.Trim();
-        if (string.IsNullOrWhiteSpace(author))
-            throw new InvalidDataException("The OIV manifest is missing metadata/author/displayName.");
-
-        var versionNode = metadata.Elements().FirstOrDefault(element => NameIs(element, "version"));
-        var major = versionNode?.Elements().FirstOrDefault(element => NameIs(element, "major"))?.Value.Trim();
-        var minor = versionNode?.Elements().FirstOrDefault(element => NameIs(element, "minor"))?.Value.Trim();
-        if (string.IsNullOrWhiteSpace(major) || string.IsNullOrWhiteSpace(minor))
-            throw new InvalidDataException("The OIV manifest is missing its mod version major/minor fields.");
-        var modVersion = major + "." + minor;
-        var tag = versionNode?.Elements().FirstOrDefault(element => NameIs(element, "tag"))?.Value.Trim();
+        var authorNode = ExactlyOneChild(metadata, "author", "metadata/author");
+        var author = RequiredValue(authorNode, "displayName", "metadata/author/displayName");
+        var versionNode = ExactlyOneChild(metadata, "version", "metadata/version");
+        var major = RequiredInteger(versionNode, "major", "metadata/version/major");
+        var minor = RequiredInteger(versionNode, "minor", "metadata/version/minor");
+        var modVersion = major.ToString(CultureInfo.InvariantCulture) + "." +
+                         minor.ToString(CultureInfo.InvariantCulture);
+        var tag = versionNode.Elements().FirstOrDefault(element => NameIs(element, "tag"))?.Value.Trim();
         if (!string.IsNullOrWhiteSpace(tag))
             modVersion += " " + tag;
 
+        ValidateColors(colors);
         var licence = metadata.Elements().FirstOrDefault(element => NameIs(element, "licence"))?.Value.Trim() ?? string.Empty;
         var operations = new List<OivOperationSummary>();
         var unsupported = new List<string>();
@@ -91,7 +88,7 @@ public static class OivManifestInspectionService
             .Where(path => path.StartsWith("content/", StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
-        InspectCommands(content, string.Empty, payloadPaths, operations, unsupported, sourceIssues);
+        InspectCommands(content, string.Empty, payloadPaths, formatVersion, operations, unsupported, sourceIssues);
 
         return new OivManifestInspectionResult(
             formatVersion,
@@ -111,24 +108,30 @@ public static class OivManifestInspectionService
         XElement parent,
         string containingArchive,
         IReadOnlyList<string> payloadPaths,
+        string formatVersion,
         List<OivOperationSummary> operations,
         List<string> unsupported,
         List<string> sourceIssues)
     {
         foreach (var element in parent.Elements())
         {
-            if (operations.Count >= MaximumOperations)
-                throw new InvalidDataException("The OIV manifest exceeds the 5,000-operation inspection limit.");
-
             var command = element.Name.LocalName.ToLowerInvariant();
             switch (command)
             {
                 case "archive":
                 {
                     var archivePath = NormalizeTargetPath(RequiredAttribute(element, "path"), "archive path");
+                    var createIfNotExist = RequiredAttribute(element, "createIfNotExist");
+                    if (!bool.TryParse(createIfNotExist, out _))
+                        throw new InvalidDataException("An OIV archive command has an invalid createIfNotExist value.");
+
+                    var archiveType = RequiredAttribute(element, "type");
+                    if (!string.Equals(archiveType, "RPF7", StringComparison.OrdinalIgnoreCase))
+                        unsupported.Add("archive type: " + archiveType);
+
                     var fullArchivePath = CombineTargetPaths(containingArchive, archivePath);
-                    operations.Add(new OivOperationSummary("archive", containingArchive, fullArchivePath, null));
-                    InspectCommands(element, fullArchivePath, payloadPaths, operations, unsupported, sourceIssues);
+                    AddOperation(operations, new OivOperationSummary("archive", containingArchive, fullArchivePath, null));
+                    InspectCommands(element, fullArchivePath, payloadPaths, formatVersion, operations, unsupported, sourceIssues);
                     break;
                 }
                 case "add":
@@ -138,26 +141,36 @@ public static class OivManifestInspectionService
                     var target = NormalizeTargetPath(element.Value, command + " destination");
                     if (!PayloadSourceExists(payloadPaths, source))
                         sourceIssues.Add(command + " source is not present in the OIV content folder: " + source);
-                    operations.Add(new OivOperationSummary(command, containingArchive, target, source));
+                    AddOperation(operations, new OivOperationSummary(command, containingArchive, target, source));
                     break;
                 }
                 case "delete":
                 {
                     var target = NormalizeTargetPath(element.Value, "delete destination");
-                    operations.Add(new OivOperationSummary(command, containingArchive, target, null));
+                    AddOperation(operations, new OivOperationSummary(command, containingArchive, target, null));
                     break;
                 }
                 case "xml":
-                case "text":
+                case "pso":
                 {
                     var target = NormalizeTargetPath(RequiredAttribute(element, "path"), command + " patch target");
-                    operations.Add(new OivOperationSummary(command + "Patch", containingArchive, target, null));
+                    AddOperation(operations, new OivOperationSummary(command + "Patch", containingArchive, target, null));
+                    InspectNodePatchCommands(element, command, containingArchive, target, formatVersion, operations, unsupported);
+                    break;
+                }
+                case "text":
+                {
+                    var target = NormalizeTargetPath(RequiredAttribute(element, "path"), "text patch target");
+                    RequiredBooleanAttribute(element, "createIfNotExist");
+                    AddOperation(operations, new OivOperationSummary("textPatch", containingArchive, target, null));
+                    InspectTextPatchCommands(element, containingArchive, target, operations, unsupported);
                     break;
                 }
                 case "defragmentation":
                 {
-                    var target = NormalizeTargetPath(RequiredAttribute(element, "archive"), "defragmentation archive");
-                    operations.Add(new OivOperationSummary(command, containingArchive, target, null));
+                    var archivePath = NormalizeTargetPath(RequiredAttribute(element, "archive"), "defragmentation archive");
+                    var target = CombineTargetPaths(containingArchive, archivePath);
+                    AddOperation(operations, new OivOperationSummary("defragmentation", containingArchive, target, null));
                     break;
                 }
                 default:
@@ -167,19 +180,133 @@ public static class OivManifestInspectionService
         }
     }
 
+    private static void InspectNodePatchCommands(
+        XElement patch,
+        string patchKind,
+        string containingArchive,
+        string target,
+        string formatVersion,
+        List<OivOperationSummary> operations,
+        List<string> unsupported)
+    {
+        foreach (var element in patch.Elements())
+        {
+            var command = element.Name.LocalName.ToLowerInvariant();
+            if (command is not ("add" or "replace" or "remove"))
+            {
+                unsupported.Add(patchKind + " command: " + element.Name.LocalName);
+                continue;
+            }
+
+            _ = RequiredAttribute(element, "xpath");
+            if (command == "add")
+                ValidateXmlAppendAttribute(element, formatVersion);
+
+            AddOperation(operations, new OivOperationSummary(
+                patchKind + ":" + command, containingArchive, target, null));
+        }
+    }
+
+    private static void InspectTextPatchCommands(
+        XElement patch,
+        string containingArchive,
+        string target,
+        List<OivOperationSummary> operations,
+        List<string> unsupported)
+    {
+        foreach (var element in patch.Elements())
+        {
+            var command = element.Name.LocalName.ToLowerInvariant();
+            switch (command)
+            {
+                case "add":
+                    AddOperation(operations, new OivOperationSummary("text:add", containingArchive, target, null));
+                    break;
+                case "insert":
+                    ValidateTextSearchAttributes(element, requireWhere: true);
+                    AddOperation(operations, new OivOperationSummary("text:insert", containingArchive, target, null));
+                    break;
+                case "replace":
+                    ValidateTextSearchAttributes(element, requireWhere: false);
+                    AddOperation(operations, new OivOperationSummary("text:replace", containingArchive, target, null));
+                    break;
+                case "delete":
+                    ValidateTextCondition(RequiredAttribute(element, "condition"));
+                    AddOperation(operations, new OivOperationSummary("text:delete", containingArchive, target, null));
+                    break;
+                default:
+                    unsupported.Add("text command: " + element.Name.LocalName);
+                    break;
+            }
+        }
+    }
+
+    private static void ValidateTextSearchAttributes(XElement element, bool requireWhere)
+    {
+        _ = RequiredAttribute(element, "line");
+        ValidateTextCondition(RequiredAttribute(element, "condition"));
+        if (requireWhere)
+        {
+            var where = RequiredAttribute(element, "where");
+            if (where is not ("Before" or "After"))
+                throw new InvalidDataException("An OIV text insert command has an invalid where value.");
+        }
+    }
+
+    private static void ValidateTextCondition(string condition)
+    {
+        if (condition is not ("Equal" or "StartWith" or "Mask"))
+            throw new InvalidDataException("An OIV text command has an invalid condition value.");
+    }
+
+    private static void ValidateXmlAppendAttribute(XElement element, string formatVersion)
+    {
+        var append = (string?)element.Attribute("append");
+        if (string.IsNullOrWhiteSpace(append))
+        {
+            if (formatVersion == "2.2")
+                throw new InvalidDataException("OIV 2.2 XML add commands must specify an append value.");
+            return;
+        }
+
+        var allowed = formatVersion == "2.2"
+            ? new[] { "First", "Last", "Before", "After" }
+            : new[] { "First", "Last" };
+        if (!allowed.Contains(append, StringComparer.Ordinal))
+            throw new InvalidDataException("An OIV XML add command has an invalid append value.");
+    }
+
+    private static void ValidateColors(XElement colors)
+    {
+        var header = ExactlyOneChild(colors, "headerBackground", "colors/headerBackground");
+        var icon = ExactlyOneChild(colors, "iconBackground", "colors/iconBackground");
+        var headerValue = header.Value.Trim();
+        var iconValue = icon.Value.Trim();
+        if (headerValue.Length != 9 || headerValue[0] != '$' || !uint.TryParse(
+                headerValue.AsSpan(1), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out _))
+            throw new InvalidDataException("OIV colors/headerBackground must be an ARGB value such as $FF23366A.");
+
+        if (iconValue.Length != 9 || iconValue[0] != '$' || !uint.TryParse(
+                iconValue.AsSpan(1), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out _))
+            throw new InvalidDataException("OIV colors/iconBackground must be an ARGB value such as $FF3B5998.");
+
+        if (!bool.TryParse(RequiredAttribute(header, "useBlackTextColor"), out _))
+            throw new InvalidDataException("OIV colors/headerBackground requires a Boolean useBlackTextColor attribute.");
+    }
+
     private static bool PayloadSourceExists(IReadOnlyList<string> payloadPaths, string source)
     {
-        var sourceSegments = source.Split('/');
         foreach (var payloadPath in payloadPaths)
         {
-            var segments = payloadPath.Split('/');
-            for (var offset = 1; offset + sourceSegments.Length <= segments.Length; offset++)
-            {
-                var candidate = string.Join("/", segments.Skip(offset).Take(sourceSegments.Length));
-                if (string.Equals(candidate, source, StringComparison.OrdinalIgnoreCase) &&
-                    offset + sourceSegments.Length == segments.Length)
-                    return true;
-            }
+            var normalized = payloadPath.Replace('\\', '/');
+            var contentIndex = normalized.IndexOf("content/", StringComparison.OrdinalIgnoreCase);
+            if (contentIndex < 0)
+                continue;
+
+            var contentRelative = normalized[(contentIndex + "content/".Length)..];
+            if (string.Equals(contentRelative, source, StringComparison.OrdinalIgnoreCase) ||
+                contentRelative.EndsWith("/" + source, StringComparison.OrdinalIgnoreCase))
+                return true;
         }
 
         return false;
@@ -224,6 +351,14 @@ public static class OivManifestInspectionService
     private static string CombineTargetPaths(string parent, string child) =>
         string.IsNullOrEmpty(parent) ? child : parent + "/" + child;
 
+    private static XElement ExactlyOneChild(XElement parent, string childName, string label)
+    {
+        var children = parent.Elements().Where(element => NameIs(element, childName)).ToArray();
+        if (children.Length != 1)
+            throw new InvalidDataException("The OIV manifest must contain exactly one " + label + " element.");
+        return children[0];
+    }
+
     private static string RequiredAttribute(XElement element, string name)
     {
         var value = (string?)element.Attribute(name);
@@ -232,12 +367,34 @@ public static class OivManifestInspectionService
         return value.Trim();
     }
 
+    private static void RequiredBooleanAttribute(XElement element, string name)
+    {
+        var value = RequiredAttribute(element, name);
+        if (!bool.TryParse(value, out _))
+            throw new InvalidDataException("The OIV manifest has an invalid Boolean '" + name + "' attribute.");
+    }
+
     private static string RequiredValue(XElement parent, string childName, string label)
     {
         var value = parent.Elements().FirstOrDefault(element => NameIs(element, childName))?.Value.Trim();
         return string.IsNullOrWhiteSpace(value)
             ? throw new InvalidDataException("The OIV manifest is missing " + label + ".")
             : value;
+    }
+
+    private static int RequiredInteger(XElement parent, string childName, string label)
+    {
+        var value = RequiredValue(parent, childName, label);
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) || parsed < 0)
+            throw new InvalidDataException("The OIV manifest contains an invalid integer at " + label + ".");
+        return parsed;
+    }
+
+    private static void AddOperation(List<OivOperationSummary> operations, OivOperationSummary operation)
+    {
+        if (operations.Count >= MaximumOperations)
+            throw new InvalidDataException("The OIV manifest exceeds the 5,000-operation inspection limit.");
+        operations.Add(operation);
     }
 
     private static bool NameIs(XElement element, string localName) =>
@@ -274,4 +431,7 @@ public sealed record OivManifestInspectionResult(
 
     public int ArchiveEditCount => Operations.Count(operation =>
         operation.Command == "archive");
+
+    public int PatchOperationCount => Operations.Count(operation =>
+        operation.Command.Contains(':', StringComparison.Ordinal));
 }
