@@ -467,6 +467,70 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void RefreshOivInstallHistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted || string.IsNullOrWhiteSpace(_gameExecutable))
+            return;
+
+        RefreshOivInstallHistoryButton.IsEnabled = false;
+        OivInstallHistoryText.Text = "Reading CodeWalker backup/install records...";
+        try
+        {
+            var installation = new GameInstallationDetector().Inspect(_gameExecutable);
+            var report = await new CodeWalkerInstallHistoryService().ReadAsync(installation.GameDirectory);
+
+            if (!report.BackupDirectoryExists)
+            {
+                OivInstallHistoryText.Text =
+                    "No CodeWalker OIV backup directory exists for this game installation. " +
+                    "Packages installed without CodeWalker's backup feature may not appear here.";
+                StatusText.Text = "No CodeWalker install-history directory was found.";
+                return;
+            }
+
+            if (report.Packages.Count == 0)
+            {
+                OivInstallHistoryText.Text =
+                    "CodeWalker backup directory exists, but no readable install.log records were found.";
+            }
+            else
+            {
+                var lines = report.Packages.Take(6).Select(entry =>
+                {
+                    var installed = entry.InstalledAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "date unknown";
+                    var version = string.IsNullOrWhiteSpace(entry.Version) ? "version unknown" : entry.Version;
+                    return "• " + entry.PackageName + " | " + version + " | " + entry.GameEdition +
+                           " | " + installed + " | " + entry.FileOperationCount + " recorded file operations";
+                });
+
+                var summary = "CodeWalker installer records — not a runtime verification:\n" +
+                              string.Join("\n", lines);
+                if (report.Packages.Count > 6)
+                    summary += "\n…and " + (report.Packages.Count - 6) + " more record(s).";
+                OivInstallHistoryText.Text = summary;
+            }
+
+            if (report.Warnings.Count > 0)
+            {
+                OivInstallHistoryText.Text += "\nWarnings: " +
+                    string.Join(" | ", report.Warnings.Take(3));
+            }
+
+            StatusText.Text =
+                "Read " + report.Packages.Count +
+                " CodeWalker install record(s). This does not prove the packages are currently active or working in-game.";
+        }
+        catch (Exception ex)
+        {
+            OivInstallHistoryText.Text = "Could not read CodeWalker install records: " + ex.Message;
+            StatusText.Text = "CodeWalker install-history read failed. No game files were changed.";
+        }
+        finally
+        {
+            RefreshSessionState();
+        }
+    }
+
     private void GetOivInstallerButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -754,6 +818,8 @@ public partial class MainWindow : Window
             _lastOivArchiveSha256 is not null &&
             _lastOivInspection is not null;
         GetOivInstallerButton.IsEnabled = true;
+        RefreshOivInstallHistoryButton.IsEnabled =
+            !running && _recoveryCompleted && _gameExecutable is not null;
         // Never launch from the dashboard until profile validation and transactional
         // deployment are wired into this exact path.
         LaunchButton.IsEnabled = false;
