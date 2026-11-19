@@ -20,6 +20,11 @@ The current development branch includes:
 - Aquatic-path classification for fish, marine life, seagrass, kelp, coral/reef assets, underwater assets, water bodies and shoreline vegetation.
 - Shared mutation serialization across deployment, removal and rollback, plus protected paths for executables, RPF archives and save/profile folders.
 - Story Mode save-folder archive backups and conservative hardware/performance guidance.
+
+- A Story Mode evidence recorder with required mission lifecycle, input, recovery and rollback scenarios, pinned to the imported package archive SHA-256 and exact GTA5.exe SHA-256.
+- An in-game UI package contract for explicit screen surfaces, implementation type, input methods, resolution support, accessibility declarations, native-action preservation and compatibility/rollback evidence. Preflight rejects competing packages for the same UI surface.
+- Signature version 3 for UI replacement metadata; legacy signature v1/v2 payloads remain unchanged. UI packages require a locally trusted publisher key and compatibility attestation.
+- Persistent Hub accessibility preferences: high-contrast mode, 100–150% text scaling and a reduced-motion preference. These settings do not alter GTA V.
 - Archive path, duplicate, link, undeclared-file and expansion-size checks.
 - SHA-256 and file-size verification for every manifest-declared file.
 - A local package library and persistent user profiles with exact package-version pins.
