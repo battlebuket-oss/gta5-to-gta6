@@ -71,3 +71,25 @@ A failed preview does not install anything. A failed external install command ma
 - OpenRAGE installation is not yet reconciled with the saved Mod Control Centre ON/OFF catalogue profile. Catalogue toggles persist desired selections only; they do not invoke this installer.
 - The external install path has not been acceptance-tested against the user's real GTA V installation, Story Mode saves, mod combinations, or RTX 4050 laptop.
 - The original campaign, Rockstar-proprietary GTA VI missions/dialogue/cutscenes/assets, or exact GTA VI game systems are not reproduced by this OIV adapter.
+
+
+## GTA VI-Inspired HUD Legacy package: loader and root-plugin gate
+
+The catalogue entry `gta-vi-inspired-hud-single-player` remains `Researching`; a clean OIV preview is not package approval.
+
+For this specific package only, the Hub performs a documented prerequisite presence check before enabling installation. The check looks for:
+
+- `ScriptHookV.dll` and `dinput8.dll`
+- `ScriptHookVDotNet-Loader.asi`, `ScriptHookVDotNet.dll`, `ScriptHookVDotNet2.dll`, `ScriptHookVDotNet3.dll`, and `ScriptHookVDotNet.ini`
+- `OpenIV.asi` and the `mods/` folder
+
+File presence does not establish runtime compatibility. The HUD's author requires Script Hook V .NET 3.7.0 Nightly 193 or newer and warns that the HUD is supported in English; the Hub cannot authoritatively infer that SHVDN nightly requirement from Windows file version metadata. Immediately before installation, the UI asks the user to confirm that GTA V is configured to English and that the exact Legacy game patch is supported by the installed Script Hook V, with the required SHVDN nightly.
+
+After the OIV is installed into the `mods` folder, the author documents two files that must be beside `GTA5.exe`:
+
+- `ViMinimap.asi`
+- `ViPreload.asi`
+
+The Hub's **Deploy VI HUD root plugins** action accepts only those two hard-coded filenames and only reads their source from the selected installation's `mods` folder. It hashes both files, asks before copying them to the game root, backs up different existing root files, and commits through the Hub's journalled deployment engine. It stores the transaction ID in LocalAppData so the user can use **Roll back VI HUD root plugins** after restarting the Hub. Rollback preflights both files and refuses to overwrite either one if it has changed since deployment.
+
+This adapter does not move any other OIV file into the root, does not install generic ASI/DLL packages, and does not make the HUD Tested. The user must still validate Story Mode launch, menus, character switching, missions, saves and rollback on the exact Legacy game build.
