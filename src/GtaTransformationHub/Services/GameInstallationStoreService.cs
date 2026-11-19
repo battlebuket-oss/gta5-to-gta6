@@ -111,7 +111,7 @@ public sealed class GameInstallationStoreService
                 "Restored and revalidated GTA V Legacy build " + installation.BuildVersion + ".");
         }
         catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
+            exception is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
         {
             return new GameInstallationRestoreResult(
                 false, null,
