@@ -46,7 +46,10 @@ public sealed class ModArchiveImportService
         Directory.CreateDirectory(root);
         EnsureNoReparsePointAncestors(root);
 
-        var archiveHash = await ComputeSha256Async(source, cancellationToken);
+        await using var archiveStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var archiveHash = Convert.ToHexString(
+            await SHA256.HashDataAsync(archiveStream, cancellationToken));
+        archiveStream.Position = 0;
         var packageDirectoryName = metadata.PackageId + "-" + archiveHash[..12].ToLowerInvariant();
         var destination = Path.Combine(root, packageDirectoryName);
         if (Directory.Exists(destination) || File.Exists(destination))
@@ -58,8 +61,7 @@ public sealed class ModArchiveImportService
         try
         {
             var files = new List<ImportedModFile>();
-            using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var archive = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: false))
+            using (var archive = new ZipArchive(archiveStream, ZipArchiveMode.Read, leaveOpen: true))
             {
                 if (archive.Entries.Count == 0 || archive.Entries.Count > _limits.MaximumEntries)
                     throw new InvalidDataException("The archive is empty or exceeds the configured entry limit.");
@@ -312,11 +314,6 @@ public sealed class ModArchiveImportService
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    private static async Task<string> ComputeSha256Async(string path, CancellationToken cancellationToken)
-    {
-        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        return Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
-    }
 }
 
 public sealed record ModArchiveMetadata(
