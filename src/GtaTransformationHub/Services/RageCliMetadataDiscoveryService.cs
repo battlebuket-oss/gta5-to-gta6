@@ -42,9 +42,9 @@ public sealed record RageCliMetadataDiscoveryResult(
 /// </summary>
 public sealed class RageCliMetadataDiscoveryService
 {
-    public const int MaximumHitsPerPattern = 200;
+    public const int MaximumHitsPerPattern = 10_000;
 
-    private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(4);
+    private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(15);
     private const long MaximumReportBytes = 64L * 1024 * 1024;
 
     public static readonly IReadOnlyList<string> EcologyMetadataPatterns = new[]
@@ -54,6 +54,7 @@ public sealed class RageCliMetadataDiscoveryService
         "*.ytyp",
         "*.ymap",
         "*.ymf",
+        "*.pso",
         "*popgroups*",
         "*popcycle*",
         "*pedmodelsets*",
@@ -283,8 +284,8 @@ public sealed class RageCliMetadataDiscoveryService
     {
         if (string.IsNullOrWhiteSpace(pattern) || pattern.Contains('"') || pattern.Contains('\n') || pattern.Contains('\r'))
             throw new ArgumentException("A single safe filename pattern is required.", nameof(pattern));
-        if (limit is < 1 or > 1000)
-            throw new ArgumentOutOfRangeException(nameof(limit));
+        if (limit is < 1 or > 10_000)
+            throw new ArgumentOutOfRangeException(nameof(limit), "Search limits must be between 1 and 10,000.");
 
         return new[]
         {
