@@ -602,6 +602,60 @@
         "OpenIV"
       ],
       "exclusiveGroup": "grass-overhaul"
+    },
+    {
+      "id": "quadrupeds-animals-addon",
+      "name": "Quadrupeds Animals Add-On",
+      "category": "wildlife",
+      "author": "N8Gamez",
+      "sourceUri": "https://www.gta5-mods.com/misc/add-on-quadrupeds-animals",
+      "licence": "Author and third-party model permissions require review. No re-upload, conversion or redistribution without explicit permission.",
+      "version": "2.2.1 (4 March 2021)",
+      "minimumGameBuild": "Not specified; 2021-era add-on, current Legacy build unverified",
+      "maximumGameBuild": "Not specified; 2021-era add-on, current Legacy build unverified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-addon-ped-animal-packs",
+        "other-gameconfig-and-ped-limit-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV DLC/add-on ped package adapter required; inspect DLC RPF, animal metadata and config before deployment",
+      "restoreStrategy": "Transactional backup of every affected DLC/config file and the author-specified user Documents folder; uninstall adapter must preserve other mods' DLC registrations",
+      "performanceTier": "Unknown; additional ped models, DLC resources and gameconfig/heap changes require Legacy runtime and 6GB VRAM profiling",
+      "notes": "Author listing 2.2.1 describes an add-on quadruped pack containing bear, two full-size horses, pony, donkey, bobcat, leopard, two lions, wolf and skunk. It instructs users to install the Quadrupeds folder under x64w.rpf/dlcpacks and copy a Rockstar Games folder into Documents; it also provides animal metadata configuration. Crucial limitation from the author's pinned comment: these animals do not naturally spawn or become rideable in this add-on alone; natural spawning/rideability was in the separate Driftwood Mod. The author recommends HeapAdjuster and a compatible gameconfig to reduce crashes. The 2021 upload date, legacy compatibility, exact file list, third-party model permissions, save behaviour and rollback remain unverified. Do not advertise this as a fully populated natural ecosystem.",
+      "externalRequirements": [
+        "OpenIV",
+        "HeapAdjuster (author-recommended)",
+        "Gameconfig compatible with exact GTA V Legacy build (author-recommended)",
+        "User-provided animal spawner for manual spawning"
+      ],
+      "exclusiveGroup": "addon-animal-pack"
+    },
+    {
+      "id": "blue-whales-replacer-legacy",
+      "name": "Blue Whales Replacer (Legacy)",
+      "category": "wildlife",
+      "author": "MiiTins",
+      "sourceUri": "https://www.gta5-mods.com/misc/miitinsmods-blue-whales-replacer-miitins",
+      "licence": "Author prohibits profitable redistribution and re-upload. Use the creator-hosted download only; no repackaging or asset reuse.",
+      "version": "Legacy Beta 1.1 (raw DDS files; 9 August 2026)",
+      "minimumGameBuild": "GTA V Legacy; exact executable build not specified and Legacy beta is not confirmed by the author on their own machine",
+      "maximumGameBuild": "GTA V Legacy; exact executable build not specified and Legacy beta is not confirmed by the author on their own machine",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-humpback-whale-model-and-texture-replacements"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual/OpenIV texture replacement adapter for the a_c_humpback.ytd texture dictionary; inspect raw DDS dimensions and exact target archive before use",
+      "restoreStrategy": "Back up the original humpback whale YTD dictionary, verify texture names and sizes, then restore the exact original archive transactionally",
+      "performanceTier": "Unknown; 4K whale texture memory and streaming impact unmeasured",
+      "notes": "The creator listing has a Legacy Beta 1.1 dated 9 August 2026. It replaces the existing humpback whale with a blue-whale mesh/appearance (creator says nearly twice the length) and a 4K texture; it is a replacer, not a new species spawn entry. The Legacy workflow supplies raw DDS files that must be imported into the existing a_c_humpback.ytd texture dictionary. The creator's comments say the Legacy YTD workflow needed correction and the author said they had not yet been able to test Legacy at initial release. The author prohibits profitable redistribution and re-upload. Keep Researching until the archive, model/YTD compatibility, underwater behaviour, species animation, game build, rollback and RTX 4050 streaming are verified.",
+      "externalRequirements": [
+        "OpenIV or a compatible RPF/YTD editor"
+      ],
+      "exclusiveGroup": "humpback-whale-replacer"
     }
   ],
   "profiles": [
