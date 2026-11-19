@@ -185,7 +185,17 @@
                   <Button x:Name="CancelAssetCatalogueButton" Content="Cancel scan" Padding="9,6" Margin="6,0,0,0" IsEnabled="False" Click="CancelAssetCatalogueButton_Click"/>
                 </WrapPanel>
                 <WrapPanel Margin="0,0,0,7">
-                  <Button x:Name="DumpEcologyMetadataButton" Content="Extract and dump metadata JSON" Padding="9,6" IsEnabled="False" Click="DumpEcologyMetadataButton_Click"/>
+                  <Button x:Name="HarvestGtaNamesButton"
+                          Content="Harvest exact-build names"
+                          Padding="9,6"
+                          IsEnabled="False"
+                          Click="HarvestGtaNamesButton_Click"/>
+                  <Button x:Name="DumpEcologyMetadataButton"
+                          Content="Extract and dump metadata JSON"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="DumpEcologyMetadataButton_Click"/>
                   <Button x:Name="CompareEcologyInventoryButton"
                           Content="Compare normalized ecology inventories"
                           Padding="9,6"
@@ -193,6 +203,12 @@
                           IsEnabled="False"
                           Click="CompareEcologyInventoryButton_Click"/>
                 </WrapPanel>
+                <TextBlock x:Name="RageNamesStatusText"
+                           Text="Harvest the current build's JOAAT name list before dumping metadata to resolve hashed archetype and model names."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
                 <TextBlock x:Name="EcologyComparisonStatusText"
                            Text="A semantic comparison can be run only from normalized snapshots. It cannot certify scan completeness or unlock ecology packages."
                            Foreground="{StaticResource SecondaryText}"
