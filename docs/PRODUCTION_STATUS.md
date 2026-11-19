@@ -46,6 +46,7 @@ This document distinguishes implemented development-branch functions from releas
 | Hub accessibility preferences | Implemented locally: high contrast, 100–150% text scale and reduced-motion preference persist across app restarts; these settings do not modify GTA V |
 | Story Mode test evidence recorder | Implemented: required mission lifecycle / input / recovery / rollback scenario matrix saved against package archive SHA-256 and exact GTA5.exe SHA-256; never auto-approves a package |
 | GTA5.exe evidence fingerprint | Implemented SHA-256 calculation and validation for exact-build test records |
+| Saved game installation | Implemented local path/build/SHA-256 persistence; startup revalidates Rockstar Legacy identity, exact build and executable hash before restoring the selection |
 
 ## Not yet production-ready
 
