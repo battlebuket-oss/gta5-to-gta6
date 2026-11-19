@@ -18,8 +18,20 @@ public sealed class CatalogueServiceTests
 
         Assert.Equal("GTA V Legacy", catalogue.GameTarget);
         Assert.NotEmpty(catalogue.Packages);
-        Assert.All(catalogue.Packages, package => Assert.Equal(
-            GtaTransformationHub.Models.CatalogueStatus.Researching, package.Status));
+        Assert.All(catalogue.Packages, package => Assert.Contains(
+            package.Status,
+            new[]
+            {
+                GtaTransformationHub.Models.CatalogueStatus.Researching,
+                GtaTransformationHub.Models.CatalogueStatus.Blocked
+            }));
+
+        Assert.Equal(
+            GtaTransformationHub.Models.CatalogueStatus.Blocked,
+            catalogue.Packages.Single(package => package.Id == "wildlife-mod-2-2").Status);
+        Assert.DoesNotContain(catalogue.Packages, package =>
+            package.Status is GtaTransformationHub.Models.CatalogueStatus.Verified or
+                GtaTransformationHub.Models.CatalogueStatus.Tested);
     }
 
 
