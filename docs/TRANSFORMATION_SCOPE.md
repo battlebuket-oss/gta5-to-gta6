@@ -22,7 +22,9 @@ Deliver the closest technically and legally feasible GTA VI-inspired single-play
 - Lighting, weather, timecycle, post-processing and environment improvements.
 - Texture and vegetation improvements sized for 6 GB VRAM.
 - Higher-quality roads, buildings, interiors and props.
-- Vice City/Leonida-inspired map content only where a legitimate, compatible GTA V mod exists.
+- **Highest-priority world objective: a connected Leonida/Vice City playable map replacement** (Vice City, Keys, Grassrivers, Port Gellhorn, Ambrosia and Mount Kalaga), using existing prebuilt community map packages only where lawful and explicitly compatible with GTA V Legacy. A HUD/minimap texture or browser atlas does not satisfy this requirement.
+- Map packages must include and validate world geometry, collision, LODs, streaming, road/traffic path nodes, pedestrian navigation, water, vegetation, interiors, region links and mission compatibility.
+- Keep Enhanced-only map candidates disabled on Legacy. If no complete compatible Legacy package exists, report the map gap clearly; never label a visual theme or partial region as a complete Leonida conversion.
 - Performance profiles for 1080p and RTX 4050-class hardware.
 
 ### P2 — Vehicles and physics feel

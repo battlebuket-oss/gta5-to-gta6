@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.1-research",
+  "catalogueVersion": "0.4.6-research",
   "categories": [
     {
       "id": "graphics",
@@ -62,6 +62,10 @@
     {
       "id": "interface",
       "name": "Interface, HUD and navigation"
+    },
+    {
+      "id": "water",
+      "name": "Water, oceans and underwater environment"
     }
   ],
   "packages": [
@@ -312,6 +316,346 @@
         "ScriptHookVDotNet",
         "Enable MP Maps"
       ]
+    },
+    {
+      "id": "gta-vi-inspired-hud-single-player",
+      "name": "GTA VI-Inspired HUD (Single Player)",
+      "category": "interface",
+      "author": "Geckomacabre / credited contributors",
+      "sourceUri": "https://github.com/Geckomacabre/GTA-VI-Inspired-HUD",
+      "licence": "Review repository and all bundled third-party component licences before managed redistribution",
+      "version": "2.8.2 Legacy (author release, 13 November 2026)",
+      "minimumGameBuild": "Not specified; verify exact Legacy build",
+      "maximumGameBuild": "Not specified; verify exact Legacy build",
+      "sha256": "72B8FE300BD99978756DEF3711DD5AFE4BD5A3B65BD4AEE9E4C8FDF97F250835",
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-styled-minimap-hud-legacy",
+        "other-total-hud-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "Pinned OIV import + OpenRAGE dry-run/install/uninstall profile adapter; exact group state verified after operation; remaining game-build/gameplay acceptance is manual",
+      "restoreStrategy": "OpenRAGE exact OIV journal-group uninstall; follow-up oiv list confirms the group is absent; gameplay/file restoration still requires manual acceptance testing",
+      "performanceTier": "Unknown; upstream reports functional Legacy release, but no 1080p RTX 4050 frame-time/VRAM benchmark",
+      "notes": "Upstream Legacy install guide describes GTA-VI-Inspired-HUD-2.8.2-Legacy.oiv installed through OpenIV Package Installer into the mods folder. Requires Script Hook V and Script Hook V .NET 3.7.0 Nightly 193 or newer, plus OpenIV/ASI Loader setup. Upstream states the HUD is English-only; other game languages can show empty boxes and character switching has reportedly crashed. Features include a GTA VI-inspired HUD, 3D minimap, character switcher, additional gameplay systems and optional loading screens; it is not a full replacement of every title/pause/map/settings screen and it does not supply Jason or Lucia models. The upstream README states some HUD art is sourced from Rockstar's official GTA VI media. Review all rights/licences and do not bundle the OIV or third-party character assets. Pin the upstream archive SHA-256, verify the exact Legacy build and nested OIV manifest, and complete safe install/rollback and RTX 4050 testing before approval. The Hub now checks the documented Legacy loader files (Script Hook V, Script Hook V .NET and OpenIV.asi) plus the mods folder before enabling the OIV install button, but this is a file-presence check, not proof of runtime version compatibility. The author specifically requires SHVDN 3.7.0 Nightly 193+ and English game language; the user must confirm both. After OIV install, a narrow reversible Hub adapter copies only ViMinimap.asi and ViPreload.asi from mods to the GTA5.exe root with transaction backups. This does not approve the HUD for general use or prove it works on the installed build. The exact upstream 2.8.2 Legacy OIV release is pinned at SHA-256 72B8FE300BD99978756DEF3711DD5AFE4BD5A3B65BD4AEE9E4C8FDF97F250835 (117,140,655 bytes). The Hub now offers a download/import action that retrieves this exact author-hosted asset and quarantines it in the local research library. Download/import does not install the package. This archive digest is a release-integrity pin, not a malware or rights clearance. The Mod Control Centre now applies this exact package's saved ON/OFF state through OpenRAGE: it derives the uninstall group from the imported OIV manifest metadata, lists journal state, performs a fresh dry-run and SHA-256 check before install, and verifies the exact group after install/uninstall. Only this exact pinned HUD package has a profile apply adapter; other selected catalogue entries block Apply. OpenRAGE handles the OIV's loose root ASI operations, so the Hub does not duplicate-copy ViMinimap.asi or ViPreload.asi.",
+      "externalRequirements": [
+        "Script Hook V",
+        "Script Hook V .NET 3.7.0 Nightly 193 or newer",
+        "OpenIV with ASI Loader and OpenIV.asi",
+        "GTA V language set to English",
+        "Optional: separately sourced compatible Jason and/or Lucia character model (not included)"
+      ],
+      "exclusiveGroup": "ui-overhaul"
+    },
+    {
+      "id": "gta-vi-hud-fbicat-legacy",
+      "name": "GTA VI HUD [Legacy / Enhanced] — FBICat",
+      "category": "interface",
+      "author": "FBICat",
+      "sourceUri": "https://www.gta5-mods.com/sl/scripts/gta-vi-hud-mod-893860ef-7b03-4c23-abd9-92b224291705",
+      "licence": "Author and bundled dependency licences require review; do not redistribute binaries without explicit permission",
+      "version": "1.1 (listing updated November 2026)",
+      "minimumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "maximumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "gta-vi-inspired-hud-single-player",
+        "gta-vi-styled-minimap-hud-legacy",
+        "other-total-hud-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "Separate Legacy/Enhanced archive layout; root ASI and managed-script adapter required, not implemented",
+      "restoreStrategy": "Verified per-file backup and exact archive manifest required for scripts folder and root files; not implemented",
+      "performanceTier": "Unknown; 60 MB listing size is not a runtime performance measurement; RTX 4050 testing required",
+      "notes": "GTA5-Mods listing describes a GTA VI-inspired HUD with status bars, weapon wheel, vehicle card, world markers and cash rings, plus optional back-mounted weapons, stamina, vehicle storage, bounty and fuel systems. The archive has separate Legacy and Enhanced folders; install only the matching edition. Requires Script Hook V, ScriptHookVDotNet 3 and LemonUI.SHVDN3.dll in scripts. Listing reports version 1.1 and 60 MB. Exact Legacy game-build compatibility, complete archive file inventory, licence/redistribution permissions, overlap with other HUD mods, clean rollback and RTX 4050 performance remain unverified. Research candidate only; do not bundle or deploy.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet 3 for GTA V Legacy",
+        "LemonUI.SHVDN3.dll in the scripts folder",
+        "User-acquired Legacy archive from the author listing"
+      ]
+    },
+    {
+      "id": "sea-life-v",
+      "name": "Sea Life V",
+      "category": "wildlife",
+      "author": "Cass / JammersXAM",
+      "sourceUri": "https://www.gta5-mods.com/misc/sea-life-v",
+      "licence": "Author permissions and redistribution terms require review",
+      "version": "1.0 (original listing 29 January 2017)",
+      "minimumGameBuild": "Not specified; 2017-era package, current Legacy build unverified",
+      "maximumGameBuild": "Not specified; 2017-era package, current Legacy build unverified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-popgroups-or-aquatic-population-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV archive data-file adapter required; not implemented",
+      "restoreStrategy": "Back up and transactionally restore every modified population metadata file",
+      "performanceTier": "Unknown; aquatic population density and spawn behaviour unmeasured",
+      "notes": "The original 2017 listing states that Sea Life V raises ocean populations of sharks, fish, killer whales, stingrays and dolphins by supplying a Popgroups.ymt file. The listing instructs users to place it in mods\\update\\update.rpf, but community comments disagree about the correct archive path and suggest mods\\update\\update.rpf\\x64\\levels\\gta5\\popgroups.ymt. This install-path ambiguity must be resolved by inspecting the actual archive and comparing the target Legacy build's files before any adapter is written. It changes spawn populations using existing species; it is not itself a new species/model pack. No compatibility or performance test has been run.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "aquatic-population"
+    },
+    {
+      "id": "vanilla-vegetation-overhaul",
+      "name": "Vanilla Vegetation Overhaul",
+      "category": "world",
+      "author": "Original GTA5-Mods uploader",
+      "sourceUri": "https://www.gta5-mods.com/misc/realistic-vegetation-new-gen-tree-models-gta-5-legacy",
+      "licence": "Author permissions and redistribution terms require review",
+      "version": "5.0 beta (listing); project marked deprecated/discontinued",
+      "minimumGameBuild": "Not specified; verify exact Legacy build",
+      "maximumGameBuild": "Not specified; verify exact Legacy build",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-vegetation-and-tree-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV archive data-file adapter required; not implemented",
+      "restoreStrategy": "Per-file transactional backup of all replaced vegetation assets",
+      "performanceTier": "Unknown; texture memory and streaming impact unmeasured",
+      "notes": "The author's January 2026 pinned note says the project is discontinued because the scope became too large; the 5.0 beta files remain available but individual hedge/tree/bush changes may be released separately. Not approved as a baseline or default dependency. Inspect archive completeness, exact model/texture coverage, LODs, licensing, build compatibility and 6GB VRAM behaviour. Do not describe it as a complete flora inventory.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "vegetation-overhaul"
+    },
+    {
+      "id": "pause-menu-library",
+      "name": "Pause Menu Library",
+      "category": "interface",
+      "author": "SloRey",
+      "sourceUri": "https://www.gta5-mods.com/tools/pause-menu-library",
+      "licence": "Free for personal, non-commercial GTA V single-player use only. Do not modify/re-upload, decompile or reverse engineer. The author explicitly prohibits redistributing PauseMenuLibrary.asi.",
+      "version": "1.0.1 (current listing, 30 October 2026)",
+      "minimumGameBuild": "Current supported GTA V Legacy build; exact pattern range to verify",
+      "maximumGameBuild": "Not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "External framework prerequisite; managed installation is not permitted until exact rights and a user-owned download workflow are established",
+      "restoreStrategy": "User-managed removal only unless author grants explicit redistribution and automation permission",
+      "performanceTier": "Unknown; native pause-menu API integration overhead unmeasured",
+      "notes": "Framework for mod authors to add pages, tabs, toggles, sliders and key-binding pages inside GTA V's native pause menu. It does nothing on its own and is not a standalone GTA VI menu replacement. Requires the latest Script Hook V and a separate mod authored to use the API. Source lists GTA V Legacy and Enhanced; a user report shows an older Legacy executable build 1.0.3725.0 did not match the library's required patterns while 1.0.3889.0 was cited by the author as the then-current Legacy build. Treat exact game-build compatibility as mandatory. The author's licence forbids uploading or redistributing PauseMenuLibrary.asi; link to the author source only.",
+      "externalRequirements": [
+        "Latest Script Hook V",
+        "A separate mod specifically built against the Pause Menu Library API",
+        "User must obtain PauseMenuLibrary.asi from the author source; Hub must not bundle it"
+      ]
+    },
+    {
+      "id": "animal-blips-legacy",
+      "name": "Animal Blips (Legacy and Enhanced)",
+      "category": "wildlife",
+      "author": "Trevor789GSF",
+      "sourceUri": "https://www.gta5-mods.com/scripts/animal-blips-trevor789fd",
+      "licence": "No upload permission; modification and asset use require author permission. Link to the author listing only.",
+      "version": "3.1 (6 October 2026; newer GTA5-Mods listing)",
+      "minimumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "maximumGameBuild": "GTA V Legacy; exact executable build range not published",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [],
+      "status": "Researching",
+      "installAdapter": "User-acquired ScriptHookVDotNet script package; safe managed script deployment and exact dependency verification not implemented",
+      "restoreStrategy": "Back up and restore only the exact script files/INI files after archive inspection; do not remove shared dependencies",
+      "performanceTier": "Unknown; animal scan/update cost and impact on busy scenes not measured",
+      "notes": "The current GTA5-Mods listing describes aquatic-animal map blips (not animal spawning or new species). The 3.1 changelog adds DLC animals and fixes animal fire/invincibility behaviour. Requirements are Script Hook V and Script Hook V .NET Nightly; OpenIV 4.1 is also listed. No re-upload, file modification or asset reuse is permitted without author permission. Use only as a locator overlay after Legacy runtime testing.",
+      "externalRequirements": [
+        "Script Hook V",
+        "Script Hook V .NET Nightly for Legacy",
+        "OpenIV 4.1 (listed by the author)"
+      ],
+      "exclusiveGroup": "animal-location-overlay"
+    },
+    {
+      "id": "wildlife-mod-2-2",
+      "name": "WildLife Mod",
+      "category": "wildlife",
+      "author": "AtlasMod (uploader: iNVENTEDRACER88)",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/2055",
+      "licence": "No upload or conversion permission; modifications and asset use require author permission. Link to the author-hosted Nexus page only.",
+      "version": "2.2 (25 August 2026)",
+      "minimumGameBuild": "Not specified; exact GTA V Legacy executable build unverified",
+      "maximumGameBuild": "Not specified; exact GTA V Legacy executable build unverified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-wildlife-and-ambient-spawn-frameworks"
+      ],
+      "status": "Researching",
+      "installAdapter": "User-acquired ScriptHookVDotNet script package; safe managed script deployment and exact dependency verification not implemented",
+      "restoreStrategy": "Back up and restore only the exact script files/INI files after archive inspection; do not remove shared dependencies",
+      "performanceTier": "Unknown/high potential CPU cost; mass spawn modes and repeated AI task updates require profiling",
+      "notes": "The Nexus page is explicitly listed under Grand Theft Auto V Legacy and documents a single-player ScriptHookV/ScriptHookVDotNet package. Version 2.2 (25 August 2026) includes 12 animal skins (examples: lion, shark, hawk and monkey), animal spawn/companion events, bird-paradise/shark-attack/stampede presets, and many unrelated zombie/chaos systems. It does not provide a complete ecology simulation. Requirements listed are ScriptHookV, ScriptHookVDotNet v3.6 or higher, and LemonUI for SHVDN3 (included in the author's download). Exact Legacy executable/runtime compatibility is still untested. Author forbids re-upload/conversion and requires permission for modifications and asset use. Keep Researching; do not bundle.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet v3.6 or higher",
+        "LemonUI for SHVDN3 (included in author download)"
+      ]
+    },
+    {
+      "id": "upscaled-water-overhaul-legacy",
+      "name": "Upscaled Water Overhaul (8K) — Legacy",
+      "category": "water",
+      "author": "Glitches (uploaded by UnknownGlitcha)",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1085",
+      "licence": "No upload permission; modification and asset use require author permission; no redistribution or conversion by the Hub",
+      "version": "3.01 (10 February 2025)",
+      "minimumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "maximumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-water-texture-overhauls",
+        "other-water-system-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV/RPF water-texture adapter required; not implemented",
+      "restoreStrategy": "Back up exact affected water and graphics texture archives before a transactional replacement; verify official uninstaller or restore exact originals",
+      "performanceTier": "High memory risk; advertises 8K water textures and 2560x1440 reflections; 6GB VRAM impact is unknown",
+      "notes": "Legacy Nexus listing version 3.01 was last updated 10 February 2025. The author describes water ripples, waves, shore foam, reflections, puddles, underwater fog and top/bottom water textures, with textures upscaled as high as 8K and reflections to 2560x1440. Installation is an OIV through OpenIV. The listing reports a possible 1–2 FPS loss, but this is not an RTX 4050 test. Author prohibits re-upload, modification and asset reuse without permission. This is a visual texture/water-appearance overhaul, not a measured fluid-physics upgrade or an underwater flora pack. Avoid in the 6GB default profile pending lower-resolution options and real testing.",
+      "externalRequirements": [
+        "OpenIV",
+        "Optional: Rainfall Rehaul"
+      ],
+      "exclusiveGroup": "water-texture-overhaul"
+    },
+    {
+      "id": "indian-ocean-clear-water",
+      "name": "Indian Ocean (Clear Ocean Water)",
+      "category": "water",
+      "author": "Amateurish",
+      "sourceUri": "https://www.gta5-mods.com/misc/indian-ocean-water-mod",
+      "licence": "Author terms and permission to redistribute or modify require review",
+      "version": "1.3 (21 January 2017)",
+      "minimumGameBuild": "Not specified; legacy-era package, current build unverified",
+      "maximumGameBuild": "Not specified; legacy-era package, current build unverified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-water-clarity-and-wave-configuration-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "Inspect actual package contents and affected water configuration files before implementing a transactional config adapter",
+      "restoreStrategy": "Back up each modified water clarity/wave configuration file and restore exact originals",
+      "performanceTier": "Unknown; visual and streaming impact not measured",
+      "notes": "Author describes selectable ocean water clarity and wave-size settings. It changes configuration/appearance rather than adding marine species, underwater plants or a new simulation. The original upload is from 2017; verify current Legacy compatibility and inspect archive contents before consideration.",
+      "externalRequirements": [
+        "Inspect author package's included install instructions"
+      ]
+    },
+    {
+      "id": "hd-vegetation-upscale",
+      "name": "HD Vegetation Upscale",
+      "category": "world",
+      "author": "Glitches (uploaded by UnknownGlitcha)",
+      "sourceUri": "https://www.nexusmods.com/gta5/mods/1095",
+      "licence": "Author has not specified asset origins or redistribution permission; do not bundle without permission",
+      "version": "1.0 (1 December 2024)",
+      "minimumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "maximumGameBuild": "GTA V Legacy listing; exact game executable build not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-vegetation-texture-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV texture/archive adapter required; not implemented",
+      "restoreStrategy": "Per-file backup and transactionally restore every replaced foliage/underwater texture",
+      "performanceTier": "Medium/high memory risk unknown; advertised 2560x1440 textures require VRAM and streaming tests",
+      "notes": "Source describes upscaling existing vegetation to 2560x1440, including underwater vegetation textures. This does not add new plant species, new underwater meshes or new ecological behaviour. Verify asset provenance, archive contents, exact Legacy build and 6GB VRAM impact.",
+      "externalRequirements": [
+        "OpenIV",
+        "Optional: Forests of San Andreas"
+      ]
+    },
+    {
+      "id": "grass-v-performance-friendly",
+      "name": "Grass V (Improved Models, Textures and Density)",
+      "category": "world",
+      "author": "Foxy_Oxy",
+      "sourceUri": "https://www.gta5-mods.com/misc/grass-v-improved-models-textures-density-beta-oiv-foxy_oxy",
+      "licence": "Video showcase permission is stated; redistribution/modification rights for package assets are not granted",
+      "version": "1.5 beta (22 March 2025)",
+      "minimumGameBuild": "GTA V Legacy listing; exact executable build range not specified",
+      "maximumGameBuild": "GTA V Legacy listing; exact executable build range not specified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-grass-model-and-density-overhauls",
+        "other-vegetation-and-tree-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV OIV adapter required; not implemented",
+      "restoreStrategy": "Back up the exact replaced grass model/texture archives; restore them transactionally",
+      "performanceTier": "Potentially medium/high CPU/GPU streaming cost; source provides a performance-friendly option but increased density/draw distance still needs benchmarking",
+      "notes": "The 1.5 beta listing (22 March 2025) says it added a performance-friendly OIV option with near-identical appearance and retained vanilla resolution for smaller grass models, while still increasing density and scaling. The page warns that other grass/vegetation replacements must be installed first to avoid overlap/texture problems. Beta status and draw-distance/density cost require exact archive review and RTX 4050 benchmarking. It adds no new botanical species.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "grass-overhaul"
+    },
+    {
+      "id": "quadrupeds-animals-addon",
+      "name": "Quadrupeds Animals Add-On",
+      "category": "wildlife",
+      "author": "N8Gamez",
+      "sourceUri": "https://www.gta5-mods.com/misc/add-on-quadrupeds-animals",
+      "licence": "Author and third-party model permissions require review. No re-upload, conversion or redistribution without explicit permission.",
+      "version": "2.2.1 (4 March 2021)",
+      "minimumGameBuild": "Not specified; 2021-era add-on, current Legacy build unverified",
+      "maximumGameBuild": "Not specified; 2021-era add-on, current Legacy build unverified",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-addon-ped-animal-packs",
+        "other-gameconfig-and-ped-limit-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV DLC/add-on ped package adapter required; inspect DLC RPF, animal metadata and config before deployment",
+      "restoreStrategy": "Transactional backup of every affected DLC/config file and the author-specified user Documents folder; uninstall adapter must preserve other mods' DLC registrations",
+      "performanceTier": "Unknown; additional ped models, DLC resources and gameconfig/heap changes require Legacy runtime and 6GB VRAM profiling",
+      "notes": "Author listing 2.2.1 describes an add-on quadruped pack containing bear, two full-size horses, pony, donkey, bobcat, leopard, two lions, wolf and skunk. It instructs users to install the Quadrupeds folder under x64w.rpf/dlcpacks and copy a Rockstar Games folder into Documents; it also provides animal metadata configuration. Crucial limitation from the author's pinned comment: these animals do not naturally spawn or become rideable in this add-on alone; natural spawning/rideability was in the separate Driftwood Mod. The author recommends HeapAdjuster and a compatible gameconfig to reduce crashes. The 2021 upload date, legacy compatibility, exact file list, third-party model permissions, save behaviour and rollback remain unverified. Do not advertise this as a fully populated natural ecosystem.",
+      "externalRequirements": [
+        "OpenIV",
+        "HeapAdjuster (author-recommended)",
+        "Gameconfig compatible with exact GTA V Legacy build (author-recommended)",
+        "User-provided animal spawner for manual spawning"
+      ],
+      "exclusiveGroup": "addon-animal-pack"
+    },
+    {
+      "id": "blue-whales-replacer-legacy",
+      "name": "Blue Whales Replacer (Legacy)",
+      "category": "wildlife",
+      "author": "MiiTins",
+      "sourceUri": "https://www.gta5-mods.com/misc/miitinsmods-blue-whales-replacer-miitins",
+      "licence": "Author prohibits profitable redistribution and re-upload. Use the creator-hosted download only; no repackaging or asset reuse.",
+      "version": "Legacy Beta 1.1 (raw DDS files; 9 August 2026)",
+      "minimumGameBuild": "GTA V Legacy; exact executable build not specified and Legacy beta is not confirmed by the author on their own machine",
+      "maximumGameBuild": "GTA V Legacy; exact executable build not specified and Legacy beta is not confirmed by the author on their own machine",
+      "sha256": null,
+      "dependencies": [],
+      "conflicts": [
+        "other-humpback-whale-model-and-texture-replacements"
+      ],
+      "status": "Researching",
+      "installAdapter": "Manual/OpenIV texture replacement adapter for the a_c_humpback.ytd texture dictionary; inspect raw DDS dimensions and exact target archive before use",
+      "restoreStrategy": "Back up the original humpback whale YTD dictionary, verify texture names and sizes, then restore the exact original archive transactionally",
+      "performanceTier": "Unknown; 4K whale texture memory and streaming impact unmeasured",
+      "notes": "The creator listing has a Legacy Beta 1.1 dated 9 August 2026. It replaces the existing humpback whale with a blue-whale mesh/appearance (creator says nearly twice the length) and a 4K texture; it is a replacer, not a new species spawn entry. The Legacy workflow supplies raw DDS files that must be imported into the existing a_c_humpback.ytd texture dictionary. The creator's comments say the Legacy YTD workflow needed correction and the author said they had not yet been able to test Legacy at initial release. The author prohibits profitable redistribution and re-upload. Keep Researching until the archive, model/YTD compatibility, underwater behaviour, species animation, game build, rollback and RTX 4050 streaming are verified.",
+      "externalRequirements": [
+        "OpenIV or a compatible RPF/YTD editor"
+      ],
+      "exclusiveGroup": "humpback-whale-replacer"
     }
   ],
   "profiles": [

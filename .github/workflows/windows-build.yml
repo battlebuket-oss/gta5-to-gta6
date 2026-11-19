@@ -2,7 +2,7 @@ name: Windows build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "work/**" ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -15,22 +15,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-test-publish:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
+      - name: Restore application
         run: dotnet restore src/GtaTransformationHub/GtaTransformationHub.csproj
 
-      - name: Build
+      - name: Build application
         run: dotnet build src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --no-restore
 
       - name: Test
         run: dotnet test tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj --configuration Release
+
+      - name: Publish self-contained Windows x64 application
+        run: dotnet publish src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+
+      - name: Upload Windows x64 publish artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: GTA-Transformation-Hub-win-x64
+          path: src/GtaTransformationHub/bin/Release/net8.0-windows/win-x64/publish/
+          if-no-files-found: error
+          retention-days: 14

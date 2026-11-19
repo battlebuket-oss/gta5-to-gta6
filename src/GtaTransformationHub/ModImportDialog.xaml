@@ -1,0 +1,40 @@
+<Window x:Class="GtaTransformationHub.ModImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Mod archive details"
+        Width="540" Height="650" MinWidth="540" MinHeight="650"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#15171C" Foreground="#F2F3F5">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <StackPanel>
+      <TextBlock Text="IMPORT FOR REVIEW" Foreground="#FF4655" FontSize="11" FontWeight="Bold"/>
+      <TextBlock Text="Package provenance" FontSize="24" FontWeight="SemiBold" Margin="0,5,0,4"/>
+      <TextBlock Text="Provide the source and licence details. This does not approve or install the mod." Foreground="#A7ABB4" TextWrapping="Wrap"/>
+    </StackPanel>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,18,0,18">
+      <StackPanel>
+        <TextBlock Text="Package ID" Margin="0,0,0,5"/>
+        <TextBox x:Name="PackageIdBox" Text="community-mod" Padding="9" Margin="0,0,0,12"/>
+        <TextBlock Text="Display name" Margin="0,0,0,5"/>
+        <TextBox x:Name="NameBox" Padding="9" Margin="0,0,0,12"/>
+        <TextBlock Text="Author / creator" Margin="0,0,0,5"/>
+        <TextBox x:Name="AuthorBox" Padding="9" Margin="0,0,0,12"/>
+        <TextBlock Text="Version" Margin="0,0,0,5"/>
+        <TextBox x:Name="VersionBox" Text="Unknown — verify" Padding="9" Margin="0,0,0,12"/>
+        <TextBlock Text="Official source URL (HTTPS)" Margin="0,0,0,5"/>
+        <TextBox x:Name="SourceUrlBox" Padding="9" Margin="0,0,0,12"/>
+        <TextBlock Text="Licence / permission status" Margin="0,0,0,5"/>
+        <TextBox x:Name="LicenceBox" Text="Unknown — permission review required" Padding="9" Margin="0,0,0,12" AcceptsReturn="True" Height="64" TextWrapping="Wrap"/>
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="CANCEL" Padding="16,9" Margin="0,0,10,0" IsCancel="True"/>
+      <Button Content="IMPORT FOR REVIEW" Padding="16,9" IsDefault="True" Click="ImportButton_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>

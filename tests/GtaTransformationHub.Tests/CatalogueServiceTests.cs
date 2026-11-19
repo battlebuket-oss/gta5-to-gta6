@@ -18,8 +18,38 @@ public sealed class CatalogueServiceTests
 
         Assert.Equal("GTA V Legacy", catalogue.GameTarget);
         Assert.NotEmpty(catalogue.Packages);
-        Assert.All(catalogue.Packages, package => Assert.Equal(
-            GtaTransformationHub.Models.CatalogueStatus.Researching, package.Status));
+        Assert.All(catalogue.Packages, package => Assert.Contains(
+            package.Status,
+            new[]
+            {
+                GtaTransformationHub.Models.CatalogueStatus.Researching,
+                GtaTransformationHub.Models.CatalogueStatus.Blocked
+            }));
+
+        // The author-hosted listing currently documents a Legacy package, but
+        // the exact executable/runtime range is not verified by this Hub yet.
+        Assert.Equal(
+            GtaTransformationHub.Models.CatalogueStatus.Researching,
+            catalogue.Packages.Single(package => package.Id == "wildlife-mod-2-2").Status);
+        Assert.DoesNotContain(catalogue.Packages, package =>
+            package.Status is GtaTransformationHub.Models.CatalogueStatus.Verified or
+                GtaTransformationHub.Models.CatalogueStatus.Tested);
+    }
+
+
+    [Fact]
+    public void Load_EnsuresDependenciesAndProfilesReferenceExistingPackages()
+    {
+        var path = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../../src/GtaTransformationHub/Catalogue/catalogue.json"));
+        var catalogue = new CatalogueService().Load(path);
+        var packageIds = catalogue.Packages.Select(package => package.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.All(catalogue.Packages.SelectMany(package => package.Dependencies),
+            dependency => Assert.Contains(dependency, packageIds));
+        Assert.All(catalogue.Profiles.SelectMany(profile => profile.EnabledPackageIds),
+            packageId => Assert.Contains(packageId, packageIds));
     }
 
     [Fact]

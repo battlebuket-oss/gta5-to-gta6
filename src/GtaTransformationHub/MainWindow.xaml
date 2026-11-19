@@ -51,11 +51,86 @@
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
             <TextBlock Text="MOD LOADOUT" FontSize="17" FontWeight="SemiBold"/>
-            <TextBlock Text="Select the mods to prepare before launching. This list is a UI foundation; no third-party mods are bundled." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
+            <TextBlock Text="Import existing mod archives for inspection. Imported packages remain research-only until their build support, licence, hashes, conflicts and restore procedure are verified." Foreground="{StaticResource SecondaryText}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
+            <TextBlock x:Name="LibrarySummaryText" Text="Loading local research library..." Foreground="{StaticResource SecondaryText}" FontSize="11" Margin="0,10,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button x:Name="ManageModsButton" Content="MANAGE MOD TOGGLES" Padding="12,8" Margin="0,0,8,0" Click="ManageModsButton_Click"/>
+              <TextBlock Text="Saved ON/OFF loadout · installation is separately gated" Foreground="{StaticResource SecondaryText}" FontSize="10" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button x:Name="ImportArchiveButton" Content="IMPORT MOD ARCHIVE FOR REVIEW" Padding="12,8" Margin="0,0,8,0" Click="ImportArchiveButton_Click"/>
+              <Button x:Name="RefreshLibraryButton" Content="REFRESH LIBRARY" Padding="12,8" Click="RefreshLibraryButton_Click"/>
+            </StackPanel>
+            <TextBlock Text="OPTIONAL OIV INSTALLER BRIDGE" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,14,0,6"/>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="SelectOivInstallerButton" Content="SELECT OIV ENGINE" Padding="10,7" Margin="0,0,8,0" Click="SelectOivInstallerButton_Click"/>
+              <Button x:Name="OpenImportedOivButton" Content="OPEN IMPORTED OIV" Padding="10,7" Margin="0,0,8,0" IsEnabled="False" Click="OpenImportedOivButton_Click"/>
+              <Button x:Name="GetOivInstallerButton" Content="GET OIV ENGINE" Padding="10,7" Click="GetOivInstallerButton_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="OivEngineStatusText" Text="No external installer selected. The Hub does not bundle third-party installers." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+            <Button x:Name="RefreshOivInstallHistoryButton" Content="REFRESH OIV INSTALL RECORDS" Padding="10,7" Margin="0,8,0,0" HorizontalAlignment="Left" IsEnabled="False" Click="RefreshOivInstallHistoryButton_Click"/>
+            <TextBlock x:Name="OivInstallHistoryText" Text="No CodeWalker OIV install records read. This checks installer backup logs only; it does not verify active mod files or gameplay." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap" Margin="0,6,0,0"/>
+            <Expander Header="OPENRAGE OIV INSTALLER · VERIFIED UPSTREAM TOOL"
+                      Foreground="{StaticResource PrimaryText}" Margin="0,12,0,0"
+                      IsExpanded="False">
+              <StackPanel Margin="0,8,0,0">
+                <TextBlock x:Name="OpenRageToolStatusText"
+                           Text="OpenRAGE is not installed. Download and verify the pinned upstream v0.4.0 Windows x64 release."
+                           Foreground="{StaticResource SecondaryText}" FontSize="10"
+                           TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,8,0,0">
+                  <Button x:Name="DownloadHudPackageButton"
+                          Content="GET OFFICIAL LEGACY HUD OIV · 2.8.2"
+                          Padding="9,7" Margin="0,0,6,6"
+                          Click="DownloadHudPackageButton_Click"/>
+                  <TextBlock Text="Author release · exact SHA-256 pinned · imports to research library only"
+                             Foreground="{StaticResource SecondaryText}" FontSize="10"
+                             TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,8,0,0">
+                  <Button x:Name="DownloadOpenRageButton" Content="DOWNLOAD &amp; VERIFY OPENRAGE"
+                          Padding="9,7" Margin="0,0,6,6" Click="DownloadOpenRageButton_Click"/>
+                  <Button x:Name="VerifyOpenRageButton" Content="VERIFY TOOL"
+                          Padding="9,7" Margin="0,0,6,6" Click="VerifyOpenRageButton_Click"/>
+                  <Button x:Name="PreviewOpenRageOivButton" Content="PREVIEW IMPORTED OIV"
+                          Padding="9,7" Margin="0,0,6,6" Click="PreviewOpenRageOivButton_Click"/>
+                  <Button x:Name="InstallReviewedOpenRageOivButton" Content="INSTALL REVIEWED OIV"
+                          Padding="9,7" Margin="0,0,6,6" IsEnabled="False"
+                          Click="InstallReviewedOpenRageOivButton_Click"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,2,0,0">
+                  <Button x:Name="ListOpenRageOivButton" Content="LIST INSTALLED OIVS"
+                          Padding="9,7" Margin="0,0,6,6" Click="ListOpenRageOivButton_Click"/>
+                  <Button x:Name="UndoOpenRageButton" Content="UNDO LATEST OPENRAGE CHANGE"
+                          Padding="9,7" Margin="0,0,6,6" Click="UndoOpenRageButton_Click"/>
+                </WrapPanel>
+                <DockPanel Margin="0,2,0,0">
+                  <TextBox x:Name="OpenRageUninstallGroupBox" Width="190"
+                           Text="Enter exact OpenRAGE package group"
+                           ToolTip="Enter the exact package group name returned by LIST INSTALLED OIVS."
+                           VerticalContentAlignment="Center" Margin="0,0,6,6"/>
+                  <Button x:Name="UninstallOpenRageOivButton" Content="UNINSTALL GROUP"
+                          Padding="9,7" Margin="0,0,0,6" Click="UninstallOpenRageOivButton_Click"/>
+                </DockPanel>
+                <TextBox x:Name="OpenRageOutputText" IsReadOnly="True"
+                         AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         Background="#17191F" Foreground="#D5D9E0"
+                         BorderThickness="0" MinHeight="55" MaxHeight="150"
+                         Padding="7" FontSize="10"
+                         Text="OpenRAGE preview/install results will appear here. Install requires an inspected OIV, clean archive hashes and explicit confirmation."/>
+              </StackPanel>
+            </Expander>
+            <TextBlock Text="RTX 4050 / FRAME-TIME BENCHMARK" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,14,0,6"/>
+            <TextBlock x:Name="BenchmarkSummaryText" Text="No PresentMon capture analysed yet. Capture baseline and modded runs using identical conditions." Foreground="{StaticResource SecondaryText}" FontSize="10" TextWrapping="Wrap"/>
+            <Button x:Name="ImportBenchmarkButton" Content="IMPORT PRESENTMON CSV" Padding="10,7" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ImportBenchmarkButton_Click"/>
           </StackPanel>
-          <StackPanel x:Name="ModList">
-            <TextBlock Text="No verified mod packages installed yet." Foreground="{StaticResource SecondaryText}" Margin="0,12,0,0"/>
-          </StackPanel>
+          <TextBlock Text="LOCAL IMPORTED PACKAGES" Foreground="{StaticResource SecondaryText}" FontSize="10" FontWeight="Bold" Margin="0,4,0,8"/>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="ModList">
+              <TextBlock Text="No local research packages imported yet." Foreground="{StaticResource SecondaryText}" Margin="0,12,0,0"/>
+            </StackPanel>
+          </ScrollViewer>
         </DockPanel>
       </Border>
       <StackPanel Grid.Column="1">
