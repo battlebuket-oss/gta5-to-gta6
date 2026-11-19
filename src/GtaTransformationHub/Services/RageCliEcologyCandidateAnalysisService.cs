@@ -544,12 +544,15 @@ public sealed class RageCliEcologyCandidateAnalysisService
         if (moreBatchesAvailable != (expectedEnd < totalCandidateCount))
             validationErrors.Add("The more-batches flag does not match the remaining candidate window.");
 
+        if (errors is null)
+            validationErrors.Add("The batch error collection is missing.");
+
         var hasErrors = errors is { Count: > 0 };
         var allSelectedDumped = firstMissing == expectedEnd;
         if (batchComplete && (hasErrors || !allSelectedDumped || nextCandidateIndex != expectedEnd))
             validationErrors.Add("A completed batch must contain all selected payloads, have no errors and advance to its end.");
-        if (!batchComplete && !hasErrors && allSelectedDumped)
-            validationErrors.Add("A batch with all payloads and no errors must be marked complete.");
+        if (!batchComplete && !hasErrors)
+            validationErrors.Add("An incomplete batch must record at least one extraction or cleanup error.");
 
         return validationErrors;
     }
