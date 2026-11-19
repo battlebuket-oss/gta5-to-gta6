@@ -37,8 +37,10 @@ public sealed class LocalAuditLogService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    // Match Windows drive paths, UNC paths, and common Unix absolute-path roots.
+    // This is evaluated before any environment-specific path substitutions.
     private static readonly Regex AbsolutePathPattern = new(
-        "(?i)(?<![A-Za-z0-9])(?:[A-Z]:\\\\|\\\\\\\\)[^<>\\r\\n\\\"']+",
+        @"(?i)(?<![A-Za-z0-9])(?:[A-Z]:\\|\\\\|/(?:Users|home|tmp|private|var|mnt|root|opt)/)[^<>""'\r\n]+",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly string _logDirectory;
@@ -177,15 +179,19 @@ public sealed class LocalAuditLogService
         if (string.IsNullOrEmpty(value))
             return string.Empty;
 
-        var redacted = value;
+        // Redact the full path first. Replacing the profile prefix first would turn
+        // "C:\Users\name\..." into a token that no longer matches an absolute path.
+        var redacted = AbsolutePathPattern.Replace(value, "[PATH REDACTED]");
+
+        // Keep a final platform-specific fallback for uncommon profile-root formats.
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (!string.IsNullOrWhiteSpace(userProfile))
-            redacted = redacted.Replace(userProfile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+            redacted = redacted.Replace(userProfile, "[PATH REDACTED]", StringComparison.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(localAppData))
-            redacted = redacted.Replace(localAppData, "%LOCALAPPDATA%", StringComparison.OrdinalIgnoreCase);
+            redacted = redacted.Replace(localAppData, "[PATH REDACTED]", StringComparison.OrdinalIgnoreCase);
 
-        return AbsolutePathPattern.Replace(redacted, "[PATH REDACTED]");
+        return redacted;
     }
 
     private static string Limit(string value, int maximumLength) =>
