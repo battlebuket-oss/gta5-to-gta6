@@ -96,9 +96,10 @@ public static class OivManifestInspectionService
         var licence = metadata.Elements().FirstOrDefault(element => NameIs(element, "licence"))?.Value.Trim() ?? string.Empty;
         var operations = new List<OivOperationSummary>();
         var unsupported = new List<string>();
+        var warnings = new List<string>();
         var sourceIssues = new List<string>();
-        if (gameVersionNode is not null && gameVersionRequirement == "Unspecified")
-            unsupported.Add("unrecognised gameversion extension value; verify game edition independently");
+        if (gameVersionNode is not null)
+            warnings.Add("The package contains a non-standard gameversion extension. OIV 2.x does not define this field; verify game edition independently.");
 
         var contentEntries = archive.Entries
             .Where(entry => entry.FullName.StartsWith("content/", StringComparison.OrdinalIgnoreCase))
@@ -111,7 +112,7 @@ public static class OivManifestInspectionService
             .Select(entry => entry.FullName.Replace('\\', '/'))
             .ToArray();
 
-        InspectCommands(content, string.Empty, payloadPaths, formatVersion, operations, unsupported, sourceIssues);
+        InspectCommands(content, string.Empty, payloadPaths, formatVersion, operations, unsupported, warnings, sourceIssues);
 
         return new OivManifestInspectionResult(
             formatVersion,
@@ -126,7 +127,8 @@ public static class OivManifestInspectionService
             string.Equals(target, "Five", StringComparison.OrdinalIgnoreCase),
             operations,
             unsupported.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
-            sourceIssues.Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
+            sourceIssues.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            warnings.Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
     private static void InspectCommands(
@@ -136,6 +138,7 @@ public static class OivManifestInspectionService
         string formatVersion,
         List<OivOperationSummary> operations,
         List<string> unsupported,
+        List<string> warnings,
         List<string> sourceIssues)
     {
         foreach (var element in parent.Elements())
@@ -156,7 +159,7 @@ public static class OivManifestInspectionService
 
                     var fullArchivePath = CombineTargetPaths(containingArchive, archivePath);
                     AddOperation(operations, new OivOperationSummary("archive", containingArchive, fullArchivePath, null));
-                    InspectCommands(element, fullArchivePath, payloadPaths, formatVersion, operations, unsupported, sourceIssues);
+                    InspectCommands(element, fullArchivePath, payloadPaths, formatVersion, operations, unsupported, warnings, sourceIssues);
                     break;
                 }
                 case "add":
@@ -180,7 +183,7 @@ public static class OivManifestInspectionService
                 {
                     var target = NormalizeTargetPath(RequiredAttribute(element, "path"), command + " patch target");
                     AddOperation(operations, new OivOperationSummary(command + "Patch", containingArchive, target, null));
-                    InspectNodePatchCommands(element, command, containingArchive, target, formatVersion, operations, unsupported);
+                    InspectNodePatchCommands(element, command, containingArchive, target, formatVersion, operations, unsupported, warnings);
                     break;
                 }
                 case "text":
@@ -212,7 +215,8 @@ public static class OivManifestInspectionService
         string target,
         string formatVersion,
         List<OivOperationSummary> operations,
-        List<string> unsupported)
+        List<string> unsupported,
+        List<string> warnings)
     {
         foreach (var element in patch.Elements())
         {
@@ -225,7 +229,7 @@ public static class OivManifestInspectionService
 
             _ = RequiredAttribute(element, "xpath");
             if (command == "add")
-                ValidateXmlAppendAttribute(element, formatVersion, unsupported);
+                ValidateXmlAppendAttribute(element, formatVersion, warnings);
 
             AddOperation(operations, new OivOperationSummary(
                 patchKind + ":" + command, containingArchive, target, null));
@@ -289,14 +293,14 @@ public static class OivManifestInspectionService
     private static void ValidateXmlAppendAttribute(
         XElement element,
         string formatVersion,
-        List<string> unsupported)
+        List<string> warnings)
     {
         var append = (string?)element.Attribute("append");
         if (string.IsNullOrWhiteSpace(append))
         {
             // The specification marks append as required, but its own 2.2 example contains
             // an add command without it. Preserve the inventory and require human review.
-            unsupported.Add("XML add command omits the specification-required append attribute");
+            warnings.Add("An XML add command omits the specification-required append attribute. OpenIV's published 2.2 example also shows an add without append; confirm actual installer behaviour.");
             return;
         }
 
@@ -468,7 +472,8 @@ public sealed record OivManifestInspectionResult(
     bool IsGtaVTarget,
     IReadOnlyList<OivOperationSummary> Operations,
     IReadOnlyList<string> UnsupportedCommands,
-    IReadOnlyList<string> PayloadSourceIssues)
+    IReadOnlyList<string> PayloadSourceIssues,
+    IReadOnlyList<string>? ManifestWarnings = null)
 {
     public bool IsExplicitlyLegacy =>
         string.Equals(GameVersionRequirement, "Legacy", StringComparison.OrdinalIgnoreCase);
@@ -483,7 +488,8 @@ public sealed record OivManifestInspectionResult(
         !IsGtaVTarget ||
         GameVersionRequirement is not ("Legacy" or "Any") ||
         UnsupportedCommands.Count > 0 ||
-        PayloadSourceIssues.Count > 0;
+        PayloadSourceIssues.Count > 0 ||
+        (ManifestWarnings?.Count ?? 0) > 0;
 
     public int FileAddCount => Operations.Count(operation =>
         operation.Command is "add" or "replace");
