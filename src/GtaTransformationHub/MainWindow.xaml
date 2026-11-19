@@ -208,6 +208,12 @@
                           Margin="6,0,0,0"
                           IsEnabled="False"
                           Click="DumpEcologyMetadataButton_Click"/>
+                  <Button x:Name="AnalyzeEcologyMetadataButton"
+                          Content="Analyze metadata JSON"
+                          Padding="9,6"
+                          Margin="6,0,0,0"
+                          IsEnabled="False"
+                          Click="AnalyzeEcologyMetadataButton_Click"/>
                   <Button x:Name="CompareEcologyInventoryButton"
                           Content="Compare normalized ecology inventories"
                           Padding="9,6"
@@ -217,6 +223,12 @@
                 </WrapPanel>
                 <TextBlock x:Name="RageNamesStatusText"
                            Text="Harvest the current build's JOAAT name list before dumping metadata to resolve hashed archetype and model names."
+                           Foreground="{StaticResource SecondaryText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,7"/>
+                <TextBlock x:Name="EcologyCandidateAnalysisStatusText"
+                           Text="Analyze a metadata dump index to extract provenance-linked heuristic candidates. Candidate matches are not verified species or water definitions."
                            Foreground="{StaticResource SecondaryText}"
                            FontSize="10"
                            TextWrapping="Wrap"
