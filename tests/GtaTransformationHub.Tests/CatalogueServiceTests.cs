@@ -22,6 +22,22 @@ public sealed class CatalogueServiceTests
             GtaTransformationHub.Models.CatalogueStatus.Researching, package.Status));
     }
 
+
+    [Fact]
+    public void Load_RejectsNoDependenciesOrProfilesThatReferenceUnknownPackages()
+    {
+        var path = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../../src/GtaTransformationHub/Catalogue/catalogue.json"));
+        var catalogue = new CatalogueService().Load(path);
+        var packageIds = catalogue.Packages.Select(package => package.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.All(catalogue.Packages.SelectMany(package => package.Dependencies),
+            dependency => Assert.Contains(dependency, packageIds));
+        Assert.All(catalogue.Profiles.SelectMany(profile => profile.EnabledPackageIds),
+            packageId => Assert.Contains(packageId, packageIds));
+    }
+
     [Fact]
     public void ValidateSelection_RejectsResearchOnlyPackages()
     {
