@@ -320,7 +320,7 @@ public sealed class PackageSignatureService
             manifest.Ui.CompatibilityEvidenceUri,
             manifest.Ui.RollbackEvidenceUri,
             manifest.Ui.VerifiedGameBuild,
-            manifest.Ui.VerifiedGta5ExeSha256?.ToUpperInvariant());
+            manifest.Ui.VerifiedGta5ExeSha256.ToUpperInvariant());
 
         var canonicalV3 = new CanonicalManifestV3(
             3, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Author, manifest.SourceUri,
