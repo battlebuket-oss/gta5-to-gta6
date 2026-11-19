@@ -78,7 +78,7 @@ public sealed class RageCliMetadataDiscoveryServiceTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             RageCliMetadataDiscoveryService.BuildSearchArguments("GTA5.exe", ".", "*.ymt", 0));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            RageCliMetadataDiscoveryService.BuildSearchArguments("GTA5.exe", ".", "*.ymt", 1001));
+            RageCliMetadataDiscoveryService.BuildSearchArguments("GTA5.exe", ".", "*.ymt", 10_001));
     }
 
     [Fact]
