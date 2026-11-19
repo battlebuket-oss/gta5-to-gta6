@@ -25,7 +25,7 @@ public partial class ModImportDialog : Window
             return;
         }
 
-        Metadata = new ModArchiveMetadata(
+        var metadata = new ModArchiveMetadata(
             PackageIdBox.Text.Trim(),
             NameBox.Text.Trim(),
             AuthorBox.Text.Trim(),
@@ -35,7 +35,8 @@ public partial class ModImportDialog : Window
 
         try
         {
-            ModArchiveImportService.ValidateMetadata(Metadata);
+            ModArchiveImportService.ValidateMetadata(metadata);
+            Metadata = metadata;
             DialogResult = true;
         }
         catch (Exception ex)
