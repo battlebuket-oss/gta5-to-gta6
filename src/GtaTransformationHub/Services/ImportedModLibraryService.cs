@@ -58,6 +58,133 @@ public sealed class ImportedModLibraryService
             .ToArray();
     }
 
+    public async Task<ImportedModVerificationResult> VerifyAsync(
+        string packageRoot,
+        string packageDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(packageRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(packageDirectory);
+
+        var root = Path.GetFullPath(packageRoot);
+        var directory = Path.GetFullPath(packageDirectory);
+        if (!Directory.Exists(root) || !Directory.Exists(directory))
+            return new ImportedModVerificationResult(false, 0, new[] { "The package library or selected package directory is missing." });
+
+        try
+        {
+            EnsureContainedDirectory(root, directory);
+            EnsureNoReparsePointAncestors(directory);
+            var manifestPath = Path.Combine(directory, "package-manifest.json");
+            if (!File.Exists(manifestPath) ||
+                (File.GetAttributes(manifestPath) & FileAttributes.ReparsePoint) != 0)
+                return new ImportedModVerificationResult(false, 0, new[] { "The package manifest is missing or is a reparse point." });
+
+            var manifestInfo = new FileInfo(manifestPath);
+            if (manifestInfo.Length <= 0 || manifestInfo.Length > MaximumManifestBytes)
+                return new ImportedModVerificationResult(false, 0, new[] { "The package manifest is empty or exceeds the size limit." });
+
+            await using var stream = new FileStream(
+                manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+            var manifest = await JsonSerializer.DeserializeAsync<ImportedModManifest>(
+                stream, JsonOptions, cancellationToken);
+            if (manifest is null)
+                return new ImportedModVerificationResult(false, 0, new[] { "The package manifest could not be parsed." });
+
+            var errors = new List<string>();
+            if (manifest.SchemaVersion != 1)
+                errors.Add("Unsupported package-manifest schema version.");
+            try
+            {
+                ModArchiveImportService.ValidateMetadata(manifest.Metadata);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or ArgumentException)
+            {
+                errors.Add("Provenance metadata is invalid: " + exception.Message);
+            }
+
+            if (!IsSha256(manifest.ArchiveSha256))
+                errors.Add("Archive SHA-256 value is invalid.");
+            else if (manifest.Metadata is not null)
+            {
+                var expectedDirectory = manifest.Metadata.PackageId + "-" +
+                                        manifest.ArchiveSha256[..12].ToLowerInvariant();
+                if (!string.Equals(Path.GetFileName(directory), expectedDirectory, StringComparison.OrdinalIgnoreCase))
+                    errors.Add("Package folder name does not match its package ID and archive digest.");
+            }
+
+            if (manifest.Files is null || manifest.Files.Count == 0 || manifest.Files.Count > 2500)
+                errors.Add("File inventory is empty or outside the permitted entry range.");
+
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var checkedFiles = 0;
+            if (manifest.Files is not null)
+            {
+                foreach (var file in manifest.Files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (file is null || !IsSha256(file.Sha256) || file.SizeBytes < 0)
+                    {
+                        errors.Add("A file inventory record has invalid size or SHA-256 metadata.");
+                        continue;
+                    }
+
+                    string target;
+                    try
+                    {
+                        target = ResolveContainedFilePath(directory, file.RelativePath);
+                    }
+                    catch (InvalidDataException exception)
+                    {
+                        errors.Add("Unsafe inventory path: " + exception.Message);
+                        continue;
+                    }
+
+                    if (!paths.Add(file.RelativePath))
+                    {
+                        errors.Add("Duplicate or case-colliding inventory path: " + file.RelativePath);
+                        continue;
+                    }
+
+                    if (!File.Exists(target))
+                    {
+                        errors.Add("Imported file is missing: " + file.RelativePath);
+                        continue;
+                    }
+
+                    if ((File.GetAttributes(target) & FileAttributes.ReparsePoint) != 0)
+                    {
+                        errors.Add("Imported file is a reparse point: " + file.RelativePath);
+                        continue;
+                    }
+
+                    var fileInfo = new FileInfo(target);
+                    if (fileInfo.Length != file.SizeBytes)
+                    {
+                        errors.Add("Imported file size differs from the manifest: " + file.RelativePath);
+                        continue;
+                    }
+
+                    await using var fileStream = new FileStream(
+                        target, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+                    var actualHash = Convert.ToHexString(
+                        await System.Security.Cryptography.SHA256.HashDataAsync(fileStream, cancellationToken));
+                    checkedFiles++;
+                    if (!actualHash.Equals(file.Sha256, StringComparison.OrdinalIgnoreCase))
+                        errors.Add("Imported file SHA-256 does not match the manifest: " + file.RelativePath);
+                }
+            }
+
+            return new ImportedModVerificationResult(errors.Count == 0, checkedFiles, errors);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or JsonException or
+            ArgumentException or NotSupportedException or InvalidOperationException)
+        {
+            return new ImportedModVerificationResult(false, 0, new[] { "Verification failed: " + exception.Message });
+        }
+    }
+
     private static async Task<ImportedModLibraryEntry> LoadOneAsync(
         string root,
         string directory,
@@ -308,3 +435,8 @@ public sealed record ImportedModLibraryEntry(
     bool ManifestValid,
     string VerificationNote,
     IReadOnlyList<string> Warnings);
+
+public sealed record ImportedModVerificationResult(
+    bool IsValid,
+    int FilesChecked,
+    IReadOnlyList<string> Errors);
