@@ -78,15 +78,15 @@ public sealed class RageCliMetadataPayloadServiceTests
     {
         Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GtaHubRageNamesArgs"));
         var namesPath = Path.Combine(Path.GetTempPath(), "GtaHubRageNamesArgs", "names.txt");
-        File.WriteAllText(namesPath, "# build: 3889\\nprop_animal_deer\\n");
+        File.WriteAllText(namesPath, "# build: 3889\nprop_animal_deer\n");
 
         try
         {
             var args = RageCliMetadataPayloadService.BuildResourceDumpArguments(
-                @"C:\\Games\\GTA V\\GTA5.exe",
-                @"C:\\Users\\Test\\AppData\\Local\\nested.rpf",
+                @"C:\Games\GTA V\GTA5.exe",
+                @"C:\Users\Test\AppData\Local\nested.rpf",
                 "common/data/popgroups.ymt",
-                @"C:\\Users\\Test\\AppData\\Local\\popgroups.json",
+                @"C:\Users\Test\AppData\Local\popgroups.json",
                 namesPath);
 
             var namesIndex = Array.IndexOf(args.ToArray(), "--names");
@@ -106,10 +106,10 @@ public sealed class RageCliMetadataPayloadServiceTests
         var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "names.txt");
         Assert.Throws<InvalidDataException>(() =>
             RageCliMetadataPayloadService.BuildResourceDumpArguments(
-                @"C:\\Games\\GTA V\\GTA5.exe",
-                @"C:\\Users\\Test\\nested.rpf",
+                @"C:\Games\GTA V\GTA5.exe",
+                @"C:\Users\Test\nested.rpf",
                 "common/data/popgroups.ymt",
-                @"C:\\Users\\Test\\popgroups.json",
+                @"C:\Users\Test\popgroups.json",
                 missing));
     }
 
