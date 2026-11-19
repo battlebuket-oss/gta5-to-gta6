@@ -41,6 +41,12 @@ This document distinguishes implemented development-branch functions from releas
 | Release packaging workflow | Implemented: self-contained publish, test gate, installer compilation, SHA-256 checksums and tag-based GitHub release |
 | Authenticode signing automation | Implemented conditionally for application EXE and installer; certificate secrets and a real signed release have not yet been configured or verified |
 
+| In-game UI package contract | Implemented: UI surfaces, implementation type, input/resolution/accessibility declarations, native-action preservation and HTTPS evidence references are validated; overlapping selected surfaces are rejected |
+| UI package publisher signatures | Implemented with signature version 3; v1/v2 canonical payloads remain backward-compatible; deployment requires a trusted publisher key and compatibility attestation |
+| Hub accessibility preferences | Implemented locally: high contrast, 100–150% text scale and reduced-motion preference persist across app restarts; these settings do not modify GTA V |
+| Story Mode test evidence recorder | Implemented: required mission lifecycle / input / recovery / rollback scenario matrix saved against package archive SHA-256 and exact GTA5.exe SHA-256; never auto-approves a package |
+| GTA5.exe evidence fingerprint | Implemented SHA-256 calculation and validation for exact-build test records |
+
 ## Not yet production-ready
 
 | Area | Remaining work |
@@ -54,6 +60,9 @@ This document distinguishes implemented development-branch functions from releas
 | Game launch integration | Direct GTA5.exe launch can require Steam or Rockstar Games Launcher and needs real-world verification |
 | Performance and stability | No repeatable in-game benchmark matrix or extended gameplay soak tests |
 | Game-side interface transformation | Not implemented; current interface is the Windows management application. Actual title screen, pause menu, map, settings and HUD replacements still need verified GTA V implementation packages and real-game tests |
+
+| Actual in-game UI surface replacements | Not implemented. The signed UI descriptor and surface-conflict gate are management safeguards only; no title, pause, map, settings, HUD, phone, radial or loading-screen replacement is currently verified |
+| Story Mode mission implementation | Not implemented by the Hub. It can validate and manage community-authored story packages and record tester evidence; it cannot author or execute GTA VI's proprietary campaign |
 | Game-side accessibility mods | Research only; not installed or verified |
 | Windows release signing | No code-signing certificate or signed installer configured |
 | Upgrade/uninstall migration | No migration of older manual mod installations or complete application updater |
