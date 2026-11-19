@@ -59,7 +59,7 @@ public partial class MainWindow : Window
             var cleanInventories = entries.Count(entry => entry.ManifestValid);
             LibrarySummaryText.Text =
                 entries.Count + " imported package(s) | " + cleanInventories +
-                " manifest/inventory presence checks clear | file hashes are not re-computed | no packages approved";
+                " per-file SHA-256 checks clear | source archive digest is not re-verified | no packages approved";
 
             if (entries.Count == 0)
             {
