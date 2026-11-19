@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameTarget": "GTA V Legacy",
-  "catalogueVersion": "0.4.1-research",
+  "catalogueVersion": "0.4.2-research",
   "categories": [
     {
       "id": "graphics",
@@ -312,6 +312,90 @@
         "ScriptHookVDotNet",
         "Enable MP Maps"
       ]
+    },
+    {
+      "id": "gta-vi-inspired-hud-single-player",
+      "name": "GTA VI-Inspired HUD (Single Player)",
+      "category": "interface",
+      "author": "Geckomacabre / credited contributors",
+      "sourceUri": "https://github.com/Geckomacabre/GTA-VI-Inspired-HUD",
+      "licence": "Review repository and all bundled third-party component licences before managed redistribution",
+      "version": "2.8.2 (repository README)",
+      "minimumGameBuild": "Not specified; verify exact Legacy build",
+      "maximumGameBuild": "Not specified; verify exact Legacy build",
+      "sha256": null,
+      "dependencies": [
+        "Script Hook V",
+        "ScriptHookVDotNet (exact supported release to verify)"
+      ],
+      "conflicts": [
+        "gta-vi-styled-minimap-hud-legacy",
+        "other-total-hud-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "Legacy-specific archive manifest adapter required; not implemented",
+      "restoreStrategy": "Per-file transactional backup; preserve user INI and custom assets",
+      "performanceTier": "Unknown; profile on RTX 4050 6GB at 1080p",
+      "notes": "Single-player project README describes a GTA VI-inspired HUD, 3D minimap, character wheel with Jason/Lucia slots, and gameplay additions. The mod does not include the Jason or Lucia character models; the README directs users to separately sourced models, and the Lucia model may be paid. Do not bundle third-party model assets. Verify current Legacy install guide, exact build, all nested licences, required loaders, package hashes, and clean rollback before approval. Does not reproduce GTA VI story missions or replace every title/pause/settings/map screen.",
+      "externalRequirements": [
+        "Script Hook V",
+        "ScriptHookVDotNet"
+      ],
+      "exclusiveGroup": "ui-overhaul"
+    },
+    {
+      "id": "sea-life-v",
+      "name": "Sea Life V",
+      "category": "wildlife",
+      "author": "Cass / JammersXAM",
+      "sourceUri": "https://www.gta5-mods.com/misc/sea-life-v",
+      "licence": "Author permissions and redistribution terms require review",
+      "version": "Current listing; original upload 2017",
+      "minimumGameBuild": "Not specified; legacy-era mod, current build unverified",
+      "maximumGameBuild": "Not specified; legacy-era mod, current build unverified",
+      "sha256": null,
+      "dependencies": [
+        "OpenIV"
+      ],
+      "conflicts": [
+        "other-popgroups-or-aquatic-population-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV archive data-file adapter required; not implemented",
+      "restoreStrategy": "Back up and transactionally restore every modified population metadata file",
+      "performanceTier": "Unknown; aquatic population density and spawn behaviour unmeasured",
+      "notes": "Source describes increased ocean populations including sharks, fish, killer whales, stingrays and dolphins. It modifies population metadata; a legacy upload date means current GTA V Legacy compatibility cannot be assumed. Confirm exact archive, affected files, build support, conflicts, and actual in-game spawns before approval. This is not a new species/model pack.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "aquatic-population"
+    },
+    {
+      "id": "vanilla-vegetation-overhaul",
+      "name": "Vanilla Vegetation Overhaul",
+      "category": "world",
+      "author": "Original GTA5-Mods uploader",
+      "sourceUri": "https://www.gta5-mods.com/misc/realistic-vegetation-new-gen-tree-models-gta-5-legacy",
+      "licence": "Author permissions and redistribution terms require review",
+      "version": "5.0 beta (listing); project marked deprecated/discontinued",
+      "minimumGameBuild": "Not specified; verify exact Legacy build",
+      "maximumGameBuild": "Not specified; verify exact Legacy build",
+      "sha256": null,
+      "dependencies": [
+        "OpenIV"
+      ],
+      "conflicts": [
+        "other-vegetation-and-tree-overhauls"
+      ],
+      "status": "Researching",
+      "installAdapter": "OpenIV archive data-file adapter required; not implemented",
+      "restoreStrategy": "Per-file transactional backup of all replaced vegetation assets",
+      "performanceTier": "Unknown; texture memory and streaming impact unmeasured",
+      "notes": "Candidate page lists a 5.0 beta and labels the project deprecated/discontinued. Not approved for installation. Inspect archive completeness, exact model/texture coverage, LODs, licensing, build compatibility, and 6GB VRAM behaviour. Do not describe it as a complete flora inventory.",
+      "externalRequirements": [
+        "OpenIV"
+      ],
+      "exclusiveGroup": "vegetation-overhaul"
     }
   ],
   "profiles": [
