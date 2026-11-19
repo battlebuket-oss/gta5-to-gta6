@@ -128,7 +128,9 @@ public sealed class PackageSignatureService
         bool SubtitlesPreserved,
         bool OriginalCampaignPreserved,
         string CompatibilityEvidenceUri,
-        string RollbackEvidenceUri);
+        string RollbackEvidenceUri,
+        string VerifiedGameBuild,
+        string VerifiedGta5ExeSha256);
 
     private sealed record CanonicalFile(
         string SourcePath,
@@ -316,7 +318,9 @@ public sealed class PackageSignatureService
             manifest.Ui.SubtitlesPreserved,
             manifest.Ui.OriginalCampaignPreserved,
             manifest.Ui.CompatibilityEvidenceUri,
-            manifest.Ui.RollbackEvidenceUri);
+            manifest.Ui.RollbackEvidenceUri,
+            manifest.Ui.VerifiedGameBuild,
+            manifest.Ui.VerifiedGta5ExeSha256?.ToUpperInvariant());
 
         var canonicalV3 = new CanonicalManifestV3(
             3, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Author, manifest.SourceUri,
