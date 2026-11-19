@@ -248,7 +248,7 @@ public sealed class PackageArchiveService
     {
         if (manifest.SchemaVersion != 1)
             throw new InvalidDataException("Unsupported package manifest schema.");
-        if (manifest.SignatureVersion is not (1 or 2))
+        if (manifest.SignatureVersion is not (1 or 2 or 3))
             throw new InvalidDataException("Unsupported package signature version.");
         if (!PackageIdValidator.IsValid(manifest.Id))
             throw new InvalidDataException("The package manifest has an invalid package ID.");
@@ -278,6 +278,12 @@ public sealed class PackageArchiveService
         var storyErrors = StoryContentValidationService.Validate(manifest);
         if (storyErrors.Count > 0)
             throw new InvalidDataException(string.Join(Environment.NewLine, storyErrors));
+
+        if (manifest.Ui is not null && manifest.SignatureVersion < 3)
+            throw new InvalidDataException("In-game UI package metadata requires signature version 3.");
+        var uiErrors = UiPackageValidationService.Validate(manifest);
+        if (uiErrors.Count > 0)
+            throw new InvalidDataException(string.Join(Environment.NewLine, uiErrors));
 
         foreach (var id in manifest.Dependencies.Concat(manifest.Conflicts))
         {
