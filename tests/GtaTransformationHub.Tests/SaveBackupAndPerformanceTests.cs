@@ -29,6 +29,24 @@ public sealed class SaveBackupAndPerformanceTests : IDisposable
     }
 
     [Fact]
+    public void PerformanceProfiles_FormatDetectedHardwareForEvidenceWithoutInventingVram()
+    {
+        var hardware = new HardwareSnapshot(
+            16, 32768, 12000, null,
+            "Example Processor",
+            new[] { "Example Display Adapter (driver 1.2.3)" },
+            "Windows 11 test build");
+
+        var evidence = PerformanceProfileService.FormatHardwareEvidence(hardware);
+
+        Assert.Contains("Example Processor", evidence, StringComparison.Ordinal);
+        Assert.Contains("Example Display Adapter", evidence, StringComparison.Ordinal);
+        Assert.Contains("32.0 GB", evidence, StringComparison.Ordinal);
+        Assert.Contains("Not reliably detected", evidence, StringComparison.Ordinal);
+        Assert.Contains("Windows 11 test build", evidence, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PerformanceProfiles_AreGuidanceOnlyAndHaveUniqueIds()
     {
         var profiles = PerformanceProfileService.GetProfiles();
