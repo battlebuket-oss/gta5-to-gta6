@@ -366,7 +366,11 @@ public sealed class RageCliEcologyCandidateAnalysisService
                                     !item.HitLimit && !item.OutputTruncated && !item.HasArchiveErrors);
         // A failed earlier attempt is resolved when a later retry batch supplies that
         // exact global candidate index with the same source/dump fingerprints.
-        var inputIndexComplete = candidateCoverageComplete && discoveryComplete;
+        var inputIndexComplete = candidateCoverageComplete &&
+                                 discoveryComplete &&
+                                 !outputCandidateCapReached;
+        if (outputCandidateCapReached)
+            warnings.Add("Not all payloads were semantically walked because the candidate report reached its 10,000-record output cap.");
 
         const string limitation =
             "Candidates are heuristic field/path matches from the metadata resources that were successfully dumped. " +
