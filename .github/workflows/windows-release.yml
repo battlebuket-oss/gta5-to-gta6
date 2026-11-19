@@ -31,6 +31,8 @@ jobs:
   package:
     name: Build, test and package Windows x64
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
     permissions:
       contents: read
     steps:
@@ -66,13 +68,13 @@ jobs:
         run: dotnet restore tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj
 
       - name: Build with warnings as errors
-        run: dotnet build src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --no-restore -warnaserror
+        run: dotnet build tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj --configuration Release --no-restore -warnaserror
 
       - name: Run automated tests
         run: dotnet test tests/GtaTransformationHub.Tests/GtaTransformationHub.Tests.csproj --configuration Release --no-build --logger 'trx;LogFileName=tests.trx'
 
       - name: Publish self-contained Windows x64 application
-        run: dotnet publish src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/win-x64
+        run: dotnet publish src/GtaTransformationHub/GtaTransformationHub.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/win-x64
 
       - name: Verify publish output
         shell: pwsh
@@ -152,7 +154,7 @@ jobs:
       - name: Download verified package artifact
         uses: actions/download-artifact@v6
         with:
-          name: gta-transformation-hub-${{ github.ref_name }}-windows-x64
+          name: gta-transformation-hub-${{ needs.package.outputs.version }}-windows-x64
           path: artifacts
 
       - name: Publish GitHub release
