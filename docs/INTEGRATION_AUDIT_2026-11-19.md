@@ -77,6 +77,14 @@ The inspector is a manifest reader, not an OpenIV-compatible installer. It does 
 8. Benchmark the selected profile on the RTX 4050 6 GB / 1080p target. Default to one visual overhaul, conservative textures, no experimental ray tracing, and optional density systems.
 9. Run the complete acceptance suite on an actual GTA V Legacy installation, including the HUD in English, character wheel with separately sourced models, pause-map navigation, mission reloads, save reloads, root ASI placement, OIV rollback, and profile conflicts. GitHub CI cannot substitute for in-game validation.
 
+## RTX 4050 performance benchmark workflow
+
+- Added a PresentMon CSV analyzer and dashboard import. It filters to `GTA5.exe`, parses common PresentMon v1/v2 frame-time columns, counts dropped frames when present, and reports mean/median/P95/P99 frame time, average FPS, estimated 1% low and optional CPU/GPU Busy metrics.
+- The benchmark form records GTA V file version, resolution, GPU, driver, mod profile and scenario. Reports store a SHA-256 of the source CSV and are saved locally as JSON under `%LOCALAPPDATA%\\GtaTransformationHub\\Benchmarks`.
+- The 1% low metric is an estimate calculated as 1000 / P99 frame time. The analysis does not infer VRAM usage, temperatures, utilisation percentage, clocks, power or thermal throttling. Hardware-monitor logs are still needed for those measurements.
+- `docs/PERFORMANCE_BENCHMARKING.md` describes a repeatable 90-second capture workflow and three-run baseline/mod comparison. PresentMon is a user-obtained external tool; its binary is not bundled.
+- **No RTX 4050 in-game benchmark has been run or measured by CI.** The target laptop's actual game build, graphics settings, driver, power/thermal mode, frame-time and VRAM data must be captured before performance claims or a recommended graphics profile can be approved.
+
 ## Release status
 
 This repository is not production-ready yet. Windows CI run 44464157015 completed successfully on commit 02d9af878d383eddf5e28e6904d588cdc19c39b3: build, automated tests, self-contained win-x64 publish and artifact upload all passed. A CI artifact is not a signed installer or an in-game-validated release.
