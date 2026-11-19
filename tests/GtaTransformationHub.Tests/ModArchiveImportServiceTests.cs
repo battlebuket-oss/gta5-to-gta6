@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
 using GtaTransformationHub.Services;
 using Xunit;
 
@@ -25,15 +26,23 @@ public sealed class ModArchiveImportServiceTests : IDisposable
         var result = await new ModArchiveImportService().ImportAsync(
             archive, _importRoot, Metadata());
 
-        Assert.Single(result.Files);
-        Assert.Equal("scripts/example.ini", result.Files[0].RelativePath);
+        Assert.Equal(2, result.Files.Count);
+        Assert.Contains(result.Files, item => item.RelativePath == "scripts/example.ini");
         Assert.Equal("setting=true", await File.ReadAllTextAsync(
             Path.Combine(result.PackageDirectory, "scripts", "example.ini")));
         Assert.True(File.Exists(result.ManifestPath));
+        Assert.NotNull(result.OriginalArchivePath);
+        Assert.True(File.Exists(result.OriginalArchivePath));
+        Assert.Equal(
+            Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(archive))),
+            result.ArchiveSha256);
+        Assert.Contains(result.Files, item => item.RelativePath == "source-package.zip" &&
+                                               item.Sha256 == result.ArchiveSha256);
 
         var manifest = await File.ReadAllTextAsync(result.ManifestPath);
         Assert.Contains("\"Researching\"", manifest);
         Assert.Contains(result.Files[0].Sha256, manifest);
+        Assert.Contains("\"OriginalArchiveRelativePath\": \"source-package.zip\"", manifest);
     }
 
     [Theory]
