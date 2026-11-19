@@ -143,6 +143,7 @@ public sealed class RageCliEcologyCandidateAnalysisService
         ValidateDiscoveryProvenance(discovery, installation.BuildVersion, gameHash, tool);
 
         if (index.Payloads is null || index.Payloads.Count == 0 ||
+            index.Payloads.Any(payload => payload is null) ||
             index.Payloads.Count > RageCliMetadataPayloadService.MaximumCandidatesToDump ||
             index.CandidateCount <= 0 ||
             index.CandidateCount > RageCliMetadataPayloadService.MaximumCandidatesToDump ||
@@ -169,6 +170,8 @@ public sealed class RageCliEcologyCandidateAnalysisService
         foreach (var payload in index.Payloads)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!IsSha256(payload.SourceArchiveSha256) || !IsSha256(payload.DumpJsonSha256))
+                throw new InvalidDataException("The metadata payload is missing a valid source or dump SHA-256.");
             var sourceArchive = ValidateSourceArchive(gameRoot, payload.SourceArchivePath);
             var currentArchiveHash = await RageCliToolchainService.ComputeSha256Async(sourceArchive, cancellationToken);
             if (!currentArchiveHash.Equals(payload.SourceArchiveSha256, StringComparison.OrdinalIgnoreCase))
@@ -472,10 +475,10 @@ public sealed class RageCliEcologyCandidateAnalysisService
         RageCliToolchainInfo tool)
     {
         if (index.SchemaVersion != 1 ||
-            !index.GameBuild.Equals(expectedBuild, StringComparison.OrdinalIgnoreCase) ||
-            !index.GameExecutableSha256.Equals(expectedGameHash, StringComparison.OrdinalIgnoreCase) ||
-            !index.ToolVersion.Equals(tool.Version, StringComparison.OrdinalIgnoreCase) ||
-            !index.ToolSha256.Equals(tool.Sha256, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(index.GameBuild, expectedBuild, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(index.GameExecutableSha256, expectedGameHash, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(index.ToolVersion, tool.Version, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(index.ToolSha256, tool.Sha256, StringComparison.OrdinalIgnoreCase) ||
             !IsSha256(index.DiscoveryReportSha256))
             throw new InvalidDataException(
                 "The metadata dump index is not bound to this exact GTA5.exe build/hash and pinned rage-cli tool.");
@@ -488,10 +491,10 @@ public sealed class RageCliEcologyCandidateAnalysisService
         RageCliToolchainInfo tool)
     {
         if (report.SchemaVersion != 1 ||
-            !report.GameBuild.Equals(expectedBuild, StringComparison.OrdinalIgnoreCase) ||
-            !report.GameExecutableSha256.Equals(expectedGameHash, StringComparison.OrdinalIgnoreCase) ||
-            !report.ToolVersion.Equals(tool.Version, StringComparison.OrdinalIgnoreCase) ||
-            !report.ToolSha256.Equals(tool.Sha256, StringComparison.OrdinalIgnoreCase))
+            !string.Equals(report.GameBuild, expectedBuild, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(report.GameExecutableSha256, expectedGameHash, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(report.ToolVersion, tool.Version, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(report.ToolSha256, tool.Sha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
                 "The metadata discovery report is not bound to this exact GTA5.exe build/hash and pinned rage-cli tool.");
     }
