@@ -56,7 +56,8 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         Assert.Equal("Example Author", result.Author);
         Assert.Equal("2.8 Legacy", result.ModVersion);
         Assert.True(result.IsGtaVTarget);
-        Assert.False(result.RequiresManualReview);
+        Assert.True(result.RequiresManualReview);
+        Assert.Equal("Unspecified", result.GameVersionRequirement);
         Assert.Equal(2, result.FileAddCount);
         Assert.Equal(1, result.DeleteCount);
         Assert.Equal(2, result.ArchiveEditCount);
@@ -131,7 +132,7 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
                       <add>line one</add>
                       <insert where="After" line="line one" condition="Equal">line two</insert>
                       <replace line="line three" condition="StartWith">replacement</replace>
-                      <delete line="#*" condition="Mask" />
+                      <delete condition="Mask">#*</delete>
                     </text>
                     <pso path="x64/data/carcols.ymt">
                       <replace xpath="/CHandlingDataMgr/Item"><Item /></replace>
@@ -144,13 +145,45 @@ public sealed class OivManifestInspectionServiceTests : IDisposable
         using var archive = new ZipArchive(file, ZipArchiveMode.Read);
         var result = OivManifestInspectionService.Inspect(archive);
 
-        Assert.False(result.RequiresManualReview);
+        Assert.True(result.RequiresManualReview);
         Assert.Equal(7, result.PatchOperationCount);
         Assert.Contains(result.Operations, item => item.Command == "xml:add");
         Assert.Contains(result.Operations, item => item.Command == "xml:remove");
         Assert.Contains(result.Operations, item => item.Command == "text:insert");
         Assert.Contains(result.Operations, item => item.Command == "text:delete");
         Assert.Contains(result.Operations, item => item.Command == "pso:replace");
+    }
+
+    [Fact]
+    public void Inspect_ReportsMissingXmlAppendAttributeForManualReview()
+    {
+        var archivePath = CreateOiv(
+            "missing-append.oiv",
+            Manifest("""
+                <package version="2.2" id="{9a4c2e61-7b3f-4d08-8e15-2c6b0f9a7d43}" target="Five">
+                  <metadata>
+                    <name>Missing append</name>
+                    <version><major>1</major><minor>0</minor></version>
+                    <author><displayName>Author</displayName></author>
+                    <description><![CDATA[Missing append test]]></description>
+                  </metadata>
+                  <colors>
+                    <headerBackground useBlackTextColor="False">$FF000000</headerBackground>
+                    <iconBackground>$FFFFFFFF</iconBackground>
+                  </colors>
+                  <content>
+                    <xml path="dlclist.xml"><add xpath="/Paths"><Item>dlcpacks:/sample/</Item></add></xml>
+                  </content>
+                </package>
+                """));
+
+        using var file = File.OpenRead(archivePath);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        var result = OivManifestInspectionService.Inspect(archive);
+
+        Assert.True(result.RequiresManualReview);
+        Assert.Contains(result.UnsupportedCommands, item => item.Contains("append", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Operations, item => item.Command == "xml:add");
     }
 
     [Fact]
