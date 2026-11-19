@@ -573,12 +573,11 @@ public sealed class RageCliEcologyCandidateAnalysisService
 
     private static void EnsureDirectoryTreeNoReparse(string leaf)
     {
-        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        var fullLeaf = Path.GetFullPath(leaf);
-        var filesystemRoot = Path.GetPathRoot(rootPath)
+        var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(leaf));
+        var filesystemRoot = Path.GetPathRoot(fullPath)
             ?? throw new IOException("The candidate evidence directory has no filesystem root.");
         var current = filesystemRoot;
-        var relative = Path.GetRelativePath(filesystemRoot, rootPath);
+        var relative = Path.GetRelativePath(filesystemRoot, fullPath);
         foreach (var segment in relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, segment);
@@ -586,9 +585,6 @@ public sealed class RageCliEcologyCandidateAnalysisService
             if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
                 throw new IOException("A candidate evidence directory is a reparse point.");
         }
-        var rootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(fullLeaf));
-        if ((File.GetAttributes(rootPath) & FileAttributes.ReparsePoint) != 0)
-            throw new IOException("A candidate evidence directory is a reparse point.");
     }
 
     private static bool IsSha256(string? value) =>
