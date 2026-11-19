@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -110,6 +111,9 @@ public sealed class ImportedModLibraryService
             if (manifest.Files is null || manifest.Files.Count == 0 || manifest.Files.Count > 2500)
                 warnings.Add("File inventory is empty or outside the permitted entry range.");
 
+            if (manifest.Status != CatalogueStatus.Researching)
+                warnings.Add("Imported package status was changed from Researching; the claimed status is not trusted.");
+
             if (manifest.Metadata is not null && IsSha256(manifest.ArchiveSha256))
             {
                 var expectedDirectory = manifest.Metadata.PackageId + "-" +
@@ -119,6 +123,7 @@ public sealed class ImportedModLibraryService
             }
 
             var checkedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            long verifiedTotalBytes = 0;
             if (manifest.Files is not null)
             {
                 foreach (var file in manifest.Files)
@@ -159,9 +164,32 @@ public sealed class ImportedModLibraryService
                         continue;
                     }
 
+                    if (file.SizeBytes > 268435456)
+                    {
+                        warnings.Add("Imported file exceeds the per-file verification limit: " + file.RelativePath);
+                        continue;
+                    }
+
+                    verifiedTotalBytes = checked(verifiedTotalBytes + file.SizeBytes);
+                    if (verifiedTotalBytes > 1073741824)
+                    {
+                        warnings.Add("Package inventory exceeds the 1 GiB total verification limit.");
+                        break;
+                    }
+
                     var actualLength = new FileInfo(target).Length;
                     if (actualLength != file.SizeBytes)
+                    {
                         warnings.Add("Imported file size differs from the manifest: " + file.RelativePath);
+                        continue;
+                    }
+
+                    await using var fileStream = new FileStream(
+                        target, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+                    var actualHash = Convert.ToHexString(
+                        await SHA256.HashDataAsync(fileStream, cancellationToken));
+                    if (!string.Equals(actualHash, file.Sha256, StringComparison.OrdinalIgnoreCase))
+                        warnings.Add("Imported file SHA-256 does not match the manifest: " + file.RelativePath);
                 }
             }
 
@@ -175,12 +203,12 @@ public sealed class ImportedModLibraryService
                 packageName,
                 metadata?.Author ?? string.Empty,
                 metadata?.Version ?? string.Empty,
-                manifest.Status.ToString(),
+                "Researching",
                 manifest.ImportedAt,
                 manifest.Files?.Count ?? 0,
                 fullDirectory,
                 warnings.Count == 0,
-                "File hashes have not been re-computed; this is a manifest/inventory presence check only.",
+                "Per-file SHA-256 values were re-computed and compared with the import manifest. Archive provenance is not re-verified because the original archive is not retained.",
                 warnings);
         }
         catch (Exception exception) when (
