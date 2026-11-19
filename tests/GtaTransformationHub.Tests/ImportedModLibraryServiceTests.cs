@@ -135,6 +135,29 @@ public sealed class ImportedModLibraryServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadAsync_AndVerifyAsync_RejectUntrackedFilesOutsideTheManifest()
+    {
+        var bytes = Encoding.UTF8.GetBytes("listed=true");
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        var packageDirectory = CreatePackage(
+            "untracked-mod",
+            "Untracked Mod",
+            "a".PadRight(64, 'a'),
+            ("scripts/listed.ini", bytes, hash));
+
+        var extraPath = Path.Combine(packageDirectory, "scripts", "untracked.dll");
+        await File.WriteAllTextAsync(extraPath, "not included in package-manifest.json");
+
+        var entry = Assert.Single(await new ImportedModLibraryService().LoadAsync(_root));
+        Assert.False(entry.ManifestValid);
+        Assert.Contains(entry.Warnings, warning => warning.Contains("untracked file", StringComparison.OrdinalIgnoreCase));
+
+        var verification = await new ImportedModLibraryService().VerifyAsync(_root, packageDirectory);
+        Assert.False(verification.IsValid);
+        Assert.Contains(verification.Errors, error => error.Contains("untracked file", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task LoadAsync_ReportsInvalidManifestAsUnreadableEntry()
     {
         var directory = Path.Combine(_root, "bad-manifest");
