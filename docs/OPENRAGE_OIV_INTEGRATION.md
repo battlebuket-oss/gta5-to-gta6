@@ -93,3 +93,18 @@ After the OIV is installed into the `mods` folder, the author documents two file
 The Hub's **Deploy VI HUD root plugins** action accepts only those two hard-coded filenames and only reads their source from the selected installation's `mods` folder. It hashes both files, asks before copying them to the game root, backs up different existing root files, and commits through the Hub's journalled deployment engine. It stores the transaction ID in LocalAppData so the user can use **Roll back VI HUD root plugins** after restarting the Hub. Rollback preflights both files and refuses to overwrite either one if it has changed since deployment.
 
 This adapter does not move any other OIV file into the root, does not install generic ASI/DLL packages, and does not make the HUD Tested. The user must still validate Story Mode launch, menus, character switching, missions, saves and rollback on the exact Legacy game build.
+
+
+## Pinned GTA VI-Inspired HUD Legacy 2.8.2 acquisition
+
+The dashboard can download the author's exact v2.8.2 Legacy release asset:
+
+- Asset: `GTA-VI-Inspired-HUD-2.8.2-Legacy.oiv`
+- Upstream release: [v2.8.2](https://github.com/Geckomacabre/GTA-VI-Inspired-HUD/releases/tag/v2.8.2)
+- Published: 13 November 2026
+- Size: 117,140,655 bytes
+- SHA-256: `72B8FE300BD99978756DEF3711DD5AFE4BD5A3B65BD4AEE9E4C8FDF97F250835`
+
+The downloader uses the normal HTTPS acquisition pipeline, checks the pinned digest and exact byte count, then passes the package to the archive quarantine importer. The original OIV is retained and its manifest and extracted file inventory are hashed. An exact matching import already present in the library is reused only after its local inventory is verified. The downloaded temporary copy is removed after import.
+
+This operation downloads and imports only; it does not install the OIV, copy root plugins, mark the package Tested, or promise compatibility. The release's 117 MB size and pinned hash are from the upstream GitHub release metadata.
