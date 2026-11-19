@@ -56,7 +56,7 @@ public sealed class RageCliMetadataPayloadService
 
     private static readonly HashSet<string> SupportedMetadataExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".ymt", ".meta", ".ytyp", ".ymap", ".ymf", ".pso", ".xml"
+        ".ymt", ".meta", ".ytyp", ".ymap", ".ymf", ".pso"
     };
 
     private readonly RageCliToolchainService _toolchain;
@@ -500,6 +500,31 @@ public sealed class RageCliMetadataPayloadService
             "--output", Path.GetFullPath(outputDirectory)
         };
 
+    public static IReadOnlyList<string> BuildRawResourceExtractionArguments(
+        string gameExecutablePath,
+        string archivePath,
+        string resourcePath,
+        string outputDirectory)
+    {
+        var normalizedResourcePath = resourcePath.Replace('\\\\', '/');
+        if (string.IsNullOrWhiteSpace(normalizedResourcePath) ||
+            normalizedResourcePath.StartsWith('/') ||
+            normalizedResourcePath.Contains(':') ||
+            normalizedResourcePath.Split('/').Any(segment =>
+                segment.Length == 0 || segment is "." or ".."))
+            throw new InvalidDataException("A raw resource extraction path must be a safe archive-relative path.");
+
+        return new[]
+        {
+            "--no-update-check",
+            "--exe", Path.GetFullPath(gameExecutablePath),
+            "extract",
+            Path.GetFullPath(archivePath),
+            normalizedResourcePath,
+            "--output", Path.GetFullPath(outputDirectory)
+        };
+    }
+
     public static IReadOnlyList<string> BuildResourceDumpArguments(
         string gameExecutablePath,
         string archivePath,
@@ -616,7 +641,7 @@ public sealed class RageCliMetadataPayloadService
         };
     }
 
-    private static string ValidateArchivePathWithinGameRoot(string gameRoot, string archivePath)
+    internal static string ValidateArchivePathWithinGameRoot(string gameRoot, string archivePath)
     {
         var fullPath = Path.GetFullPath(archivePath);
         var prefix = gameRoot + Path.DirectorySeparatorChar;
@@ -629,7 +654,7 @@ public sealed class RageCliMetadataPayloadService
         return fullPath;
     }
 
-    private static string ResolveContainedOutputPath(string outputDirectory, string relativePath)
+    internal static string ResolveContainedOutputPath(string outputDirectory, string relativePath)
     {
         var normalized = relativePath.Replace('\\', Path.DirectorySeparatorChar);
         if (Path.IsPathRooted(normalized))
@@ -644,7 +669,7 @@ public sealed class RageCliMetadataPayloadService
         return fullPath;
     }
 
-    private static void EnsureNoReparsePoints(string root, string destination)
+    internal static void EnsureNoReparsePoints(string root, string destination)
     {
         var current = Path.GetFullPath(root);
         if (!Directory.Exists(current) ||
@@ -661,13 +686,13 @@ public sealed class RageCliMetadataPayloadService
         }
     }
 
-    private static void EnsureDirectoryIsNotReparsePoint(string path)
+    internal static void EnsureDirectoryIsNotReparsePoint(string path)
     {
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
             throw new IOException("A metadata dump directory cannot be a reparse point.");
     }
 
-    private static void EnsureRegularFile(string path, string description)
+    internal static void EnsureRegularFile(string path, string description)
     {
         if (!File.Exists(path))
             throw new InvalidDataException("rage-cli did not create the expected " + description + ".");
@@ -684,7 +709,7 @@ public sealed class RageCliMetadataPayloadService
         return string.IsNullOrWhiteSpace(cleaned) ? "metadata" : cleaned[..Math.Min(cleaned.Length, 96)];
     }
 
-    private static string LimitForMessage(string value)
+    internal static string LimitForMessage(string value)
     {
         const int limit = 3000;
         var text = value.Trim();
