@@ -805,6 +805,104 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void DownloadHudPackageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsGameRunning() || !_recoveryCompleted || _openRageBusy)
+        {
+            StatusText.Text = "HUD package download is locked while GTA V is running, recovery is incomplete, or another operation is active.";
+            return;
+        }
+
+        _openRageBusy = true;
+        RefreshSessionState();
+        StatusText.Text = "Downloading the official GTA VI-Inspired HUD 2.8.2 Legacy OIV and checking its pinned SHA-256...";
+        OpenRageOutputText.Text = "Downloading from the author's GitHub release. The OIV will be imported into the research library only; the game will not be modified.";
+
+        try
+        {
+            var existingEntries = await new ImportedModLibraryService().LoadAsync(PackageLibraryRoot);
+            var existing = existingEntries.FirstOrDefault(entry =>
+                string.Equals(entry.PackageId, GtaViInspiredHudPackageService.PackageId,
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(entry.OriginalArchiveSha256,
+                    GtaViInspiredHudPackageService.PackageSha256,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (existing is not null)
+            {
+                if (!existing.ManifestValid || existing.OriginalArchivePath is null ||
+                    existing.OivInspection is null)
+                    throw new InvalidDataException(
+                        "A copy of this exact HUD release is already in the package library, but its inventory is not valid. Do not overwrite it; inspect or remove the damaged local package folder before retrying.");
+
+                var verification = await new ImportedModLibraryService().VerifyAsync(
+                    PackageLibraryRoot, existing.PackageDirectory);
+                if (!verification.IsValid)
+                    throw new InvalidDataException(
+                        "The existing HUD release failed its local SHA-256 inventory check: " +
+                        string.Join("; ", verification.Errors.Take(8)));
+
+                _lastImportedOivPath = existing.OriginalArchivePath;
+                _lastOivArchiveSha256 = existing.OriginalArchiveSha256;
+                _lastImportedOivPackageDirectory = existing.PackageDirectory;
+                _lastImportedOivPackageId = existing.PackageId;
+                _lastOivInspection = existing.OivInspection;
+                _reviewedOpenRageInspection = null;
+                OpenRageOutputText.Text =
+                    "The exact pinned HUD 2.8.2 Legacy OIV is already imported and its source archive and extracted files passed local SHA-256 verification." +
+                    Environment.NewLine + "SHA-256: " + existing.OriginalArchiveSha256 +
+                    Environment.NewLine + "Select PREVIEW IMPORTED OIV. No game files were changed.";
+                StatusText.Text = "Existing official HUD OIV verified and selected for OpenRAGE preview. It remains Researching.";
+                return;
+            }
+
+            var imported = await new GtaViInspiredHudPackageService(
+                _packageAcquisitionService).DownloadAndImportAsync(PackageLibraryRoot);
+
+            _lastImportedOivPath = imported.OriginalArchivePath;
+            _lastOivArchiveSha256 = imported.ArchiveSha256;
+            _lastImportedOivPackageDirectory = imported.PackageDirectory;
+            _lastImportedOivPackageId = imported.PackageId;
+            _lastOivInspection = imported.OivInspection;
+            _reviewedOpenRageInspection = null;
+            _openRageHudPrerequisitesReady = true;
+
+            await RefreshImportedPackageLibraryAsync();
+            // Re-select the exact package just imported; the library refresh may
+            // restore a different OIV if one has a later local timestamp.
+            _lastImportedOivPath = imported.OriginalArchivePath;
+            _lastOivArchiveSha256 = imported.ArchiveSha256;
+            _lastImportedOivPackageDirectory = imported.PackageDirectory;
+            _lastImportedOivPackageId = imported.PackageId;
+            _lastOivInspection = imported.OivInspection;
+
+            OpenRageOutputText.Text =
+                "Official GTA VI-Inspired HUD 2.8.2 Legacy OIV downloaded from the author's release and imported into the research library." +
+                Environment.NewLine + "Archive SHA-256: " + imported.ArchiveSha256 +
+                Environment.NewLine + "Inspected archive files: " + imported.Files.Count +
+                Environment.NewLine + "OIV manifest operations: " + (imported.OivInspection?.Operations.Count ?? 0) +
+                Environment.NewLine + "Next: run PREVIEW IMPORTED OIV. This download/import did not install the HUD or change GTA V.";
+            StatusText.Text = "Official Legacy HUD OIV imported for inspection. No GTA V files were modified.";
+            MessageBox.Show(
+                "The official GTA V Legacy HUD OIV was downloaded, hash-verified and imported into the local research library. It is not installed or approved. Use the OpenRAGE preview before considering installation.",
+                "HUD package imported for research",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            OpenRageOutputText.Text = "HUD package download/import failed:" + Environment.NewLine + exception;
+            StatusText.Text = "HUD package download/import failed. No GTA V game files were changed.";
+            MessageBox.Show(exception.Message, "HUD package download/import failed",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _openRageBusy = false;
+            RefreshSessionState();
+        }
+    }
+
     private bool CanRunOpenRage()
     {
         if (IsGameRunning() || !_recoveryCompleted || _openRageBusy)
@@ -1515,6 +1613,7 @@ public partial class MainWindow : Window
         GetOivInstallerButton.IsEnabled = true;
         RefreshOivInstallHistoryButton.IsEnabled =
             !running && !operationBusy && _recoveryCompleted && _gameExecutable is not null;
+        DownloadHudPackageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy;
         DownloadOpenRageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy;
         VerifyOpenRageButton.IsEnabled = !running && _recoveryCompleted && !_openRageBusy;
         PreviewOpenRageOivButton.IsEnabled =
